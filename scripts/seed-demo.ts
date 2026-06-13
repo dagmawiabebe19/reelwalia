@@ -5,9 +5,11 @@
  * Requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { config } from "dotenv";
 
-const DEMO_CDN = process.env.BUNNY_CDN_HOSTNAME ?? "demo-cdn.reelwalia.local";
+config({ path: ".env.local" });
+
+import { createClient } from "@supabase/supabase-js";
 
 const SERIES = [
   {
@@ -42,12 +44,16 @@ const SERIES = [
   },
 ];
 
+function demoCdn() {
+  return process.env.BUNNY_CDN_HOSTNAME ?? "demo-cdn.reelwalia.local";
+}
+
 function playbackUrl(videoId: string) {
-  return `https://${DEMO_CDN}/${videoId}/playlist.m3u8`;
+  return `https://${demoCdn()}/${videoId}/playlist.m3u8`;
 }
 
 function thumbnailUrl(videoId: string) {
-  return `https://${DEMO_CDN}/${videoId}/thumbnail.jpg`;
+  return `https://${demoCdn()}/${videoId}/thumbnail.jpg`;
 }
 
 async function main() {
