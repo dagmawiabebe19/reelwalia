@@ -13,9 +13,15 @@ interface PaywallModalProps {
   open: boolean;
   onClose: () => void;
   episodeId?: string;
+  isAuthenticated?: boolean;
 }
 
-export function PaywallModal({ open, onClose, episodeId }: PaywallModalProps) {
+export function PaywallModal({
+  open,
+  onClose,
+  episodeId,
+  isAuthenticated = false,
+}: PaywallModalProps) {
   const [selected, setSelected] = useState<StripePlanKey>("2week");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -143,7 +149,9 @@ export function PaywallModal({ open, onClose, episodeId }: PaywallModalProps) {
         </button>
 
         <p className="mt-3 text-center text-[11px] text-gray-500">
-          Cancel anytime in account settings.
+          {isAuthenticated
+            ? "Cancel anytime in account settings."
+            : "Enter your email in Stripe Checkout — we'll create your account automatically."}
         </p>
       </div>
     </div>

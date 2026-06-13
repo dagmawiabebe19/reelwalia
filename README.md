@@ -59,7 +59,15 @@ Intro pricing auto-renews at standard rates via Subscription Schedules (set up i
    - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
 4. For local testing: `stripe listen --forward-to localhost:3000/api/stripe/webhook`
 
-Locked episodes show the ReelWalia paywall modal; checkout redirects back to the watch page with `?subscribed=true`.
+Locked episodes show the paywall modal to everyone (signed-in or logged-out). Free episodes are playable without an account.
+
+**Guest checkout flow:**
+1. Logged-out user hits a locked episode → paywall modal → Stripe Checkout (email + card collected in Stripe)
+2. On success → `/auth/checkout-success?session_id=…` verifies payment and sends a magic-link email
+3. Webhook creates Supabase auth user + active subscription
+4. User can **Continue watching** immediately via `session_id` unlock, or sign in via email link for persistent access
+
+**Signed-in checkout:** Same paywall → checkout attaches `user_id` → returns to episode with `?subscribed=true`.
 
 ## Bunny Stream setup
 

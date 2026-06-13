@@ -10,6 +10,7 @@ interface WatchPaywallProps {
   seriesTitle: string;
   episodeNumber: number;
   showPaywall: boolean;
+  isAuthenticated: boolean;
 }
 
 function WatchPaywallInner({
@@ -18,6 +19,7 @@ function WatchPaywallInner({
   seriesTitle,
   episodeNumber,
   showPaywall,
+  isAuthenticated,
 }: WatchPaywallProps) {
   const searchParams = useSearchParams();
   const subscribed = searchParams.get("subscribed") === "true";
@@ -48,7 +50,7 @@ function WatchPaywallInner({
           </div>
           <p className="text-xs uppercase tracking-widest text-gray-400">{seriesTitle}</p>
           <p className="mt-1 font-display text-lg uppercase">Episode {episodeNumber}</p>
-          {subscribed && (
+          {subscribed && isAuthenticated && (
             <p className="mt-3 text-sm text-obsidian-red">Welcome! Refreshing access…</p>
           )}
         </div>
@@ -58,6 +60,7 @@ function WatchPaywallInner({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         episodeId={episodeId}
+        isAuthenticated={isAuthenticated}
       />
     </>
   );

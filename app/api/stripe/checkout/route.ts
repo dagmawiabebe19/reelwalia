@@ -1,20 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createCheckoutSession } from "@/lib/stripe/server";
+import {
+  createCheckoutSession,
+  createGuestCheckoutSession,
+} from "@/lib/stripe/server";
 import type { StripePlanKey } from "@/lib/stripe/plans";
 
 const VALID_PLANS: StripePlanKey[] = ["1week", "2week", "1month"];
 
 export async function POST(request: Request) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
     const body = (await request.json()) as {
       plan?: StripePlanKey;
@@ -26,19 +20,46 @@ export async function POST(request: Request) {
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-    const successUrl = body.episodeId
-      ? `${siteUrl}/watch/${body.episodeId}?subscribed=true`
-      : `${siteUrl}/account?subscribed=true`;
     const cancelUrl = body.episodeId
       ? `${siteUrl}/watch/${body.episodeId}`
-      : `${siteUrl}/account`;
+      : `${siteUrl}/`;
 
-    const session = await createCheckoutSession({
-      userId: user.id,
-      email: user.email,
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user?.email) {
+      const successUrl = body.episodeId
+        ? `${siteUrl}/watch/${body.episodeId}?subscribed=true`
+        : `${siteUrl}/account?subscribed=true`;
+
+      const session = await createCheckoutSession({
+        userId: user.id,
+        email: user.email,
+        plan: body.plan,
+        successUrl,
+        cancelUrl,
+        episodeId: body.episodeId,
+      });
+
+      if (!session.url) {
+        return NextResponse.json({ error: "Failed to create checkout URL" }, { status: 500 });
+      }
+
+      return NextResponse.json({ url: session.url });
+    }
+
+    const episodeQuery = body.episodeId
+      ? `&episodeId=${encodeURIComponent(body.episodeId)}`
+      : "";
+    const successUrl = `${siteUrl}/auth/checkout-success?session_id={CHECKOUT_SESSION_ID}${episodeQuery}`;
+
+    const session = await createGuestCheckoutSession({
       plan: body.plan,
       successUrl,
       cancelUrl,
+      episodeId: body.episodeId,
     });
 
     if (!session.url) {

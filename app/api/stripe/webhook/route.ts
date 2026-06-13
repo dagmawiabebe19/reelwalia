@@ -12,6 +12,7 @@ import {
   findUserIdByCustomerId,
   syncSubscriptionToDatabase,
 } from "@/lib/stripe/sync";
+import { ensureUserFromEmail } from "@/lib/stripe/guest-auth";
 
 export async function POST(request: Request) {
   const stripe = getStripe();
@@ -56,13 +57,17 @@ export async function POST(request: Request) {
 
         if (!customerId) break;
 
-        const userId =
+        let userId =
           session.metadata?.user_id ??
           (await findUserIdByCustomerId(customerId));
 
         if (!userId) {
-          console.error("checkout.session.completed: user not found", session.id);
-          break;
+          const email = session.customer_details?.email;
+          if (!email) {
+            console.error("checkout.session.completed: no user_id or email", session.id);
+            break;
+          }
+          userId = await ensureUserFromEmail(email);
         }
 
         const plan = session.metadata?.plan as StripePlanKey | undefined;
@@ -80,6 +85,16 @@ export async function POST(request: Request) {
 
         if (plan) {
           await scheduleIntroToStandardTransition(subscriptionId, plan);
+        }
+
+        if (!session.metadata?.user_id) {
+          await stripe.subscriptions.update(subscriptionId, {
+            metadata: {
+              user_id: userId,
+              plan: plan ?? "",
+              episode_id: session.metadata?.episode_id ?? "",
+            },
+          });
         }
         break;
       }

@@ -33,6 +33,13 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isAdminRoute =
     pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
+  const isAccountRoute = pathname === "/account" || pathname.startsWith("/account/");
+
+  if (isAccountRoute && !user) {
+    const signIn = new URL("/auth/sign-in", request.url);
+    signIn.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(signIn);
+  }
 
   if (isAdminRoute) {
     if (!user) {

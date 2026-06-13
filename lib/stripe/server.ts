@@ -58,6 +58,7 @@ export async function createCheckoutSession(params: {
   plan: StripePlanKey;
   successUrl: string;
   cancelUrl: string;
+  episodeId?: string;
 }): Promise<Stripe.Checkout.Session> {
   const stripe = getStripe();
   const { introPriceId } = getPlanPriceIds(params.plan);
@@ -71,6 +72,7 @@ export async function createCheckoutSession(params: {
       metadata: {
         user_id: params.userId,
         plan: params.plan,
+        ...(params.episodeId ? { episode_id: params.episodeId } : {}),
       },
     },
     success_url: params.successUrl,
@@ -79,8 +81,82 @@ export async function createCheckoutSession(params: {
     metadata: {
       user_id: params.userId,
       plan: params.plan,
+      ...(params.episodeId ? { episode_id: params.episodeId } : {}),
     },
   });
+}
+
+export async function createGuestCheckoutSession(params: {
+  plan: StripePlanKey;
+  successUrl: string;
+  cancelUrl: string;
+  episodeId?: string;
+}): Promise<Stripe.Checkout.Session> {
+  const stripe = getStripe();
+  const { introPriceId } = getPlanPriceIds(params.plan);
+
+  return stripe.checkout.sessions.create({
+    mode: "subscription",
+    line_items: [{ price: introPriceId, quantity: 1 }],
+    customer_creation: "always",
+    subscription_data: {
+      metadata: {
+        plan: params.plan,
+        ...(params.episodeId ? { episode_id: params.episodeId } : {}),
+      },
+    },
+    success_url: params.successUrl,
+    cancel_url: params.cancelUrl,
+    allow_promotion_codes: true,
+    metadata: {
+      plan: params.plan,
+      ...(params.episodeId ? { episode_id: params.episodeId } : {}),
+    },
+  });
+}
+
+export interface VerifiedCheckoutSession {
+  active: boolean;
+  email: string | null;
+  episodeId: string | null;
+  customerId: string | null;
+}
+
+export async function verifyCheckoutSession(
+  sessionId: string
+): Promise<VerifiedCheckoutSession | null> {
+  const stripe = getStripe();
+
+  const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    expand: ["subscription"],
+  });
+
+  if (session.status !== "complete") {
+    return null;
+  }
+
+  const subscription =
+    typeof session.subscription === "string"
+      ? unwrapStripeResponse(await stripe.subscriptions.retrieve(session.subscription))
+      : session.subscription
+        ? unwrapStripeResponse(session.subscription)
+        : null;
+
+  const active =
+    subscription != null &&
+    (subscription.status === "active" || subscription.status === "trialing");
+
+  const customerId =
+    typeof session.customer === "string"
+      ? session.customer
+      : session.customer?.id ?? null;
+
+  return {
+    active,
+    email: session.customer_details?.email ?? null,
+    episodeId: session.metadata?.episode_id ?? null,
+    customerId,
+  };
 }
 
 export async function createPortalSession(params: {

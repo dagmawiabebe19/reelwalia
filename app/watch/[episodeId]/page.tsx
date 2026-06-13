@@ -1,17 +1,22 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { TopNav } from "@/components/layout/TopNav";
 import { EpisodePicker } from "@/components/watch/EpisodePicker";
 import { WatchPaywall } from "@/components/watch/WatchPaywall";
-import { canWatchEpisode, hasActiveSubscription } from "@/lib/access";
+import { canWatchEpisode } from "@/lib/access";
+import { verifyCheckoutSession } from "@/lib/stripe/server";
 import { createClient } from "@/lib/supabase/server";
 
 interface WatchPageProps {
   params: { episodeId: string };
+  searchParams: { subscribed?: string; session_id?: string };
 }
 
-async function getWatchData(episodeId: string) {
+async function getWatchData(
+  episodeId: string,
+  searchParams: { subscribed?: string; session_id?: string }
+) {
   const supabase = createClient();
 
   const { data: episode } = await supabase
@@ -65,9 +70,19 @@ async function getWatchData(episodeId: string) {
   }
 
   const freeCount = series.free_episode_count ?? 5;
-  const unlocked = canWatchEpisode(episode.episode_number, freeCount, profile);
-  const locked =
-    episode.episode_number > freeCount && !hasActiveSubscription(profile);
+  const isPremiumEpisode = episode.episode_number > freeCount;
+
+  let guestSessionUnlock = false;
+  if (isPremiumEpisode && searchParams.session_id) {
+    const verified = await verifyCheckoutSession(searchParams.session_id);
+    guestSessionUnlock = verified?.active === true;
+  }
+
+  const unlocked =
+    canWatchEpisode(episode.episode_number, freeCount, profile) ||
+    guestSessionUnlock;
+
+  const locked = isPremiumEpisode && !unlocked;
 
   const currentIndex = (allEpisodes ?? []).findIndex((e) => e.id === episodeId);
   const nextEpisode =
@@ -85,16 +100,17 @@ async function getWatchData(episodeId: string) {
     series,
     unlocked,
     locked,
-    user,
+    isAuthenticated: !!user,
+    justSubscribed: searchParams.subscribed === "true",
     nextEpisodeId: nextEpisode?.id ?? null,
     pickerEpisodes,
     initialProgress,
   };
 }
 
-export default async function WatchPage({ params }: WatchPageProps) {
+export default async function WatchPage({ params, searchParams }: WatchPageProps) {
   const { episodeId } = params;
-  const data = await getWatchData(episodeId);
+  const data = await getWatchData(episodeId, searchParams);
 
   if (!data) notFound();
 
@@ -103,15 +119,12 @@ export default async function WatchPage({ params }: WatchPageProps) {
     series,
     unlocked,
     locked,
-    user,
+    isAuthenticated,
+    justSubscribed,
     nextEpisodeId,
     pickerEpisodes,
     initialProgress,
   } = data;
-
-  if (locked && !user) {
-    redirect(`/auth/sign-in?redirect=${encodeURIComponent(`/watch/${episodeId}`)}`);
-  }
 
   return (
     <div className="min-h-screen bg-black pb-24 lg:pb-8">
@@ -119,15 +132,22 @@ export default async function WatchPage({ params }: WatchPageProps) {
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 lg:flex-row lg:px-6">
         <div className="flex flex-1 flex-col items-center gap-4">
           {unlocked && episode.video_url ? (
-            <VideoPlayer
-              src={episode.video_url}
-              poster={episode.thumbnail_url}
-              subtitleUrl={episode.subtitle_url}
-              episodeId={episode.id}
-              seriesId={series.id}
-              nextEpisodeId={nextEpisodeId}
-              initialProgress={initialProgress}
-            />
+            <>
+              {justSubscribed && isAuthenticated && (
+                <p className="w-full max-w-md rounded-lg border border-obsidian-red/30 bg-obsidian-red/10 px-4 py-2 text-center text-sm text-obsidian-red lg:max-w-none">
+                  Subscription active — enjoy full access!
+                </p>
+              )}
+              <VideoPlayer
+                src={episode.video_url}
+                poster={episode.thumbnail_url}
+                subtitleUrl={episode.subtitle_url}
+                episodeId={episode.id}
+                seriesId={series.id}
+                nextEpisodeId={nextEpisodeId}
+                initialProgress={initialProgress}
+              />
+            </>
           ) : (
             <WatchPaywall
               episodeId={episode.id}
@@ -135,6 +155,7 @@ export default async function WatchPage({ params }: WatchPageProps) {
               seriesTitle={series.title}
               episodeNumber={episode.episode_number}
               showPaywall={locked}
+              isAuthenticated={isAuthenticated}
             />
           )}
 
