@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "tsx scripts/seed-demo.ts"
+    "seed": "tsx scripts/seed-demo.ts",
+    "generate-posters": "tsx scripts/generate-posters.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
@@ -24,7 +25,9 @@
     "dotenv": "^17.4.2",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
+    "openai": "^6.42.0",
     "postcss": "^8",
+    "sharp": "^0.35.1",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.22.4",
     "typescript": "^5"
