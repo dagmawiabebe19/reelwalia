@@ -70,6 +70,7 @@ export async function createCheckoutSession(params: {
     line_items: [{ price: introPriceId, quantity: 1 }],
     subscription_data: {
       metadata: {
+        app: "reelwalia",
         user_id: params.userId,
         plan: params.plan,
       },
@@ -78,6 +79,7 @@ export async function createCheckoutSession(params: {
     cancel_url: params.cancelUrl,
     allow_promotion_codes: true,
     metadata: {
+      app: "reelwalia",
       user_id: params.userId,
       plan: params.plan,
       ...(params.episodeId ? { episode_id: params.episodeId } : {}),
@@ -99,6 +101,7 @@ export async function createGuestCheckoutSession(params: {
     line_items: [{ price: introPriceId, quantity: 1 }],
     subscription_data: {
       metadata: {
+        app: "reelwalia",
         plan: params.plan,
       },
     },
@@ -106,6 +109,7 @@ export async function createGuestCheckoutSession(params: {
     cancel_url: params.cancelUrl,
     allow_promotion_codes: true,
     metadata: {
+      app: "reelwalia",
       plan: params.plan,
       ...(params.episodeId ? { episode_id: params.episodeId } : {}),
     },

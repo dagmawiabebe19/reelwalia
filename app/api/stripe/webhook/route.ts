@@ -7,6 +7,7 @@ import {
   scheduleIntroToStandardTransition,
 } from "@/lib/stripe/server";
 import { unwrapStripeResponse } from "@/lib/stripe/helpers";
+import { isReelWaliaEvent, resolveEventApp } from "@/lib/stripe/webhook-filter";
 import {
   deactivateSubscription,
   findUserIdByCustomerId,
@@ -37,6 +38,14 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error("Webhook signature verification failed:", err);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
+  const app = await resolveEventApp(stripe, event);
+  if (!isReelWaliaEvent(app)) {
+    console.log(
+      `Ignoring event ${event.type} - not for reelwalia (app: ${app ?? "none"})`
+    );
+    return new Response("OK - not for this app", { status: 200 });
   }
 
   try {
@@ -90,6 +99,7 @@ export async function POST(request: Request) {
         if (!session.metadata?.user_id) {
           await stripe.subscriptions.update(subscriptionId, {
             metadata: {
+              app: "reelwalia",
               user_id: userId,
               plan: plan ?? "",
               episode_id: session.metadata?.episode_id ?? "",
