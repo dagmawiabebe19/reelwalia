@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isAdminEmail } from "@/lib/admin";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -25,7 +26,25 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+  const isAdminRoute =
+    pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
+
+  if (isAdminRoute) {
+    if (!user) {
+      const signIn = new URL("/auth/sign-in", request.url);
+      signIn.searchParams.set("next", pathname);
+      return NextResponse.redirect(signIn);
+    }
+
+    if (!isAdminEmail(user.email)) {
+      return NextResponse.redirect(new URL("/?error=unauthorized", request.url));
+    }
+  }
 
   return supabaseResponse;
 }

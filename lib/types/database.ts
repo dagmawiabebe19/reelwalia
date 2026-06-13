@@ -7,6 +7,16 @@ export type SubscriptionStatus =
   | "trialing";
 export type SubscriptionPlan = "free" | "monthly" | "yearly";
 
+export const SERIES_GENRES = [
+  "Drama",
+  "Romance",
+  "Thriller",
+  "Werewolf",
+  "Revenge",
+] as const;
+
+export type SeriesGenre = (typeof SERIES_GENRES)[number];
+
 export interface Series {
   id: string;
   title: string;
@@ -19,6 +29,7 @@ export interface Series {
   tags: string[];
   status: SeriesStatus;
   total_episodes: number;
+  free_episode_count: number;
   is_featured: boolean;
   featured_order: number | null;
   view_count: number;
@@ -34,6 +45,8 @@ export interface Episode {
   description: string | null;
   thumbnail_url: string | null;
   video_url: string | null;
+  bunny_video_id: string | null;
+  subtitle_url: string | null;
   duration_seconds: number | null;
   is_free: boolean;
   view_count: number;
@@ -85,63 +98,12 @@ export interface Subscription {
   updated_at: string;
 }
 
-/** Placeholder cards used when the catalog is empty (Phase 0). */
-export const PLACEHOLDER_SERIES: Pick<
+export type SeriesCard = Pick<
   Series,
   "id" | "title" | "slug" | "tagline" | "poster_url" | "banner_url" | "genre"
->[] = [
-  {
-    id: "00000000-0000-0000-0000-000000000001",
-    title: "Crown of Ashes",
-    slug: "crown-of-ashes",
-    tagline: "Power has a price.",
-    poster_url: null,
-    banner_url: null,
-    genre: ["Drama", "Romance"],
-  },
-  {
-    id: "00000000-0000-0000-0000-000000000002",
-    title: "Midnight Contract",
-    slug: "midnight-contract",
-    tagline: "One deal changes everything.",
-    poster_url: null,
-    banner_url: null,
-    genre: ["Thriller"],
-  },
-  {
-    id: "00000000-0000-0000-0000-000000000003",
-    title: "Echoes of Addis",
-    slug: "echoes-of-addis",
-    tagline: "Home is never far.",
-    poster_url: null,
-    banner_url: null,
-    genre: ["Drama"],
-  },
-  {
-    id: "00000000-0000-0000-0000-000000000004",
-    title: "The Last Heir",
-    slug: "the-last-heir",
-    tagline: "Legacy or ruin.",
-    poster_url: null,
-    banner_url: null,
-    genre: ["Drama", "Mystery"],
-  },
-  {
-    id: "00000000-0000-0000-0000-000000000005",
-    title: "Burning Bridges",
-    slug: "burning-bridges",
-    tagline: "Love in the crossfire.",
-    poster_url: null,
-    banner_url: null,
-    genre: ["Romance"],
-  },
-  {
-    id: "00000000-0000-0000-0000-000000000006",
-    title: "Silent Witness",
-    slug: "silent-witness",
-    tagline: "She saw too much.",
-    poster_url: null,
-    banner_url: null,
-    genre: ["Thriller", "Mystery"],
-  },
-];
+>;
+
+export type EpisodeListItem = Pick<
+  Episode,
+  "id" | "episode_number" | "title" | "thumbnail_url" | "duration_seconds" | "is_free"
+>;

@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ReelWalia
 
-## Getting Started
+Vertical drama streaming platform by **Walia Studios**. Bite-sized episodes, mobile-first playback, Bunny Stream hosting.
 
-First, run the development server:
+## Stack
+
+- Next.js 14 (App Router) + TypeScript
+- Supabase (auth, database, storage)
+- Bunny Stream (HLS video)
+- Tailwind CSS (OBSIDIAN-RED design system)
+- Vercel deployment
+
+## Getting started
 
 ```bash
+npm install
+cp .env.example .env.local
+# Fill in Supabase + Bunny + admin email
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.example` to `.env.local` for local dev. Add the same keys in **Vercel → Project → Settings → Environment Variables**:
 
-## Learn More
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role (admin uploads, seed script) |
+| `NEXT_PUBLIC_SITE_URL` | Site URL for auth redirects |
+| `BUNNY_STREAM_LIBRARY_ID` | Bunny Stream library ID |
+| `BUNNY_STREAM_API_KEY` | Bunny Stream API key |
+| `BUNNY_CDN_HOSTNAME` | CDN hostname (e.g. `vz-xxxxx.b-cdn.net`) |
+| `ADMIN_EMAILS` | Comma-separated admin emails |
 
-To learn more about Next.js, take a look at the following resources:
+## Database migrations
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Apply in order via Supabase SQL Editor or CLI:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. `supabase/migrations/001_initial_schema.sql` — core tables + RLS
+2. `supabase/migrations/002_storage_buckets.sql` — public `posters` bucket
+3. `supabase/migrations/003_phase1_schema.sql` — `free_episode_count`, `bunny_video_id`, subtitles
 
-## Deploy on Vercel
+## Bunny Stream setup
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Create a [Bunny Stream](https://bunny.net/stream/) library.
+2. Copy **Library ID** and **API Key** into env vars.
+3. Enable HLS playback on the library CDN pull zone.
+4. Set `BUNNY_CDN_HOSTNAME` to your pull zone hostname (without `https://`).
+5. In Supabase Auth, add redirect URL: `{SITE_URL}/auth/callback`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Episode uploads (admin) flow: create video → PUT file to Bunny → save HLS URL to Supabase.
+
+## Admin access
+
+Set `ADMIN_EMAILS=dagmawiabebe19@gmail.com` (comma-separated for multiple admins).
+
+Sign in with that email, then visit `/admin/series` to manage catalog and upload episodes.
+
+## Seed demo data
+
+For UI testing without real Bunny videos:
+
+```bash
+npm run seed
+```
+
+Creates 3 series (Crown of Ashes, Midnight Contract, Echoes of Addis) with 10 episodes each using placeholder HLS URLs (won't play — UI only).
+
+Requires `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+
+## Scripts
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Development server |
+| `npm run build` | Production build |
+| `npm run seed` | Seed demo catalog |
+
+## Phase roadmap
+
+- **Phase 0** — Foundation, auth, skeleton pages ✅
+- **Phase 1** — Bunny Stream, video player, admin upload ✅
+- **Phase 2** — Stripe subscriptions
+- **Phase 3** — Watch history polish, recommendations
+
+## License
+
+Private — Walia Studios.

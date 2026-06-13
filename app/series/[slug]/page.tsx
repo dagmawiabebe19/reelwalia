@@ -2,10 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
+import { WatchlistButton } from "@/components/series/WatchlistButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { canWatchEpisode } from "@/lib/access";
 import { createClient } from "@/lib/supabase/server";
-import { PLACEHOLDER_SERIES } from "@/lib/types/database";
 
 interface SeriesPageProps {
   params: { slug: string };
@@ -21,42 +22,49 @@ async function getSeries(slug: string) {
     .eq("status", "published")
     .maybeSingle();
 
-  if (series) {
-    const { data: episodes } = await supabase
-      .from("episodes")
-      .select("id, episode_number, title, thumbnail_url, duration_seconds, is_free")
-      .eq("series_id", series.id)
-      .order("episode_number", { ascending: true });
+  if (!series) return null;
 
-    return { series, episodes: episodes ?? [] };
+  const { data: episodes } = await supabase
+    .from("episodes")
+    .select("id, episode_number, title, thumbnail_url, duration_seconds, is_free")
+    .eq("series_id", series.id)
+    .order("episode_number", { ascending: true });
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let profile = null;
+  let inWatchlist = false;
+
+  if (user) {
+    const { data: p } = await supabase
+      .from("profiles")
+      .select("subscription_status")
+      .eq("id", user.id)
+      .maybeSingle();
+    profile = p;
+
+    const { data: wl } = await supabase
+      .from("watchlist")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("series_id", series.id)
+      .maybeSingle();
+    inWatchlist = !!wl;
   }
 
-  const placeholder = PLACEHOLDER_SERIES.find((s) => s.slug === slug);
-  if (!placeholder) return null;
+  const freeCount = series.free_episode_count ?? 5;
+  const episodesWithLock = (episodes ?? []).map((ep) => ({
+    ...ep,
+    locked: !canWatchEpisode(ep.episode_number, freeCount, profile),
+    is_free: ep.episode_number <= freeCount,
+  }));
 
   return {
-    series: {
-      ...placeholder,
-      description:
-        "Placeholder series detail — connect Supabase and seed content to replace this skeleton.",
-      banner_url: null,
-      total_episodes: 12,
-      view_count: 0,
-      status: "published" as const,
-      tags: [],
-      is_featured: false,
-      featured_order: null,
-      created_at: "",
-      updated_at: "",
-    },
-    episodes: Array.from({ length: 6 }, (_, i) => ({
-      id: `placeholder-ep-${i + 1}`,
-      episode_number: i + 1,
-      title: `Episode ${i + 1}`,
-      thumbnail_url: null,
-      duration_seconds: 90,
-      is_free: i < 2,
-    })),
+    series,
+    episodes: episodesWithLock,
+    inWatchlist,
   };
 }
 
@@ -66,7 +74,7 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
 
   if (!data) notFound();
 
-  const { series, episodes } = data;
+  const { series, episodes, inWatchlist } = data;
   const firstEpisode = episodes[0];
 
   return (
@@ -106,54 +114,69 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
                 {series.description}
               </p>
             )}
+            <p className="mt-2 text-xs text-gray-500">
+              {series.view_count.toLocaleString()} views
+            </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
               {firstEpisode && (
                 <Button href={`/watch/${firstEpisode.id}`}>Watch Now</Button>
               )}
-              <Button href="/auth/sign-in" variant="secondary">
-                Add to Watchlist
-              </Button>
+              <WatchlistButton seriesId={series.id} initialInWatchlist={inWatchlist} />
             </div>
 
             <section className="mt-10">
               <h2 className="font-display text-xl uppercase">Episodes</h2>
-              <ul className="mt-4 divide-y divide-white/[0.08]">
-                {episodes.map((ep) => (
-                  <li key={ep.id}>
-                    <Link
-                      href={`/watch/${ep.id}`}
-                      className="flex items-center gap-4 py-3 transition hover:bg-white/[0.03]"
-                    >
-                      <span className="w-8 text-sm text-gray-400">{ep.episode_number}</span>
-                      <div className="h-14 w-10 shrink-0 overflow-hidden rounded border border-white/[0.08] bg-zinc-900">
-                        {ep.thumbnail_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={ep.thumbnail_url}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
-                        ) : null}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{ep.title}</p>
-                        {ep.duration_seconds && (
-                          <p className="text-xs text-gray-400">
-                            {Math.floor(ep.duration_seconds / 60)}:
-                            {String(ep.duration_seconds % 60).padStart(2, "0")}
-                          </p>
-                        )}
-                      </div>
-                      {ep.is_free && (
-                        <span className="text-xs font-medium uppercase text-obsidian-red">
-                          Free
+              {!episodes.length ? (
+                <p className="mt-4 text-sm text-gray-400">No episodes yet.</p>
+              ) : (
+                <ul className="mt-4 divide-y divide-white/[0.08]">
+                  {episodes.map((ep) => (
+                    <li key={ep.id}>
+                      <Link
+                        href={`/watch/${ep.id}`}
+                        className="flex items-center gap-4 py-3 transition hover:bg-white/[0.03]"
+                      >
+                        <span className="w-8 text-sm text-gray-400">
+                          {ep.episode_number}
                         </span>
-                      )}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+                        <div className="h-14 w-10 shrink-0 overflow-hidden rounded border border-white/[0.08] bg-zinc-900">
+                          {ep.thumbnail_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={ep.thumbnail_url}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          ) : null}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{ep.title}</p>
+                          {ep.duration_seconds != null && ep.duration_seconds > 0 && (
+                            <p className="text-xs text-gray-400">
+                              {Math.floor(ep.duration_seconds / 60)}:
+                              {String(ep.duration_seconds % 60).padStart(2, "0")}
+                            </p>
+                          )}
+                        </div>
+                        {ep.is_free ? (
+                          <span className="text-xs font-medium uppercase text-obsidian-red">
+                            Free
+                          </span>
+                        ) : ep.locked ? (
+                          <svg
+                            viewBox="0 0 16 16"
+                            className="h-4 w-4 text-gray-400"
+                            fill="currentColor"
+                          >
+                            <path d="M11 7V5a3 3 0 00-6 0v2H4a1 1 0 00-1 1v5a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1h-1zm-2 0H7V5a1.5 1.5 0 013 0v2z" />
+                          </svg>
+                        ) : null}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           </div>
         </div>
