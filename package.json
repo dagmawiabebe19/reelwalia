@@ -11,12 +11,14 @@
     "generate-posters": "tsx scripts/generate-posters.ts"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^9.8.0",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.1",
     "hls.js": "^1.6.16",
     "next": "14.2.35",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "stripe": "^22.2.1"
   },
   "devDependencies": {
     "@types/node": "^20",

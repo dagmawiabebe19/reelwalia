@@ -35,6 +35,10 @@ Copy `.env.example` to `.env.local` for local dev. Add the same keys in **Vercel
 | `BUNNY_STREAM_API_KEY` | Bunny Stream API key |
 | `BUNNY_CDN_HOSTNAME` | CDN hostname (e.g. `vz-xxxxx.b-cdn.net`) |
 | `ADMIN_EMAILS` | Comma-separated admin emails |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
+| `STRIPE_SECRET_KEY` | Stripe secret key |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| `STRIPE_PRICE_*_INTRO` / `STRIPE_PRICE_*_STANDARD` | Intro + renewal price IDs per plan |
 
 ## Database migrations
 
@@ -43,6 +47,19 @@ Apply in order via Supabase SQL Editor or CLI:
 1. `supabase/migrations/001_initial_schema.sql` — core tables + RLS
 2. `supabase/migrations/002_storage_buckets.sql` — public `posters` bucket
 3. `supabase/migrations/003_phase1_schema.sql` — `free_episode_count`, `bunny_video_id`, subtitles
+4. `supabase/migrations/004_phase2_stripe.sql` — Stripe columns on profiles, plan enum values
+
+## Stripe subscriptions
+
+Intro pricing auto-renews at standard rates via Subscription Schedules (set up in the checkout webhook).
+
+1. Create three products in Stripe with **intro** and **standard** recurring prices for 1-week, 2-week, and 1-month intervals.
+2. Copy price IDs into the `STRIPE_PRICE_*` env vars in `.env.example`.
+3. Add webhook endpoint: `{SITE_URL}/api/stripe/webhook`
+   - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
+4. For local testing: `stripe listen --forward-to localhost:3000/api/stripe/webhook`
+
+Locked episodes show the ReelWalia paywall modal; checkout redirects back to the watch page with `?subscribed=true`.
 
 ## Bunny Stream setup
 
@@ -84,7 +101,7 @@ Requires `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
 
 - **Phase 0** — Foundation, auth, skeleton pages ✅
 - **Phase 1** — Bunny Stream, video player, admin upload ✅
-- **Phase 2** — Stripe subscriptions
+- **Phase 2** — Stripe subscriptions + paywall ✅
 - **Phase 3** — Watch history polish, recommendations
 
 ## License

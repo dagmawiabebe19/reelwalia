@@ -5,7 +5,13 @@ export type SubscriptionStatus =
   | "past_due"
   | "canceled"
   | "trialing";
-export type SubscriptionPlan = "free" | "monthly" | "yearly";
+export type SubscriptionPlan =
+  | "free"
+  | "monthly"
+  | "yearly"
+  | "1week"
+  | "2week"
+  | "1month";
 
 export const SERIES_GENRES = [
   "Drama",
@@ -59,6 +65,8 @@ export interface Profile {
   id: string;
   display_name: string | null;
   avatar_url: string | null;
+  stripe_customer_id: string | null;
+  subscription_id: string | null;
   subscription_status: SubscriptionStatus;
   subscription_plan: SubscriptionPlan;
   current_period_end: string | null;

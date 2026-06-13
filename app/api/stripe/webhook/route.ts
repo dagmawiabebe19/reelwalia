@@ -1,0 +1,172 @@
+import { headers } from "next/headers";
+import { NextResponse } from "next/server";
+import type Stripe from "stripe";
+import type { StripePlanKey } from "@/lib/stripe/plans";
+import {
+  getStripe,
+  scheduleIntroToStandardTransition,
+} from "@/lib/stripe/server";
+import { unwrapStripeResponse } from "@/lib/stripe/helpers";
+import {
+  deactivateSubscription,
+  findUserIdByCustomerId,
+  syncSubscriptionToDatabase,
+} from "@/lib/stripe/sync";
+
+export async function POST(request: Request) {
+  const stripe = getStripe();
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    console.error("Missing STRIPE_WEBHOOK_SECRET");
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
+  }
+
+  const body = await request.text();
+  const signature = headers().get("stripe-signature");
+
+  if (!signature) {
+    return NextResponse.json({ error: "Missing signature" }, { status: 400 });
+  }
+
+  let event: Stripe.Event;
+
+  try {
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+  } catch (err) {
+    console.error("Webhook signature verification failed:", err);
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.mode !== "subscription" || !session.subscription) break;
+
+        const subscriptionId =
+          typeof session.subscription === "string"
+            ? session.subscription
+            : session.subscription.id;
+
+        const customerId =
+          typeof session.customer === "string"
+            ? session.customer
+            : session.customer?.id;
+
+        if (!customerId) break;
+
+        const userId =
+          session.metadata?.user_id ??
+          (await findUserIdByCustomerId(customerId));
+
+        if (!userId) {
+          console.error("checkout.session.completed: user not found", session.id);
+          break;
+        }
+
+        const plan = session.metadata?.plan as StripePlanKey | undefined;
+
+        const subscription = unwrapStripeResponse(
+          await stripe.subscriptions.retrieve(subscriptionId)
+        );
+
+        await syncSubscriptionToDatabase({
+          userId,
+          customerId,
+          subscription,
+          plan,
+        });
+
+        if (plan) {
+          await scheduleIntroToStandardTransition(subscriptionId, plan);
+        }
+        break;
+      }
+
+      case "customer.subscription.updated": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId =
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer.id;
+
+        const userId =
+          subscription.metadata.user_id ??
+          (await findUserIdByCustomerId(customerId));
+
+        if (!userId) break;
+
+        await syncSubscriptionToDatabase({
+          userId,
+          customerId,
+          subscription,
+          plan: subscription.metadata.plan,
+        });
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId =
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer.id;
+
+        const userId =
+          subscription.metadata.user_id ??
+          (await findUserIdByCustomerId(customerId));
+
+        if (userId) {
+          await deactivateSubscription(userId);
+        }
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const subscriptionId =
+          typeof (invoice as Stripe.Invoice & { subscription?: string | Stripe.Subscription | null })
+            .subscription === "string"
+            ? ((invoice as Stripe.Invoice & { subscription?: string }).subscription as string)
+            : (
+                invoice as Stripe.Invoice & {
+                  subscription?: Stripe.Subscription | null;
+                }
+              ).subscription?.id;
+
+        if (!subscriptionId) break;
+
+        const subscription = unwrapStripeResponse(
+          await stripe.subscriptions.retrieve(subscriptionId)
+        );
+        const customerId =
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer.id;
+
+        const userId =
+          subscription.metadata.user_id ??
+          (await findUserIdByCustomerId(customerId));
+
+        if (userId) {
+          await syncSubscriptionToDatabase({
+            userId,
+            customerId,
+            subscription,
+            plan: subscription.metadata.plan,
+          });
+        }
+        break;
+      }
+
+      default:
+        break;
+    }
+  } catch (err) {
+    console.error(`Webhook handler error (${event.type}):`, err);
+    return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
+  }
+
+  return NextResponse.json({ received: true });
+}

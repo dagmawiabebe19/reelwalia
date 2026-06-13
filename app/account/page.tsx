@@ -1,12 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ManageSubscriptionButton } from "@/components/account/ManageSubscriptionButton";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import { Card } from "@/components/ui/Card";
 import { signOut } from "@/app/account/actions";
+import { hasActiveSubscription } from "@/lib/access";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function AccountPage() {
+interface AccountPageProps {
+  searchParams: { subscribed?: string };
+}
+
+export default async function AccountPage({ searchParams }: AccountPageProps) {
   const supabase = createClient();
   const {
     data: { user },
@@ -18,7 +24,9 @@ export default async function AccountPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, avatar_url, subscription_plan, subscription_status")
+    .select(
+      "display_name, avatar_url, subscription_plan, subscription_status, current_period_end"
+    )
     .eq("id", user.id)
     .maybeSingle();
 
@@ -28,12 +36,21 @@ export default async function AccountPage() {
     user.email?.split("@")[0] ??
     "Viewer";
 
+  const isActive = hasActiveSubscription(profile);
+  const justSubscribed = searchParams.subscribed === "true";
+
   return (
     <div className="flex min-h-screen flex-col">
       <TopNav />
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10 sm:px-6">
         <h1 className="font-display text-3xl uppercase">Account</h1>
         <p className="mt-2 text-sm text-gray-400">Manage your ReelWalia profile.</p>
+
+        {justSubscribed && (
+          <p className="mt-4 rounded-lg border border-obsidian-red/30 bg-obsidian-red/10 px-4 py-3 text-sm text-obsidian-red">
+            Subscription activated! Enjoy full access to every series.
+          </p>
+        )}
 
         <Card className="mt-8 p-6">
           <div className="flex items-center gap-4">
@@ -66,9 +83,22 @@ export default async function AccountPage() {
           <p className="text-sm capitalize text-gray-400">
             Status: {profile?.subscription_status ?? "none"}
           </p>
-          <p className="mt-4 text-xs text-gray-500">
-            Stripe billing — coming in Phase 2.
-          </p>
+          {profile?.current_period_end && isActive && (
+            <p className="mt-1 text-xs text-gray-500">
+              Renews{" "}
+              {new Date(profile.current_period_end).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </p>
+          )}
+          {isActive && <ManageSubscriptionButton />}
+          {!isActive && (
+            <p className="mt-4 text-xs text-gray-500">
+              Subscribe from any locked episode to unlock the full catalog.
+            </p>
+          )}
         </Card>
 
         <Card className="mt-4 p-6">

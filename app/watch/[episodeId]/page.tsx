@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { TopNav } from "@/components/layout/TopNav";
 import { EpisodePicker } from "@/components/watch/EpisodePicker";
-import { PaywallPlaceholder } from "@/components/watch/PaywallPlaceholder";
-import { canWatchEpisode } from "@/lib/access";
+import { WatchPaywall } from "@/components/watch/WatchPaywall";
+import { canWatchEpisode, hasActiveSubscription } from "@/lib/access";
 import { createClient } from "@/lib/supabase/server";
 
 interface WatchPageProps {
@@ -27,7 +27,7 @@ async function getWatchData(episodeId: string) {
   const { data: series } = await supabase
     .from("series")
     .select(
-      "id, title, slug, description, view_count, free_episode_count, status"
+      "id, title, slug, description, view_count, free_episode_count, status, poster_url"
     )
     .eq("id", episode.series_id)
     .maybeSingle();
@@ -66,6 +66,8 @@ async function getWatchData(episodeId: string) {
 
   const freeCount = series.free_episode_count ?? 5;
   const unlocked = canWatchEpisode(episode.episode_number, freeCount, profile);
+  const locked =
+    episode.episode_number > freeCount && !hasActiveSubscription(profile);
 
   const currentIndex = (allEpisodes ?? []).findIndex((e) => e.id === episodeId);
   const nextEpisode =
@@ -82,6 +84,8 @@ async function getWatchData(episodeId: string) {
     episode,
     series,
     unlocked,
+    locked,
+    user,
     nextEpisodeId: nextEpisode?.id ?? null,
     pickerEpisodes,
     initialProgress,
@@ -98,10 +102,16 @@ export default async function WatchPage({ params }: WatchPageProps) {
     episode,
     series,
     unlocked,
+    locked,
+    user,
     nextEpisodeId,
     pickerEpisodes,
     initialProgress,
   } = data;
+
+  if (locked && !user) {
+    redirect(`/auth/sign-in?redirect=${encodeURIComponent(`/watch/${episodeId}`)}`);
+  }
 
   return (
     <div className="min-h-screen bg-black pb-24 lg:pb-8">
@@ -119,9 +129,12 @@ export default async function WatchPage({ params }: WatchPageProps) {
               initialProgress={initialProgress}
             />
           ) : (
-            <PaywallPlaceholder
+            <WatchPaywall
+              episodeId={episode.id}
+              posterUrl={episode.thumbnail_url ?? series.poster_url ?? null}
               seriesTitle={series.title}
               episodeNumber={episode.episode_number}
+              showPaywall={locked}
             />
           )}
 

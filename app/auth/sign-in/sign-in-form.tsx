@@ -29,6 +29,7 @@ function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const err = searchParams.get("error");
+  const redirectTo = searchParams.get("redirect") ?? searchParams.get("next") ?? "/";
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,12 +45,12 @@ function SignInForm() {
         data: { user },
       } = await supabase.auth.getUser();
       if (cancelled || !user) return;
-      router.replace("/");
+      router.replace(redirectTo);
     })();
     return () => {
       cancelled = true;
     };
-  }, [router, supabase]);
+  }, [router, supabase, redirectTo]);
 
   const signInMagicLink = async () => {
     setMessage(null);
