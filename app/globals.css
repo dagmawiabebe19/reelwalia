@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --rw-bg: #000000;
+  --rw-red: #E03C2F;
+  --rw-red-hover: #C93428;
+  --rw-text: #FFFFFF;
+  --rw-text-secondary: #9CA3AF;
+  --rw-border: rgba(255, 255, 255, 0.08);
+}
+
+* {
+  scrollbar-color: rgba(255, 255, 255, 0.15) #000000;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+}
+
+::selection {
+  background: rgba(224, 60, 47, 0.35);
+}
+
+body {
+  background: var(--rw-bg);
+  color: var(--rw-text);
+  @apply antialiased font-sans;
+}
+
+@layer components {
+  .rw-card {
+    @apply rounded-lg border border-white/[0.08] bg-black;
+  }
+
+  .rw-btn-primary {
+    @apply inline-flex items-center justify-center rounded-md bg-obsidian-red px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-obsidian-red-hover disabled:opacity-50;
+  }
+
+  .rw-btn-secondary {
+    @apply inline-flex items-center justify-center rounded-md border border-white px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-50;
+  }
+}
