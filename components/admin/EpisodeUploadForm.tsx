@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
+import {
+  finalizeNewEpisode,
+  initBunnyUpload,
+  putVideoToBunny,
+} from "@/lib/admin/episode-upload";
 
 interface EpisodeUploadFormProps {
   seriesId: string;
@@ -43,63 +48,26 @@ export function EpisodeUploadForm({
     setStatus("Creating upload…");
 
     try {
-      const createRes = await fetch("/api/admin/episodes/create-upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: `${seriesTitle} — ${title.trim()}` }),
-      });
-      const createData = (await createRes.json()) as {
-        videoId?: string;
-        uploadUrl?: string;
-        apiKey?: string;
-        error?: string;
-      };
-
-      if (!createRes.ok || !createData.videoId || !createData.uploadUrl) {
-        throw new Error(createData.error ?? "Failed to init upload");
-      }
+      const { videoId, uploadUrl, apiKey } = await initBunnyUpload(
+        `${seriesTitle} — ${title.trim()}`
+      );
 
       setStatus("Uploading to Bunny…");
       setProgress(10);
 
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", createData.uploadUrl!);
-        xhr.setRequestHeader("AccessKey", createData.apiKey ?? "");
-        xhr.setRequestHeader("Content-Type", "application/octet-stream");
-
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            setProgress(10 + Math.round((e.loaded / e.total) * 70));
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve();
-          else reject(new Error(`Upload failed: ${xhr.status}`));
-        };
-        xhr.onerror = () => reject(new Error("Upload network error"));
-        xhr.send(file);
+      await putVideoToBunny(file, uploadUrl, apiKey, (pct) => {
+        setProgress(10 + Math.round(pct * 0.7));
       });
 
       setStatus("Saving episode…");
       setProgress(90);
 
-      const finalizeRes = await fetch("/api/admin/episodes/finalize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          seriesId,
-          videoId: createData.videoId,
-          title: title.trim(),
-          episodeNumber,
-        }),
+      await finalizeNewEpisode({
+        seriesId,
+        videoId,
+        title: title.trim(),
+        episodeNumber,
       });
-
-      const finalizeData = (await finalizeRes.json()) as { error?: string };
-      if (!finalizeRes.ok) {
-        throw new Error(finalizeData.error ?? "Finalize failed");
-      }
 
       setProgress(100);
       setStatus("Done! Redirecting…");

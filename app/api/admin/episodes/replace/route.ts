@@ -1,0 +1,85 @@
+import { NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/admin";
+import {
+  deleteVideo,
+  getPlaybackUrl,
+  getThumbnailUrl,
+  getVideoStatus,
+} from "@/lib/bunny";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+function isDemoBunnyId(id: string | null | undefined): boolean {
+  return !id || id.startsWith("demo-");
+}
+
+async function safeDeleteBunnyVideo(videoId: string | null | undefined) {
+  if (isDemoBunnyId(videoId)) return;
+  try {
+    await deleteVideo(videoId!);
+  } catch (err) {
+    console.warn("Bunny delete skipped/failed:", videoId, err);
+  }
+}
+
+export async function POST(request: Request) {
+  const auth = await requireAdminApi();
+  if (auth.error) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  try {
+    const body = (await request.json()) as {
+      episodeId?: string;
+      videoId?: string;
+    };
+
+    const { episodeId, videoId } = body;
+
+    if (!episodeId || !videoId) {
+      return NextResponse.json({ error: "Missing episodeId or videoId" }, { status: 400 });
+    }
+
+    const admin = createAdminClient();
+
+    const { data: episode } = await admin
+      .from("episodes")
+      .select("id, bunny_video_id, episode_number, series_id")
+      .eq("id", episodeId)
+      .maybeSingle();
+
+    if (!episode) {
+      return NextResponse.json({ error: "Episode not found" }, { status: 404 });
+    }
+
+    const status = await getVideoStatus(videoId);
+    const oldBunnyId = episode.bunny_video_id;
+
+    const { data: updated, error } = await admin
+      .from("episodes")
+      .update({
+        bunny_video_id: videoId,
+        video_url: getPlaybackUrl(videoId),
+        thumbnail_url: getThumbnailUrl(videoId),
+        duration_seconds: status.length > 0 ? Math.round(status.length) : null,
+      })
+      .eq("id", episodeId)
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (oldBunnyId && oldBunnyId !== videoId) {
+      await safeDeleteBunnyVideo(oldBunnyId);
+    }
+
+    return NextResponse.json({ episode: updated, transcodeStatus: status.status });
+  } catch (err) {
+    console.error("replace error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Replace failed" },
+      { status: 500 }
+    );
+  }
+}
