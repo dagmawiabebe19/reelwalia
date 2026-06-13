@@ -5,6 +5,7 @@ import {
   createGuestCheckoutSession,
 } from "@/lib/stripe/server";
 import type { StripePlanKey } from "@/lib/stripe/plans";
+import { getStripePriceEnvKeys } from "@/lib/stripe/prices";
 
 const VALID_PLANS: StripePlanKey[] = ["1week", "2week", "1month"];
 
@@ -17,6 +18,13 @@ export async function POST(request: Request) {
 
     if (!body.plan || !VALID_PLANS.includes(body.plan)) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+    }
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        "Available Stripe price keys:",
+        getStripePriceEnvKeys()
+      );
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -68,10 +76,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: session.url });
   } catch (err) {
+    const message = err instanceof Error ? err.message : "Checkout failed";
+    if (message.includes("Missing Stripe price env vars")) {
+      console.error(
+        "Available Stripe price keys:",
+        getStripePriceEnvKeys()
+      );
+    }
     console.error("checkout error:", err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Checkout failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

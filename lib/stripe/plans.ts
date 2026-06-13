@@ -44,33 +44,6 @@ export function getPlanDisplay(key: StripePlanKey): PlanDisplay {
   return plan;
 }
 
-export function getPlanPriceIds(plan: StripePlanKey): {
-  introPriceId: string;
-  standardPriceId: string;
-} {
-  const envMap: Record<StripePlanKey, { intro: string; standard: string }> = {
-    "1week": {
-      intro: process.env.STRIPE_PRICE_1WEEK_INTRO ?? "",
-      standard: process.env.STRIPE_PRICE_1WEEK_STANDARD ?? "",
-    },
-    "2week": {
-      intro: process.env.STRIPE_PRICE_2WEEK_INTRO ?? "",
-      standard: process.env.STRIPE_PRICE_2WEEK_STANDARD ?? "",
-    },
-    "1month": {
-      intro: process.env.STRIPE_PRICE_1MONTH_INTRO ?? "",
-      standard: process.env.STRIPE_PRICE_1MONTH_STANDARD ?? "",
-    },
-  };
-
-  const ids = envMap[plan];
-  if (!ids.intro || !ids.standard) {
-    throw new Error(`Missing Stripe price env vars for plan: ${plan}`);
-  }
-
-  return { introPriceId: ids.intro, standardPriceId: ids.standard };
-}
-
 export function formatUsd(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }

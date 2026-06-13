@@ -54,10 +54,11 @@ Apply in order via Supabase SQL Editor or CLI:
 Intro pricing auto-renews at standard rates via Subscription Schedules (set up in the checkout webhook).
 
 1. Create three products in Stripe with **intro** and **standard** recurring prices for 1-week, 2-week, and 1-month intervals.
-2. Copy price IDs into the `STRIPE_PRICE_*` env vars in `.env.example`.
-3. Add webhook endpoint: `{SITE_URL}/api/stripe/webhook`
+2. Copy price IDs into the `STRIPE_PRICE_*` env vars (exact names: `STRIPE_PRICE_1WEEK_INTRO`, not `1_WEEK`).
+3. Restart the dev server after editing `.env.local` — Next.js loads env at startup.
+4. Add webhook endpoint: `{SITE_URL}/api/stripe/webhook`
    - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
-4. For local testing: `stripe listen --forward-to localhost:3000/api/stripe/webhook`
+5. For local testing: `stripe listen --forward-to localhost:3000/api/stripe/webhook`
 
 Locked episodes show the paywall modal to everyone (signed-in or logged-out). Free episodes (`episode_number <= series.free_episode_count`) play with no sign-in — guests can browse the catalog and watch free episodes end-to-end.
 

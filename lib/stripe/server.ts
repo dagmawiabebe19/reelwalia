@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { StripePlanKey } from "@/lib/stripe/plans";
-import { getPlanPriceIds } from "@/lib/stripe/plans";
+import { getPlanPriceIds } from "@/lib/stripe/prices";
 import {
   getSubscriptionPeriod,
   unwrapStripeResponse,
