@@ -72,7 +72,6 @@ export async function createCheckoutSession(params: {
       metadata: {
         user_id: params.userId,
         plan: params.plan,
-        ...(params.episodeId ? { episode_id: params.episodeId } : {}),
       },
     },
     success_url: params.successUrl,
@@ -98,11 +97,9 @@ export async function createGuestCheckoutSession(params: {
   return stripe.checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: introPriceId, quantity: 1 }],
-    customer_creation: "always",
     subscription_data: {
       metadata: {
         plan: params.plan,
-        ...(params.episodeId ? { episode_id: params.episodeId } : {}),
       },
     },
     success_url: params.successUrl,
