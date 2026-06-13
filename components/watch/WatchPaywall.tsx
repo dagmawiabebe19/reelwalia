@@ -50,9 +50,6 @@ function WatchPaywallInner({
           </div>
           <p className="text-xs uppercase tracking-widest text-gray-400">{seriesTitle}</p>
           <p className="mt-1 font-display text-lg uppercase">Episode {episodeNumber}</p>
-          {subscribed && isAuthenticated && (
-            <p className="mt-3 text-sm text-obsidian-red">Welcome! Refreshing access…</p>
-          )}
         </div>
       </div>
 

@@ -122,38 +122,47 @@ export interface VerifiedCheckoutSession {
 export async function verifyCheckoutSession(
   sessionId: string
 ): Promise<VerifiedCheckoutSession | null> {
-  const stripe = getStripe();
+  if (!sessionId?.trim()) return null;
 
-  const session = await stripe.checkout.sessions.retrieve(sessionId, {
-    expand: ["subscription"],
-  });
+  try {
+    const stripe = getStripe();
 
-  if (session.status !== "complete") {
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ["subscription"],
+    });
+
+    if (session.status !== "complete") {
+      return null;
+    }
+
+    const subscription =
+      typeof session.subscription === "string"
+        ? unwrapStripeResponse(
+            await stripe.subscriptions.retrieve(session.subscription)
+          )
+        : session.subscription
+          ? unwrapStripeResponse(session.subscription)
+          : null;
+
+    const active =
+      subscription != null &&
+      (subscription.status === "active" || subscription.status === "trialing");
+
+    const customerId =
+      typeof session.customer === "string"
+        ? session.customer
+        : session.customer?.id ?? null;
+
+    return {
+      active,
+      email: session.customer_details?.email ?? null,
+      episodeId: session.metadata?.episode_id ?? null,
+      customerId,
+    };
+  } catch (err) {
+    console.error("verifyCheckoutSession failed:", err);
     return null;
   }
-
-  const subscription =
-    typeof session.subscription === "string"
-      ? unwrapStripeResponse(await stripe.subscriptions.retrieve(session.subscription))
-      : session.subscription
-        ? unwrapStripeResponse(session.subscription)
-        : null;
-
-  const active =
-    subscription != null &&
-    (subscription.status === "active" || subscription.status === "trialing");
-
-  const customerId =
-    typeof session.customer === "string"
-      ? session.customer
-      : session.customer?.id ?? null;
-
-  return {
-    active,
-    email: session.customer_details?.email ?? null,
-    episodeId: session.metadata?.episode_id ?? null,
-    customerId,
-  };
 }
 
 export async function createPortalSession(params: {

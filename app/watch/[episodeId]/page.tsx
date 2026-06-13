@@ -4,7 +4,8 @@ import { VideoPlayer } from "@/components/VideoPlayer";
 import { TopNav } from "@/components/layout/TopNav";
 import { EpisodePicker } from "@/components/watch/EpisodePicker";
 import { WatchPaywall } from "@/components/watch/WatchPaywall";
-import { canWatchEpisode, isEpisodeFree } from "@/lib/access";
+import { WatchPostCheckout } from "@/components/watch/WatchPostCheckout";
+import { canWatchEpisode, hasActiveSubscription, isEpisodeFree } from "@/lib/access";
 import { verifyCheckoutSession } from "@/lib/stripe/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -78,12 +79,10 @@ async function getWatchData(
     guestSessionUnlock = verified?.active === true;
   }
 
-  const hasSubscription = canWatchEpisode(
-    episode.episode_number,
-    freeCount,
-    profile
-  );
-  const unlocked = isFreeEpisode || hasSubscription || guestSessionUnlock;
+  const unlocked =
+    isFreeEpisode ||
+    guestSessionUnlock ||
+    hasActiveSubscription(profile);
   // Paywall only for premium episodes without access — never gate free content
   const locked = !isFreeEpisode && !unlocked;
 
@@ -134,6 +133,11 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
       <TopNav />
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 lg:flex-row lg:px-6">
         <div className="flex flex-1 flex-col items-center gap-4">
+          <WatchPostCheckout
+            unlocked={unlocked}
+            locked={locked}
+            isAuthenticated={isAuthenticated}
+          />
           {unlocked && episode.video_url ? (
             <>
               {justSubscribed && isAuthenticated && (
@@ -174,7 +178,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
             </h1>
             <p className="mt-1 text-xs text-gray-500">
               Episode {episode.episode_number} ·{" "}
-              {episode.view_count.toLocaleString()} views
+              {(episode.view_count ?? 0).toLocaleString()} views
             </p>
             {(episode.description || series.description) && (
               <p className="mt-3 text-sm leading-relaxed text-gray-400">

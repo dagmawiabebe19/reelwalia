@@ -37,7 +37,7 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (user?.email) {
+    if (user?.id && user.email) {
       const successUrl = body.episodeId
         ? `${siteUrl}/watch/${body.episodeId}?subscribed=true`
         : `${siteUrl}/account?subscribed=true`;
@@ -58,6 +58,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ url: session.url });
     }
 
+    // Guest checkout — account created asynchronously via webhook; never redirect to /watch?subscribed=
     const episodeQuery = body.episodeId
       ? `&episodeId=${encodeURIComponent(body.episodeId)}`
       : "";
