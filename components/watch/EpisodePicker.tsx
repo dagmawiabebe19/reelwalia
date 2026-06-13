@@ -29,13 +29,12 @@ export function EpisodePicker({
       {episodes.map((ep) => (
         <Link
           key={ep.id}
-          href={ep.locked ? "#" : `/watch/${ep.id}`}
-          onClick={(e) => ep.locked && e.preventDefault()}
+          href={`/watch/${ep.id}`}
           className={`relative overflow-hidden rounded border text-center transition ${
             ep.id === currentEpisodeId
               ? "border-obsidian-red bg-obsidian-red/10"
               : "border-white/[0.08] hover:border-white/20"
-          } ${ep.locked ? "cursor-not-allowed opacity-60" : ""}`}
+          } ${ep.locked ? "opacity-80" : ""}`}
         >
           <div className="aspect-[2/3] bg-zinc-900">
             {ep.thumbnail_url ? (

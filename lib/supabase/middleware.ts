@@ -31,6 +31,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
+  // /watch/* is public — free episodes play without auth; premium shows paywall in-page
   const isAdminRoute =
     pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
   const isAccountRoute = pathname === "/account" || pathname.startsWith("/account/");

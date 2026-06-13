@@ -59,7 +59,14 @@ Intro pricing auto-renews at standard rates via Subscription Schedules (set up i
    - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
 4. For local testing: `stripe listen --forward-to localhost:3000/api/stripe/webhook`
 
-Locked episodes show the paywall modal to everyone (signed-in or logged-out). Free episodes are playable without an account.
+Locked episodes show the paywall modal to everyone (signed-in or logged-out). Free episodes (`episode_number <= series.free_episode_count`) play with no sign-in — guests can browse the catalog and watch free episodes end-to-end.
+
+**Typical guest journey:**
+1. Land on reelwalia.com → browse series (no account)
+2. Open a series → watch episodes 1–5 free, no friction
+3. Episode 6+ → paywall modal (not a sign-in redirect)
+4. Enter card + email in Stripe → account auto-created via webhook
+5. Magic link emailed → click to sign in with an active subscription
 
 **Guest checkout flow:**
 1. Logged-out user hits a locked episode → paywall modal → Stripe Checkout (email + card collected in Stripe)

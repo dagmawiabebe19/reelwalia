@@ -4,7 +4,7 @@ import { VideoPlayer } from "@/components/VideoPlayer";
 import { TopNav } from "@/components/layout/TopNav";
 import { EpisodePicker } from "@/components/watch/EpisodePicker";
 import { WatchPaywall } from "@/components/watch/WatchPaywall";
-import { canWatchEpisode } from "@/lib/access";
+import { canWatchEpisode, isEpisodeFree } from "@/lib/access";
 import { verifyCheckoutSession } from "@/lib/stripe/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -70,19 +70,22 @@ async function getWatchData(
   }
 
   const freeCount = series.free_episode_count ?? 5;
-  const isPremiumEpisode = episode.episode_number > freeCount;
+  const isFreeEpisode = isEpisodeFree(episode.episode_number, freeCount);
 
   let guestSessionUnlock = false;
-  if (isPremiumEpisode && searchParams.session_id) {
+  if (!isFreeEpisode && searchParams.session_id) {
     const verified = await verifyCheckoutSession(searchParams.session_id);
     guestSessionUnlock = verified?.active === true;
   }
 
-  const unlocked =
-    canWatchEpisode(episode.episode_number, freeCount, profile) ||
-    guestSessionUnlock;
-
-  const locked = isPremiumEpisode && !unlocked;
+  const hasSubscription = canWatchEpisode(
+    episode.episode_number,
+    freeCount,
+    profile
+  );
+  const unlocked = isFreeEpisode || hasSubscription || guestSessionUnlock;
+  // Paywall only for premium episodes without access — never gate free content
+  const locked = !isFreeEpisode && !unlocked;
 
   const currentIndex = (allEpisodes ?? []).findIndex((e) => e.id === episodeId);
   const nextEpisode =
