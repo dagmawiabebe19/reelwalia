@@ -6,6 +6,7 @@ import {
 } from "@/lib/stripe/server";
 import type { StripePlanKey } from "@/lib/stripe/plans";
 import { getStripePriceEnvKeys } from "@/lib/stripe/prices";
+import { resolveBaseUrl } from "@/lib/site-url";
 
 const VALID_PLANS: StripePlanKey[] = ["1week", "2week", "1month"];
 
@@ -27,10 +28,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-    const cancelUrl = body.episodeId
-      ? `${siteUrl}/watch/${body.episodeId}`
-      : `${siteUrl}/`;
+    const baseUrl = resolveBaseUrl(request);
 
     const supabase = createClient();
     const {
@@ -38,16 +36,11 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
 
     if (user?.id && user.email) {
-      const successUrl = body.episodeId
-        ? `${siteUrl}/watch/${body.episodeId}?subscribed=true`
-        : `${siteUrl}/account?subscribed=true`;
-
       const session = await createCheckoutSession({
         userId: user.id,
         email: user.email,
         plan: body.plan,
-        successUrl,
-        cancelUrl,
+        baseUrl,
         episodeId: body.episodeId,
       });
 
@@ -59,15 +52,9 @@ export async function POST(request: Request) {
     }
 
     // Guest checkout — account created asynchronously via webhook; never redirect to /watch?subscribed=
-    const episodeQuery = body.episodeId
-      ? `&episodeId=${encodeURIComponent(body.episodeId)}`
-      : "";
-    const successUrl = `${siteUrl}/auth/checkout-success?session_id={CHECKOUT_SESSION_ID}${episodeQuery}`;
-
     const session = await createGuestCheckoutSession({
       plan: body.plan,
-      successUrl,
-      cancelUrl,
+      baseUrl,
       episodeId: body.episodeId,
     });
 

@@ -56,13 +56,19 @@ export async function createCheckoutSession(params: {
   userId: string;
   email: string;
   plan: StripePlanKey;
-  successUrl: string;
-  cancelUrl: string;
+  baseUrl: string;
   episodeId?: string;
 }): Promise<Stripe.Checkout.Session> {
   const stripe = getStripe();
   const { introPriceId } = getPlanPriceIds(params.plan);
   const customerId = await getOrCreateCustomer(params.userId, params.email);
+
+  const successUrl = params.episodeId
+    ? `${params.baseUrl}/watch/${params.episodeId}?subscribed=true`
+    : `${params.baseUrl}/account?subscribed=true`;
+  const cancelUrl = params.episodeId
+    ? `${params.baseUrl}/watch/${params.episodeId}`
+    : `${params.baseUrl}/`;
 
   return stripe.checkout.sessions.create({
     mode: "subscription",
@@ -75,8 +81,8 @@ export async function createCheckoutSession(params: {
         plan: params.plan,
       },
     },
-    success_url: params.successUrl,
-    cancel_url: params.cancelUrl,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
     allow_promotion_codes: true,
     metadata: {
       app: "reelwalia",
@@ -89,12 +95,19 @@ export async function createCheckoutSession(params: {
 
 export async function createGuestCheckoutSession(params: {
   plan: StripePlanKey;
-  successUrl: string;
-  cancelUrl: string;
+  baseUrl: string;
   episodeId?: string;
 }): Promise<Stripe.Checkout.Session> {
   const stripe = getStripe();
   const { introPriceId } = getPlanPriceIds(params.plan);
+
+  const episodeQuery = params.episodeId
+    ? `&episodeId=${encodeURIComponent(params.episodeId)}`
+    : "";
+  const successUrl = `${params.baseUrl}/auth/checkout-success?session_id={CHECKOUT_SESSION_ID}${episodeQuery}`;
+  const cancelUrl = params.episodeId
+    ? `${params.baseUrl}/watch/${params.episodeId}`
+    : `${params.baseUrl}/`;
 
   return stripe.checkout.sessions.create({
     mode: "subscription",
@@ -105,8 +118,8 @@ export async function createGuestCheckoutSession(params: {
         plan: params.plan,
       },
     },
-    success_url: params.successUrl,
-    cancel_url: params.cancelUrl,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
     allow_promotion_codes: true,
     metadata: {
       app: "reelwalia",

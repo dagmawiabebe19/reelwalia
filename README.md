@@ -30,7 +30,7 @@ Copy `.env.example` to `.env.local` for local dev. Add the same keys in **Vercel
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role (admin uploads, seed script) |
-| `NEXT_PUBLIC_SITE_URL` | Site URL for auth redirects |
+| `NEXT_PUBLIC_SITE_URL` | Public site URL for Stripe redirects and auth (see Vercel note below) |
 | `BUNNY_STREAM_LIBRARY_ID` | Bunny Stream library ID |
 | `BUNNY_STREAM_API_KEY` | Bunny Stream API key |
 | `BUNNY_CDN_HOSTNAME` | CDN hostname (e.g. `vz-xxxxx.b-cdn.net`) |
@@ -39,6 +39,22 @@ Copy `.env.example` to `.env.local` for local dev. Add the same keys in **Vercel
 | `STRIPE_SECRET_KEY` | Stripe secret key |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
 | `STRIPE_PRICE_*_INTRO` / `STRIPE_PRICE_*_STANDARD` | Intro + renewal price IDs per plan |
+
+**`NEXT_PUBLIC_SITE_URL` on Vercel** (required for correct Stripe post-checkout redirects):
+
+| Environment | Value |
+|---|---|
+| Production | `https://reelwalia.com` |
+| Preview | `https://reelwalia.com` (or your preview URL) |
+| Development | `http://localhost:3000` |
+
+API routes also read the request `Origin` header when present, so production checkout redirects work even before env is set — but set the Production value to avoid fallback issues.
+
+Local `.env.local`:
+
+```bash
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
 
 ## Database migrations
 

@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createPortalSession } from "@/lib/stripe/server";
+import { resolveBaseUrl } from "@/lib/site-url";
 
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = createClient();
   const {
     data: { user },
@@ -28,10 +29,10 @@ export async function POST() {
   }
 
   try {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+    const baseUrl = resolveBaseUrl(request);
     const session = await createPortalSession({
       customerId: profile.stripe_customer_id,
-      returnUrl: `${siteUrl}/account`,
+      returnUrl: `${baseUrl}/account`,
     });
 
     return NextResponse.json({ url: session.url });
