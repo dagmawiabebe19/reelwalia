@@ -1,5 +1,5 @@
 /**
- * Generate series posters via DALL-E 3 and upload to Supabase Storage.
+ * Generate series posters via OpenAI gpt-image-2 and upload to Supabase Storage.
  * Run: npm run generate-posters
  *
  * Requires OPENAI_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY in .env.local
@@ -130,14 +130,15 @@ async function main() {
 
     try {
       const prompt = buildPrompt(series);
-      console.log("  → Calling DALL-E 3…");
+      console.log("  → Calling gpt-image-2…");
 
+      // gpt-image-2 quality: low | medium | high | auto (no "standard" — medium ≈ cost-effective)
       const image = await openai.images.generate({
-        model: "dall-e-3",
+        model: "gpt-image-2",
         prompt,
         n: 1,
-        size: "1024x1792",
-        quality: "standard",
+        size: "1024x1536",
+        quality: "medium",
       });
 
       const imageUrl = image.data?.[0]?.url;
