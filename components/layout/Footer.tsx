@@ -23,12 +23,6 @@ export function Footer() {
           >
             Terms of Service
           </Link>
-          <a
-            href="mailto:dagmawiabebe19@gmail.com"
-            className="text-xs text-gray-400 transition hover:text-white"
-          >
-            Contact: dagmawiabebe19@gmail.com
-          </a>
         </nav>
 
         <p className="text-xs text-gray-500">
