@@ -205,4 +205,33 @@ body.player-fullscreen header {
   .rw-player-progress:hover {
     @apply h-1.5;
   }
+
+  .rw-form-section {
+    @apply space-y-5 rounded-xl border border-white/[0.08] bg-white/[0.02] p-5 sm:p-6;
+  }
+
+  .rw-form-section-title {
+    @apply font-display text-lg uppercase tracking-wide text-white sm:text-xl;
+  }
+
+  .rw-form-label {
+    @apply block text-sm text-zinc-400;
+  }
+
+  .rw-form-hint {
+    @apply text-xs text-zinc-500;
+  }
+
+  .rw-form-input {
+    @apply w-full rounded-md border border-white/[0.08] bg-black px-3 py-2.5 text-base text-white outline-none transition focus:border-obsidian-red focus:ring-2 focus:ring-obsidian-red/30;
+  }
+
+  .rw-form-textarea {
+    @apply rw-form-input min-h-[120px] resize-y leading-relaxed;
+  }
+
+  .rw-form-select {
+    @apply rw-form-input appearance-none bg-[length:1rem] bg-[right_0.75rem_center] bg-no-repeat pr-10;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23a1a1aa'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  }
 }

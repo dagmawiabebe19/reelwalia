@@ -115,3 +115,52 @@ export type EpisodeListItem = Pick<
   Episode,
   "id" | "episode_number" | "title" | "thumbnail_url" | "duration_seconds" | "is_free"
 >;
+
+export type SubmissionStatus =
+  | "new"
+  | "reviewing"
+  | "contacted"
+  | "approved"
+  | "rejected";
+
+export type ProductionStatus =
+  | "released"
+  | "completed"
+  | "in_post_production"
+  | "in_production"
+  | "development";
+
+export interface CreatorSubmission {
+  id: string;
+  creator_name: string;
+  email: string;
+  phone: string | null;
+  company: string | null;
+  country: string | null;
+  instagram: string | null;
+  website: string | null;
+  imdb: string | null;
+  project_title: string;
+  genre: string;
+  logline: string;
+  description: string;
+  episode_count: number;
+  average_episode_length: string;
+  production_status: ProductionStatus;
+  trailer_link: string | null;
+  screener_link: string | null;
+  youtube_link: string | null;
+  vimeo_link: string | null;
+  google_drive_link: string | null;
+  dropbox_link: string | null;
+  project_website_link: string | null;
+  poster_link: string | null;
+  hero_banner_link: string | null;
+  owns_distribution_rights: boolean;
+  released_elsewhere: boolean;
+  released_elsewhere_where: string | null;
+  additional_notes: string | null;
+  status: SubmissionStatus;
+  created_at: string;
+  updated_at: string;
+}

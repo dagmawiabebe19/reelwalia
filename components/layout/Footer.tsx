@@ -9,6 +9,15 @@ export function Footer() {
 
         <nav className="mt-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-zinc-400">
           <Link
+            href="/submit"
+            className="transition duration-200 hover:text-white"
+          >
+            Submit Your Project
+          </Link>
+          <span className="text-zinc-600" aria-hidden>
+            •
+          </span>
+          <Link
             href="/privacy"
             className="transition duration-200 hover:text-white"
           >

@@ -64,6 +64,7 @@ Apply in order via Supabase SQL Editor or CLI:
 2. `supabase/migrations/002_storage_buckets.sql` — public `posters` bucket
 3. `supabase/migrations/003_phase1_schema.sql` — `free_episode_count`, `bunny_video_id`, subtitles
 4. `supabase/migrations/004_phase2_stripe.sql` — Stripe columns on profiles, plan enum values
+5. `supabase/migrations/005_creator_submissions.sql` — creator submission intake table + RLS
 
 ## Stripe subscriptions
 
@@ -108,6 +109,20 @@ Episode uploads (admin) flow: create video → PUT file to Bunny → save HLS UR
 Set `ADMIN_EMAILS=dagmawiabebe19@gmail.com` (comma-separated for multiple admins).
 
 Sign in with that email, then visit `/admin/series` to manage catalog and upload episodes.
+
+Review creator submissions at `/admin/submissions` (status workflow: New → Reviewing → Contacted → Approved / Rejected). Submissions are never auto-published.
+
+## Creator submissions
+
+Public form: `/submit` (also linked from the site footer).
+
+Set Resend env vars to email `info@waliastudios.media` on each submission:
+
+- `RESEND_API_KEY` — from [Resend](https://resend.com)
+- `RESEND_FROM_EMAIL` — verified sender domain (defaults to Resend onboarding address for testing)
+- `SUBMISSION_NOTIFY_EMAIL` — defaults to `info@waliastudios.media`
+
+Submissions are saved to `creator_submissions` via anon RLS insert. Admin review uses the service role.
 
 ## Seed demo data
 
