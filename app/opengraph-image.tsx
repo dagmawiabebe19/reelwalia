@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { BRAND_TAGLINE } from "@/lib/brand";
+import { PRODUCTION_MARK, BRAND_RED } from "@/lib/brand-mark-paths";
 
 export const alt = "Reel Walia — Stories That Move You";
 export const size = { width: 1200, height: 630 };
@@ -29,9 +30,15 @@ export default function OpenGraphImage() {
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <rect x="14" y="5" width="20" height="38" rx="5" stroke="#FFFFFF" strokeWidth="2.75" />
-            <path d="M21 17V31L33 24L21 17Z" fill="#E03C2F" />
-            <path d="M19 9H25" stroke="#E03C2F" strokeWidth="2.75" strokeLinecap="round" />
+            <rect
+              x={PRODUCTION_MARK.phone.x}
+              y={PRODUCTION_MARK.phone.y}
+              width={PRODUCTION_MARK.phone.width}
+              height={PRODUCTION_MARK.phone.height}
+              rx={PRODUCTION_MARK.phone.rx}
+              fill={BRAND_RED}
+            />
+            <path d={PRODUCTION_MARK.play} fill="#FFFFFF" />
           </svg>
           <span
             style={{

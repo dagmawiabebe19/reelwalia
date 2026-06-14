@@ -1,6 +1,7 @@
 import { BRAND_TAGLINE } from "@/lib/brand";
+import { ProductionMarkSvg } from "@/components/brand/logo-concepts/LogoConcepts";
 
-/** ReelWalia logo mark — concept #13: vertical frame + play triangle. */
+/** ReelWalia production mark — Red Stream Pod. */
 export function ReelWaliaMark({
   className = "h-8 w-8",
   title = "ReelWalia",
@@ -8,36 +9,7 @@ export function ReelWaliaMark({
   className?: string;
   title?: string;
 }) {
-  return (
-    <svg
-      viewBox="0 0 48 48"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      role="img"
-      aria-label={title}
-      shapeRendering="geometricPrecision"
-    >
-      <title>{title}</title>
-      <rect
-        x="14"
-        y="5"
-        width="20"
-        height="38"
-        rx="5"
-        stroke="currentColor"
-        strokeWidth="2.75"
-        className="text-white"
-      />
-      <path d="M21 17V31L33 24L21 17Z" fill="#E03C2F" />
-      <path
-        d="M19 9H25"
-        stroke="#E03C2F"
-        strokeWidth="2.75"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+  return <ProductionMarkSvg className={className} title={title} />;
 }
 
 /** Horizontal cinematic wordmark: REEL (white) + WALIA (red). */
