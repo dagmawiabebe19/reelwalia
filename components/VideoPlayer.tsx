@@ -685,7 +685,6 @@ export function VideoPlayer({
               countdownSeconds={countdownSeconds}
               isAuthenticated={isAuthenticated}
               onCancel={handleCancelAutoplay}
-              onWatchNow={() => navigateToNext(true)}
             />
           )}
 

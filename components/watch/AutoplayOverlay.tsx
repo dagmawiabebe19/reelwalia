@@ -17,41 +17,37 @@ interface AutoplayOverlayProps {
   countdownSeconds: number;
   isAuthenticated?: boolean;
   onCancel: () => void;
-  onWatchNow: () => void;
 }
+
+const pillPosition =
+  "pointer-events-auto absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-40";
 
 export function AutoplayOverlay({
   nextEpisode,
   countdownSeconds,
   isAuthenticated = false,
   onCancel,
-  onWatchNow,
 }: AutoplayOverlayProps) {
   const [paywallOpen, setPaywallOpen] = useState(false);
 
   if (nextEpisode.locked) {
     return (
       <>
-        <div className="pointer-events-auto absolute inset-x-3 bottom-20 z-40 flex justify-center sm:inset-x-auto sm:bottom-6 sm:right-4 sm:justify-end">
-          <div className="w-full max-w-[320px] rounded-xl bg-black/80 p-4 backdrop-blur-md">
-            <p className="font-display text-xs uppercase tracking-wide text-obsidian-red">
-              Up Next
-            </p>
-            <p className="mt-2 text-sm font-bold text-white">
-              Subscribe to continue
-            </p>
-            <p className="mt-1 text-sm text-white/70">
-              Episode {nextEpisode.episodeNumber} — {nextEpisode.title}
-            </p>
-            <button
-              type="button"
-              onClick={() => setPaywallOpen(true)}
-              className="rw-btn-primary mt-4 w-full text-sm"
-            >
-              Subscribe
-            </button>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() => setPaywallOpen(true)}
+          className={`${pillPosition} flex max-w-[120px] items-center gap-1.5 rounded-full border border-white/15 bg-black/50 py-1.5 pl-3 pr-3 backdrop-blur-md`}
+        >
+          <svg
+            viewBox="0 0 16 16"
+            className="h-3 w-3 shrink-0 text-white/70"
+            fill="currentColor"
+            aria-hidden
+          >
+            <path d="M11 7V5a3 3 0 00-6 0v2H4a1 1 0 00-1 1v5a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1h-1zm-2 0H7V5a1.5 1.5 0 013 0v2z" />
+          </svg>
+          <span className="text-xs font-medium text-white">Subscribe</span>
+        </button>
         <PaywallModal
           open={paywallOpen}
           onClose={() => setPaywallOpen(false)}
@@ -63,56 +59,29 @@ export function AutoplayOverlay({
   }
 
   return (
-    <div className="pointer-events-auto absolute inset-x-3 bottom-20 z-40 flex justify-center sm:inset-x-auto sm:bottom-6 sm:right-4 sm:justify-end">
-      <div className="w-full max-w-[320px] rounded-xl bg-black/80 p-4 backdrop-blur-md">
-        <p className="font-display text-xs uppercase tracking-wide text-obsidian-red">
-          Up Next
-        </p>
-
-        {nextEpisode.thumbnailUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={nextEpisode.thumbnailUrl}
-            alt=""
-            className="mt-3 h-20 w-auto rounded object-cover"
+    <div
+      className={`${pillPosition} flex max-w-[120px] items-center gap-2 rounded-full border border-white/15 bg-black/50 py-1.5 pl-3 pr-2 backdrop-blur-md`}
+    >
+      <span className="shrink-0 text-xs text-white/70">Next in</span>
+      <span className="shrink-0 text-sm font-bold tabular-nums text-white">
+        {countdownSeconds}
+      </span>
+      <span className="h-3 w-px shrink-0 bg-white/20" aria-hidden />
+      <button
+        type="button"
+        onClick={onCancel}
+        aria-label="Skip autoplay"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/70 transition hover:text-white active:text-white"
+      >
+        <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden>
+          <path
+            d="M5 5l10 10M15 5L5 15"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
           />
-        ) : (
-          <div className="mt-3 flex h-20 w-14 items-center justify-center rounded bg-zinc-800 text-lg font-semibold text-gray-400">
-            {nextEpisode.episodeNumber}
-          </div>
-        )}
-
-        <p className="mt-3 text-sm font-bold text-white">
-          Episode {nextEpisode.episodeNumber} — {nextEpisode.title}
-        </p>
-
-        {nextEpisode.description && (
-          <p className="mt-1 truncate text-sm text-white/70">
-            {nextEpisode.description}
-          </p>
-        )}
-
-        <p className="mt-3 text-xs text-white/70">
-          Playing in {countdownSeconds}s
-        </p>
-
-        <div className="mt-4 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="min-h-11 flex-1 text-sm text-white hover:text-white/80"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onWatchNow}
-            className="rw-btn-primary min-h-11 flex-1 text-sm"
-          >
-            Watch Now
-          </button>
-        </div>
-      </div>
+        </svg>
+      </button>
     </div>
   );
 }
