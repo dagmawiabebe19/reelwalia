@@ -7,10 +7,15 @@ import type { Series } from "@/lib/types/database";
 
 type HeroItem = Pick<
   Series,
-  "id" | "title" | "slug" | "tagline" | "banner_url" | "poster_url" | "genre"
+  "id" | "title" | "slug" | "tagline" | "description" | "banner_url" | "poster_url" | "genre"
 > & {
   firstEpisodeId: string | null;
 };
+
+function heroSynopsis(item: HeroItem): string | null {
+  const text = item.description?.trim() || item.tagline?.trim();
+  return text || null;
+}
 
 interface HeroCarouselProps {
   items: HeroItem[];
@@ -42,6 +47,7 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
 
   const active = items[activeIndex];
   const imageSrc = active.banner_url ?? active.poster_url ?? "";
+  const synopsis = heroSynopsis(active);
 
   return (
     <section className="relative overflow-hidden rounded-xl border border-white/[0.08] shadow-hero-vignette">
@@ -77,8 +83,8 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
                 </p>
               )}
               <h1 className="rw-hero-title">{active.title}</h1>
-              {active.tagline && (
-                <p className="rw-hero-tagline">{active.tagline}</p>
+              {synopsis && (
+                <p className="rw-hero-description">{synopsis}</p>
               )}
               <div className="mt-7 flex flex-wrap gap-3 sm:mt-8 sm:gap-4">
                 {active.firstEpisodeId ? (

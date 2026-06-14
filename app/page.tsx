@@ -22,7 +22,7 @@ async function getCatalog() {
   ] = await Promise.all([
     supabase
       .from("series")
-      .select("id, title, slug, tagline, banner_url, poster_url, genre")
+      .select("id, title, slug, tagline, description, banner_url, poster_url, genre")
       .eq("status", "published")
       .eq("is_featured", true)
       .order("featured_order", { ascending: true, nullsFirst: false })

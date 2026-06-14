@@ -92,6 +92,11 @@ body.player-fullscreen header {
       0 1px 4px rgba(0, 0, 0, 0.85);
   }
 
+  .rw-hero-description {
+    @apply mt-2 line-clamp-2 max-w-md text-sm leading-snug text-zinc-200/95 sm:mt-3 sm:max-w-lg sm:text-[15px] sm:leading-relaxed;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.65);
+  }
+
   .rw-hero-tagline {
     @apply mt-2 max-w-md text-sm leading-relaxed text-zinc-100 sm:mt-3 sm:max-w-lg sm:text-base;
     text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
@@ -133,7 +138,7 @@ body.player-fullscreen header {
   }
 
   .rw-brand-nav-tagline {
-    @apply font-sans font-normal leading-none tracking-[0.04em] text-zinc-400/90;
+    @apply font-sans font-normal leading-none tracking-[0.045em] text-zinc-300/90;
   }
 
   .rw-brand-lockup svg {
