@@ -1,24 +1,29 @@
 import { BRAND_TAGLINE } from "@/lib/brand";
-import { ProductionMarkSvg } from "@/components/brand/logo-concepts/LogoConcepts";
+import { ReelWaliaMarkSvg } from "@/components/brand/ReelWaliaMarkSvg";
 
-/** ReelWalia production mark — Red Stream Pod. */
+/** ReelWalia production mark — premium glossy stream pod. */
 export function ReelWaliaMark({
   className = "h-8 w-8",
   title = "ReelWalia",
+  mode = "premium",
 }: {
   className?: string;
   title?: string;
+  mode?: "premium" | "flat";
 }) {
-  return <ProductionMarkSvg className={className} title={title} />;
+  return <ReelWaliaMarkSvg className={className} title={title} mode={mode} />;
 }
+
+export { PremiumReelWaliaMarkSvg, FlatReelWaliaMarkSvg } from "@/components/brand/ReelWaliaMarkSvg";
 
 /** Horizontal cinematic wordmark: REEL (white) + WALIA (red). */
 export function ReelWaliaWordmark({ className = "" }: { className?: string }) {
   return (
     <span
-      className={`font-display uppercase leading-none text-white ${className}`}
+      className={`rw-brand-wordmark font-display uppercase leading-[0.92] text-white ${className}`}
     >
-      Reel<span className="text-obsidian-red"> Walia</span>
+      <span className="tracking-[0.045em]">Reel</span>
+      <span className="text-obsidian-red tracking-[0.02em]"> Walia</span>
     </span>
   );
 }
@@ -35,7 +40,7 @@ export type BrandScale = "nav" | "footer" | "auth" | "loading";
 const SCALE = {
   nav: {
     mark: "h-11 w-11 sm:h-12 sm:w-12",
-    wordmark: "text-[1.5rem] sm:text-[1.75rem] tracking-[0.03em]",
+    wordmark: "text-[1.5rem] sm:text-[1.75rem]",
     tagline: "text-xs sm:text-sm tracking-normal",
     lockupGap: "gap-3 sm:gap-3.5",
     stackedMarkGap: "mt-0",
@@ -43,10 +48,10 @@ const SCALE = {
     stackedTaglineGap: "mt-0",
   },
   footer: {
-    mark: "h-[4.5rem] w-[4.5rem] sm:h-20 sm:w-20",
-    wordmark: "text-[2rem] sm:text-[2.75rem] tracking-[0.025em]",
+    mark: "h-[4.5rem] w-[4.5rem] sm:h-[4.75rem] sm:w-[4.75rem]",
+    wordmark: "text-[2rem] sm:text-[2.75rem] tracking-[0.02em]",
     tagline: "text-sm sm:text-base tracking-normal text-zinc-500",
-    lockupGap: "gap-4",
+    lockupGap: "gap-4 sm:gap-5",
     stackedMarkGap: "mt-0",
     stackedWordmarkGap: "mt-6 sm:mt-7",
     stackedTaglineGap: "mt-2.5 sm:mt-3",
@@ -118,7 +123,7 @@ export function ReelWaliaLogo({
   }
 
   return (
-    <div className={`flex items-center ${s.lockupGap} ${className}`}>
+    <div className={`rw-brand-lockup flex items-center ${s.lockupGap} ${className}`}>
       <ReelWaliaMark className={`${markSize} shrink-0`} />
       <ReelWaliaWordmark className={s.wordmark} />
     </div>

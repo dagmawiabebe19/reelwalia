@@ -1,15 +1,31 @@
 /** Shared production mark geometry — single source of truth. */
 export const BRAND_MARK_VIEWBOX = "0 0 48 48";
 export const BRAND_RED = "#E03C2F";
+export const BRAND_RED_LIGHT = "#FF6B5E";
+export const BRAND_RED_DARK = "#9E261D";
 
-/** Selected mark: Red Stream Pod — bold 9:16 capsule, white play hero. */
+/** Premium glossy stream pod — generous padding, hero play, optical center. */
+export const MARK_FRAME = {
+  x: 8,
+  y: 2,
+  width: 32,
+  height: 44,
+  rx: 10,
+} as const;
+
+/**
+ * Play triangle — hero element with balanced inset (~18% horizontal padding).
+ * Optically centered 0.5px above geometric midline.
+ */
+export const MARK_PLAY = "M18.5 14.5L18.5 33.5L35 24Z";
+
+/** @deprecated Use MARK_FRAME + MARK_PLAY */
 export const PRODUCTION_MARK = {
-  id: "red-stream-pod",
-  label: "Red Stream Pod (selected)",
-  description:
-    "Filled vertical capsule with hero white play. Reads as video first, mobile second. Strong at 16px.",
-  phone: { x: 11, y: 2, width: 26, height: 44, rx: 9 },
-  play: "M19 13L19 35L37 24Z",
+  id: "red-stream-pod-premium",
+  label: "Red Stream Pod Premium",
+  description: "Glossy 3D capsule with hero white play.",
+  phone: MARK_FRAME,
+  play: MARK_PLAY,
 } as const;
 
 export type LogoConceptId =

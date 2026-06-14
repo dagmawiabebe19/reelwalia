@@ -104,6 +104,18 @@ body.player-fullscreen header {
     text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
   }
 
+  .rw-brand-lockup {
+    @apply items-center;
+  }
+
+  .rw-brand-lockup svg {
+    @apply -translate-y-px;
+  }
+
+  .rw-brand-wordmark {
+    @apply translate-y-px;
+  }
+
   .rw-page-title {
     @apply font-display uppercase leading-[0.95] tracking-wide text-white;
     @apply text-3xl sm:text-5xl;

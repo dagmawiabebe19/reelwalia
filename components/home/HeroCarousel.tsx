@@ -16,13 +16,13 @@ interface HeroCarouselProps {
   items: HeroItem[];
 }
 
-/** Soft left scrim — keeps text readable without hiding characters on the right. */
+/** Soft left scrim — text zone only; right side stays clear for characters. */
 const HERO_SCRIM_LEFT =
-  "linear-gradient(to right, rgba(0,0,0,0.58) 0%, rgba(0,0,0,0.32) 38%, rgba(0,0,0,0.08) 58%, transparent 78%)";
+  "linear-gradient(to right, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.24) 34%, rgba(0,0,0,0.05) 56%, transparent 74%)";
 
-/** Soft bottom scrim — anchors title and CTAs only. */
+/** Soft bottom scrim — anchors CTAs without crushing mid-frame art. */
 const HERO_SCRIM_BOTTOM =
-  "linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.22) 32%, transparent 58%)";
+  "linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.16) 28%, transparent 52%)";
 
 export function HeroCarousel({ items }: HeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -52,7 +52,7 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
           <img
             src={imageSrc}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover object-[68%_12%] transition-opacity duration-700 sm:object-[60%_18%] lg:object-[55%_20%]"
+            className="absolute inset-0 h-full w-full object-cover object-[74%_14%] transition-opacity duration-700 sm:object-[66%_18%] lg:object-[58%_20%]"
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 to-black" />
@@ -70,7 +70,7 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
         />
 
         <div className="relative z-10 flex h-full flex-col justify-end p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-8 sm:pb-10 lg:p-10">
-          <div className="max-w-[92%] sm:max-w-lg lg:max-w-xl">
+          <div className="max-w-[88%] sm:max-w-md lg:max-w-lg">
             {active.genre?.length > 0 && (
               <p className="rw-genre-label rw-hero-genre mb-2.5">
                 {active.genre.slice(0, 2).join(" · ")}

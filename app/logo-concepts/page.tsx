@@ -26,9 +26,11 @@ export default function LogoConceptsPage() {
           <ProductionMarkSvg className="mx-auto h-16 w-16 sm:h-20 sm:w-20" />
           <ReelWaliaWordmark className="mt-6 block text-3xl sm:text-4xl" />
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-zinc-400 sm:text-base">
-            15 mark explorations. Production selection:{" "}
-            <strong className="font-semibold text-obsidian-red">Red Stream Pod</strong>{" "}
-            — filled 9:16 capsule, white play hero, maximum legibility at favicon size.
+            15 mark explorations. Production:{" "}
+            <strong className="font-semibold text-obsidian-red">
+              Red Stream Pod Premium
+            </strong>{" "}
+            — glossy 3D capsule, hero play, flat variant for favicons.
           </p>
         </header>
 

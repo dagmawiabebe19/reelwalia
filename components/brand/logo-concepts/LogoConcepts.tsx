@@ -1,5 +1,10 @@
 import type { LogoConcept, LogoConceptId } from "@/lib/brand-mark-paths";
-import { BRAND_RED, PRODUCTION_MARK } from "@/lib/brand-mark-paths";
+import {
+  BRAND_RED,
+  MARK_FRAME,
+  MARK_PLAY,
+} from "@/lib/brand-mark-paths";
+import { PremiumReelWaliaMarkSvg } from "@/components/brand/ReelWaliaMarkSvg";
 
 const R = BRAND_RED;
 const W = "#FFFFFF";
@@ -51,7 +56,7 @@ function WhitePlay(props: { d: string }) {
   return <path d={props.d} fill={W} />;
 }
 
-export const HERO_PLAY = PRODUCTION_MARK.play;
+export const HERO_PLAY = MARK_PLAY;
 
 export const LOGO_CONCEPTS: LogoConcept[] = [
   {
@@ -66,8 +71,8 @@ export const LOGO_CONCEPTS: LogoConcept[] = [
   },
   {
     id: "red-stream-pod",
-    label: "03 · Red Stream Pod ★",
-    description: "Red capsule, white play hero — selected for production.",
+    label: "03 · Red Stream Pod Premium ★",
+    description: "Glossy 3D capsule, hero play, metallic depth — production mark.",
     selected: true,
   },
   {
@@ -153,14 +158,14 @@ function renderConcept(id: LogoConceptId) {
       return (
         <>
           <PhoneFill
-            x={PRODUCTION_MARK.phone.x}
-            y={PRODUCTION_MARK.phone.y}
-            w={PRODUCTION_MARK.phone.width}
-            h={PRODUCTION_MARK.phone.height}
-            rx={PRODUCTION_MARK.phone.rx}
+            x={MARK_FRAME.x}
+            y={MARK_FRAME.y}
+            w={MARK_FRAME.width}
+            h={MARK_FRAME.height}
+            rx={MARK_FRAME.rx}
             fill={R}
           />
-          <WhitePlay d={HERO_PLAY} />
+          <WhitePlay d={MARK_PLAY} />
         </>
       );
     case "play-cutout":
@@ -303,17 +308,6 @@ export function ProductionMarkSvg({
   title?: string;
 }) {
   return (
-    <svg
-      viewBox="0 0 48 48"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      role="img"
-      aria-label={title}
-      shapeRendering="geometricPrecision"
-    >
-      <title>{title}</title>
-      {renderConcept("red-stream-pod")}
-    </svg>
+    <PremiumReelWaliaMarkSvg className={className} title={title} />
   );
 }
