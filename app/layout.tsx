@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Anton, Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
 import { getSiteUrlFromEnv } from "@/lib/site-url";
 import "./globals.css";
 
@@ -60,6 +61,7 @@ export default function RootLayout({
         className={`${inter.variable} ${anton.variable} min-h-screen overflow-x-hidden bg-black text-base text-white`}
       >
         {children}
+        <Analytics />
       </body>
     </html>
   );
