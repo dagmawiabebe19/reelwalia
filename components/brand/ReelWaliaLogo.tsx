@@ -39,10 +39,10 @@ export type BrandScale = "nav" | "footer" | "auth" | "loading";
 
 const SCALE = {
   nav: {
-    mark: "h-11 w-11 sm:h-12 sm:w-12",
-    wordmark: "text-[1.5rem] sm:text-[1.75rem]",
+    mark: "h-[3.4375rem] w-[3.4375rem] sm:h-[3.8125rem] sm:w-[3.8125rem]",
+    wordmark: "text-[1.875rem] sm:text-[2.1875rem]",
     tagline: "text-xs sm:text-sm tracking-normal",
-    lockupGap: "gap-3 sm:gap-3.5",
+    lockupGap: "gap-3.5 sm:gap-4",
     stackedMarkGap: "mt-0",
     stackedWordmarkGap: "mt-0",
     stackedTaglineGap: "mt-0",

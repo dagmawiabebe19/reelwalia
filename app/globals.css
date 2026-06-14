@@ -85,23 +85,39 @@ body.player-fullscreen header {
   }
 
   .rw-hero-title {
-    @apply font-display uppercase leading-[0.92] tracking-wide text-white;
-    @apply text-[1.75rem] sm:text-5xl lg:text-[3.25rem];
+    @apply font-display uppercase leading-[0.88] tracking-[0.015em] text-white;
+    @apply text-[2.4375rem] sm:text-[4.125rem] lg:text-[4.5rem];
     text-shadow:
-      0 2px 20px rgba(0, 0, 0, 0.9),
-      0 1px 4px rgba(0, 0, 0, 0.95),
-      0 0 1px rgba(0, 0, 0, 1);
+      0 2px 24px rgba(0, 0, 0, 0.75),
+      0 1px 4px rgba(0, 0, 0, 0.85);
   }
 
   .rw-hero-tagline {
-    @apply mt-3 max-w-md text-sm leading-relaxed text-zinc-200 sm:max-w-lg sm:text-base;
-    text-shadow:
-      0 1px 12px rgba(0, 0, 0, 0.85),
-      0 1px 2px rgba(0, 0, 0, 0.9);
+    @apply mt-2 max-w-md text-sm leading-relaxed text-zinc-100 sm:mt-3 sm:max-w-lg sm:text-base;
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
   }
 
   .rw-hero-genre {
-    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.65);
+  }
+
+  .rw-hero-copy-panel {
+    @apply relative;
+  }
+
+  .rw-hero-copy-panel::before {
+    content: "";
+    @apply pointer-events-none absolute -inset-x-5 -inset-y-4 rounded-2xl;
+    background: linear-gradient(
+      105deg,
+      rgba(0, 0, 0, 0.55) 0%,
+      rgba(0, 0, 0, 0.28) 45%,
+      transparent 85%
+    );
+  }
+
+  .rw-hero-copy-inner {
+    @apply relative;
   }
 
   .rw-brand-lockup {
@@ -122,7 +138,7 @@ body.player-fullscreen header {
   }
 
   .rw-section-title {
-    @apply font-display text-lg uppercase tracking-wider text-white sm:text-xl;
+    @apply font-display text-xl uppercase tracking-wider text-white sm:text-2xl;
   }
 
   .rw-body {
@@ -150,7 +166,7 @@ body.player-fullscreen header {
   }
 
   .rw-scroll-x {
-    @apply flex gap-4 overflow-x-auto pb-2 pl-1;
+    @apply flex gap-4 overflow-x-auto pb-2 pl-1 sm:gap-5;
     -webkit-overflow-scrolling: touch;
     scroll-snap-type: x mandatory;
     -ms-overflow-style: none;

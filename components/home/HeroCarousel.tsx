@@ -45,8 +45,7 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
 
   return (
     <section className="relative overflow-hidden rounded-xl border border-white/[0.08] shadow-hero-vignette">
-      {/* Taller on mobile so vertical poster art keeps faces in frame */}
-      <div className="relative aspect-[4/3] min-h-[320px] w-full bg-zinc-950 sm:aspect-[2/1] sm:min-h-[340px] lg:aspect-[21/9] lg:min-h-[380px]">
+      <div className="relative aspect-[4/3] min-h-[320px] w-full bg-zinc-950 sm:aspect-[2/1] sm:min-h-[360px] lg:aspect-[21/9] lg:min-h-[400px]">
         {imageSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -70,39 +69,41 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
         />
 
         <div className="relative z-10 flex h-full flex-col justify-end p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-8 sm:pb-10 lg:p-10">
-          <div className="max-w-[88%] sm:max-w-md lg:max-w-lg">
-            {active.genre?.length > 0 && (
-              <p className="rw-genre-label rw-hero-genre mb-2.5">
-                {active.genre.slice(0, 2).join(" · ")}
-              </p>
-            )}
-            <h1 className="rw-hero-title">{active.title}</h1>
-            {active.tagline && (
-              <p className="rw-hero-tagline">{active.tagline}</p>
-            )}
-            <div className="mt-6 flex flex-wrap gap-3 sm:mt-7 sm:gap-4">
-              {active.firstEpisodeId ? (
-                <WatchEpisodeLink
-                  episodeId={active.firstEpisodeId}
-                  className="rw-btn-primary min-w-[140px] flex-1 sm:flex-none"
-                >
-                  Watch Now
-                </WatchEpisodeLink>
-              ) : (
+          <div className="rw-hero-copy-panel max-w-[90%] sm:max-w-md lg:max-w-lg">
+            <div className="rw-hero-copy-inner">
+              {active.genre?.length > 0 && (
+                <p className="rw-genre-label rw-hero-genre mb-3 sm:mb-3.5">
+                  {active.genre.slice(0, 2).join(" · ")}
+                </p>
+              )}
+              <h1 className="rw-hero-title">{active.title}</h1>
+              {active.tagline && (
+                <p className="rw-hero-tagline">{active.tagline}</p>
+              )}
+              <div className="mt-7 flex flex-wrap gap-3 sm:mt-8 sm:gap-4">
+                {active.firstEpisodeId ? (
+                  <WatchEpisodeLink
+                    episodeId={active.firstEpisodeId}
+                    className="rw-btn-primary min-h-12 min-w-[148px] flex-1 sm:flex-none"
+                  >
+                    Watch Now
+                  </WatchEpisodeLink>
+                ) : (
+                  <Button
+                    href={`/series/${active.slug}`}
+                    className="min-h-12 min-w-[148px] flex-1 sm:flex-none"
+                  >
+                    Watch Now
+                  </Button>
+                )}
                 <Button
                   href={`/series/${active.slug}`}
-                  className="min-w-[140px] flex-1 sm:flex-none"
+                  variant="secondary"
+                  className="min-h-12 min-w-[128px] flex-1 sm:flex-none"
                 >
-                  Watch Now
+                  More Info
                 </Button>
-              )}
-              <Button
-                href={`/series/${active.slug}`}
-                variant="secondary"
-                className="min-w-[120px] flex-1 sm:flex-none"
-              >
-                More Info
-              </Button>
+              </div>
             </div>
           </div>
         </div>

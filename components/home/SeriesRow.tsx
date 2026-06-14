@@ -22,7 +22,7 @@ export function SeriesRow({ title, series }: SeriesRowProps) {
           <Link
             key={item.id}
             href={`/series/${item.slug}`}
-            className="group w-[7.5rem] shrink-0 sm:w-44"
+            className="group w-[8.75rem] shrink-0 sm:w-48 lg:w-52"
           >
             <div className="rw-card rw-card-hover rw-card-media aspect-[2/3]">
               {item.poster_url ? (
@@ -40,8 +40,8 @@ export function SeriesRow({ title, series }: SeriesRowProps) {
                 </div>
               )}
             </div>
-            <p className="rw-card-title mt-2.5">{item.title}</p>
-            {item.tagline && <p className="rw-card-subtitle mt-0.5">{item.tagline}</p>}
+            <p className="rw-card-title mt-3">{item.title}</p>
+            {item.tagline && <p className="rw-card-subtitle mt-1">{item.tagline}</p>}
           </Link>
         ))}
       </div>
