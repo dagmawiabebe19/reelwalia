@@ -130,17 +130,14 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
               {!episodes.length ? (
                 <p className="mt-4 text-sm text-gray-400">No episodes yet.</p>
               ) : (
-                <ul className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-1 md:gap-0 md:divide-y md:divide-white/[0.08]">
+                <ul className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
                   {episodes.map((ep) => (
-                    <li key={ep.id} className="md:py-0">
+                    <li key={ep.id}>
                       <Link
                         href={`/watch/${ep.id}`}
-                        className="flex min-h-11 flex-col gap-2 rounded-lg border border-white/[0.08] p-3 transition hover:border-white/20 md:flex-row md:items-center md:gap-4 md:rounded-none md:border-0 md:p-0 md:py-3 md:hover:bg-white/[0.03]"
+                        className="group block min-h-11 transition hover:opacity-90"
                       >
-                        <span className="text-sm font-medium text-gray-400 md:w-8">
-                          {ep.episode_number}
-                        </span>
-                        <div className="h-24 w-full shrink-0 overflow-hidden rounded border border-white/[0.08] bg-zinc-900 md:h-14 md:w-10">
+                        <div className="relative aspect-[9/16] overflow-hidden rounded-lg border border-white/[0.08] bg-zinc-900">
                           {ep.thumbnail_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -148,32 +145,40 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
                               alt={`Episode ${ep.episode_number}`}
                               className="h-full w-full object-cover"
                             />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-lg font-semibold text-gray-500">
+                              {ep.episode_number}
+                            </div>
+                          )}
+                          <span className="absolute left-2 top-2 rounded-full bg-black/75 px-2 py-0.5 text-xs font-semibold text-white">
+                            {ep.episode_number}
+                          </span>
+                          {ep.is_free ? (
+                            <span className="absolute right-2 top-2 text-xs font-medium uppercase text-obsidian-red">
+                              Free
+                            </span>
+                          ) : ep.locked ? (
+                            <span className="absolute right-2 top-2 rounded bg-black/70 p-1">
+                              <svg
+                                viewBox="0 0 16 16"
+                                className="h-3 w-3 text-gray-300"
+                                fill="currentColor"
+                              >
+                                <path d="M11 7V5a3 3 0 00-6 0v2H4a1 1 0 00-1 1v5a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1h-1zm-2 0H7V5a1.5 1.5 0 013 0v2z" />
+                              </svg>
+                            </span>
                           ) : null}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-sm font-medium md:truncate">
-                            {ep.title}
+                        <p className="mt-1.5 text-xs text-gray-400">
+                          Episode {ep.episode_number}
+                        </p>
+                        <p className="line-clamp-2 text-sm font-medium">{ep.title}</p>
+                        {ep.duration_seconds != null && ep.duration_seconds > 0 && (
+                          <p className="text-xs text-gray-500">
+                            {Math.floor(ep.duration_seconds / 60)}:
+                            {String(ep.duration_seconds % 60).padStart(2, "0")}
                           </p>
-                          {ep.duration_seconds != null && ep.duration_seconds > 0 && (
-                            <p className="text-sm text-gray-400">
-                              {Math.floor(ep.duration_seconds / 60)}:
-                              {String(ep.duration_seconds % 60).padStart(2, "0")}
-                            </p>
-                          )}
-                        </div>
-                        {ep.is_free ? (
-                          <span className="text-xs font-medium uppercase text-obsidian-red">
-                            Free
-                          </span>
-                        ) : ep.locked ? (
-                          <svg
-                            viewBox="0 0 16 16"
-                            className="h-4 w-4 text-gray-400"
-                            fill="currentColor"
-                          >
-                            <path d="M11 7V5a3 3 0 00-6 0v2H4a1 1 0 00-1 1v5a1 1 0 001 1h8a1 1 0 001-1V8a1 1 0 00-1-1h-1zm-2 0H7V5a1.5 1.5 0 013 0v2z" />
-                          </svg>
-                        ) : null}
+                        )}
                       </Link>
                     </li>
                   ))}
