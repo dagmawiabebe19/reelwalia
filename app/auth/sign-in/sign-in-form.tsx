@@ -94,7 +94,7 @@ function SignInForm() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-black px-4">
-      <div className="w-full max-w-md rounded-xl border border-white/[0.08] bg-black p-8">
+      <div className="w-full max-w-md rounded-xl border border-white/[0.08] bg-black p-6 sm:p-8">
         <p className="text-center font-display text-lg uppercase tracking-wide text-white">
           Reel<span className="text-obsidian-red">Walia</span>
         </p>
@@ -139,7 +139,7 @@ function SignInForm() {
               type="button"
               disabled={loading}
               onClick={() => void signInGoogle()}
-              className="rw-btn-primary mt-8 flex w-full items-center justify-center gap-2"
+              className="rw-btn-primary mt-8 flex min-h-11 w-full items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -165,7 +165,7 @@ function SignInForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full rounded-md border border-white/[0.08] bg-black px-3 py-2.5 text-white outline-none transition focus:border-obsidian-red focus:ring-2 focus:ring-obsidian-red/30"
+                className="w-full rounded-md border border-white/[0.08] bg-black px-3 py-3 text-base text-white outline-none transition focus:border-obsidian-red focus:ring-2 focus:ring-obsidian-red/30"
               />
             </label>
 
@@ -173,7 +173,7 @@ function SignInForm() {
               type="button"
               disabled={loading}
               onClick={() => void signInMagicLink()}
-              className="rw-btn-secondary mt-4 w-full"
+              className="rw-btn-secondary mt-4 min-h-11 w-full"
             >
               {loading ? "Sending link…" : "Continue with magic link"}
             </button>

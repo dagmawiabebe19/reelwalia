@@ -129,10 +129,10 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
   } = data;
 
   return (
-    <div className="min-h-screen bg-black pb-24 lg:pb-8">
+    <div className="min-h-screen overflow-x-hidden bg-black">
       <TopNav />
-      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 lg:flex-row lg:px-6">
-        <div className="flex flex-1 flex-col items-center gap-4">
+      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-4 sm:py-6 lg:flex-row lg:px-6">
+        <div className="flex w-full flex-1 flex-col items-center gap-4">
           <WatchPostCheckout
             unlocked={unlocked}
             locked={locked}
@@ -169,19 +169,19 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
           <div className="w-full max-w-md lg:max-w-none">
             <Link
               href={`/series/${series.slug}`}
-              className="text-sm text-gray-400 hover:text-obsidian-red"
+              className="inline-flex min-h-11 items-center text-sm text-gray-400 hover:text-obsidian-red"
             >
               {series.title}
             </Link>
-            <h1 className="mt-1 font-display text-xl uppercase">
+            <h1 className="mt-1 font-display text-xl uppercase sm:text-2xl">
               {episode.title}
             </h1>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-sm text-gray-500">
               Episode {episode.episode_number} ·{" "}
               {(episode.view_count ?? 0).toLocaleString()} views
             </p>
             {(episode.description || series.description) && (
-              <p className="mt-3 text-sm leading-relaxed text-gray-400">
+              <p className="mt-3 text-base leading-relaxed text-gray-400">
                 {episode.description ?? series.description}
               </p>
             )}

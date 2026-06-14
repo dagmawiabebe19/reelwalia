@@ -17,12 +17,12 @@ export function SeriesRow({ title, series }: SeriesRowProps) {
   return (
     <section className="space-y-4">
       <h2 className="font-display text-xl uppercase tracking-wide sm:text-2xl">{title}</h2>
-      <div className="flex gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-4 overflow-x-auto pb-2 pl-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory [-webkit-overflow-scrolling:touch]">
         {series.map((item) => (
           <Link
             key={item.id}
             href={`/series/${item.slug}`}
-            className="group w-36 shrink-0 sm:w-44"
+            className="group w-36 shrink-0 snap-start sm:w-44"
           >
             <div className="rw-card aspect-[2/3] overflow-hidden transition group-hover:border-white/20">
               {item.poster_url ? (
@@ -40,7 +40,7 @@ export function SeriesRow({ title, series }: SeriesRowProps) {
             </div>
             <p className="mt-2 truncate text-sm font-medium">{item.title}</p>
             {item.tagline && (
-              <p className="truncate text-xs text-gray-400">{item.tagline}</p>
+              <p className="truncate text-sm text-gray-400">{item.tagline}</p>
             )}
           </Link>
         ))}

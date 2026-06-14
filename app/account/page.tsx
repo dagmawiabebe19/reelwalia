@@ -58,8 +58,8 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
           </p>
         )}
 
-        <Card className="mt-8 p-6">
-          <div className="flex items-center gap-4">
+        <Card className="mt-8 p-4 sm:p-6">
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
             {profile?.avatar_url || user.user_metadata?.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -79,7 +79,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
           </div>
         </Card>
 
-        <Card className="mt-4 p-6">
+        <Card className="mt-4 p-4 sm:p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-400">
             Subscription
           </h2>
@@ -107,7 +107,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
           )}
         </Card>
 
-        <Card className="mt-4 p-6">
+        <Card className="mt-4 p-4 sm:p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-400">
             Library
           </h2>
@@ -118,12 +118,15 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
           <p className="mt-2 text-xs text-gray-500">Coming soon</p>
         </Card>
 
-        <div className="mt-8 flex items-center gap-4">
-          <Link href="/" className="text-sm text-gray-400 hover:text-white">
+        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
+          <Link href="/" className="inline-flex min-h-11 items-center text-sm text-gray-400 hover:text-white">
             Back home
           </Link>
           <form action={signOut}>
-            <button type="submit" className="text-sm text-obsidian-red hover:underline">
+            <button
+              type="submit"
+              className="inline-flex min-h-11 items-center text-sm text-obsidian-red hover:underline"
+            >
               Sign out
             </button>
           </form>

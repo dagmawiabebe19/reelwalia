@@ -80,9 +80,9 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
   return (
     <div className="flex min-h-screen flex-col">
       <TopNav />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-4 py-8 sm:px-6">
         <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-          <Card className="aspect-[2/3] overflow-hidden">
+          <Card className="mx-auto aspect-[2/3] w-full max-w-xs overflow-hidden lg:max-w-none">
             {series.poster_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -103,18 +103,18 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
                 {series.genre.join(" · ")}
               </p>
             )}
-            <h1 className="mt-2 font-display text-4xl uppercase sm:text-5xl">
+            <h1 className="mt-2 font-display text-3xl uppercase sm:text-5xl">
               {series.title}
             </h1>
             {series.tagline && (
-              <p className="mt-2 text-lg text-gray-400">{series.tagline}</p>
+              <p className="mt-2 text-base text-gray-400 sm:text-lg">{series.tagline}</p>
             )}
             {series.description && (
-              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-gray-400">
+              <p className="mt-4 max-w-2xl text-base leading-relaxed text-gray-400">
                 {series.description}
               </p>
             )}
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-sm text-gray-500">
               {series.view_count.toLocaleString()} views
             </p>
 
@@ -130,30 +130,32 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
               {!episodes.length ? (
                 <p className="mt-4 text-sm text-gray-400">No episodes yet.</p>
               ) : (
-                <ul className="mt-4 divide-y divide-white/[0.08]">
+                <ul className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-1 md:gap-0 md:divide-y md:divide-white/[0.08]">
                   {episodes.map((ep) => (
-                    <li key={ep.id}>
+                    <li key={ep.id} className="md:py-0">
                       <Link
                         href={`/watch/${ep.id}`}
-                        className="flex items-center gap-4 py-3 transition hover:bg-white/[0.03]"
+                        className="flex min-h-11 flex-col gap-2 rounded-lg border border-white/[0.08] p-3 transition hover:border-white/20 md:flex-row md:items-center md:gap-4 md:rounded-none md:border-0 md:p-0 md:py-3 md:hover:bg-white/[0.03]"
                       >
-                        <span className="w-8 text-sm text-gray-400">
+                        <span className="text-sm font-medium text-gray-400 md:w-8">
                           {ep.episode_number}
                         </span>
-                        <div className="h-14 w-10 shrink-0 overflow-hidden rounded border border-white/[0.08] bg-zinc-900">
+                        <div className="h-24 w-full shrink-0 overflow-hidden rounded border border-white/[0.08] bg-zinc-900 md:h-14 md:w-10">
                           {ep.thumbnail_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={ep.thumbnail_url}
-                              alt=""
+                              alt={`Episode ${ep.episode_number}`}
                               className="h-full w-full object-cover"
                             />
                           ) : null}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">{ep.title}</p>
+                          <p className="line-clamp-2 text-sm font-medium md:truncate">
+                            {ep.title}
+                          </p>
                           {ep.duration_seconds != null && ep.duration_seconds > 0 && (
-                            <p className="text-xs text-gray-400">
+                            <p className="text-sm text-gray-400">
                               {Math.floor(ep.duration_seconds / 60)}:
                               {String(ep.duration_seconds % 60).padStart(2, "0")}
                             </p>

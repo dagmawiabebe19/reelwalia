@@ -60,8 +60,10 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
             <p className="mt-2 max-w-lg text-sm text-gray-400 sm:text-base">{active.tagline}</p>
           )}
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button href={`/series/${active.slug}`}>Watch Now</Button>
-            <Button href={`/series/${active.slug}`} variant="secondary">
+            <Button href={`/series/${active.slug}`} className="min-h-11">
+              Watch Now
+            </Button>
+            <Button href={`/series/${active.slug}`} variant="secondary" className="min-h-11">
               More Info
             </Button>
           </div>

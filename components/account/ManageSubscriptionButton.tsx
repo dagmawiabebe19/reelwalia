@@ -29,7 +29,7 @@ export function ManageSubscriptionButton() {
         type="button"
         disabled={loading}
         onClick={() => void openPortal()}
-        className="rw-btn-secondary inline-flex items-center gap-2 text-sm"
+        className="rw-btn-secondary inline-flex w-full items-center justify-center gap-2 text-sm sm:w-auto"
       >
         {loading && <LoadingSpinner className="h-4 w-4" label="Opening billing portal" />}
         {loading ? "Opening…" : "Manage subscription"}

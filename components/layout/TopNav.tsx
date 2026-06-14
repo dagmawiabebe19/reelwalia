@@ -26,9 +26,12 @@ export async function TopNav() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-black/90 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-black/90 pt-[env(safe-area-inset-top)] backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="font-display text-2xl uppercase tracking-wide text-white">
+        <Link
+          href="/"
+          className="font-display text-xl uppercase tracking-wide text-white sm:text-2xl"
+        >
           Reel<span className="text-obsidian-red">Walia</span>
         </Link>
 
@@ -36,7 +39,7 @@ export async function TopNav() {
           {user ? (
             <Link
               href="/account"
-              className="flex items-center gap-2 rounded-full border border-white/[0.08] py-1 pl-1 pr-3 transition hover:border-white/20"
+              className="flex min-h-11 items-center gap-2 rounded-full border border-white/[0.08] py-1 pl-1 pr-3 transition hover:border-white/20"
             >
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -55,7 +58,7 @@ export async function TopNav() {
           ) : (
             <Link
               href="/auth/sign-in"
-              className="text-sm font-medium text-white transition hover:text-obsidian-red"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center px-3 text-sm font-medium text-white transition hover:text-obsidian-red"
             >
               Sign In
             </Link>

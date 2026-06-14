@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Anton, Inter } from "next/font/google";
 import { getSiteUrlFromEnv } from "@/lib/site-url";
 import "./globals.css";
@@ -19,6 +19,12 @@ const siteUrl = getSiteUrlFromEnv();
 const defaultTitle = "ReelWalia — Vertical drama streaming";
 const defaultDescription =
   "Bite-sized vertical dramas from Walia Studios. Watch anywhere, one episode at a time.";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -49,7 +55,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="bg-black">
-      <body className={`${inter.variable} ${anton.variable} min-h-screen bg-black text-white`}>
+      <body
+        className={`${inter.variable} ${anton.variable} min-h-screen overflow-x-hidden bg-black text-base text-white`}
+      >
         {children}
       </body>
     </html>
