@@ -18,7 +18,7 @@ const anton = Anton({
 const siteUrl = getSiteUrlFromEnv();
 const defaultTitle = "ReelWalia — Vertical drama streaming";
 const defaultDescription =
-  "Bite-sized vertical dramas from Walia Studios. Watch anywhere, one episode at a time.";
+  "Stories That Move You. Bite-sized vertical dramas from Walia Studios.";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -32,6 +32,7 @@ export const metadata: Metadata = {
   description: defaultDescription,
   icons: {
     icon: "/icon.svg",
+    apple: "/apple-icon.svg",
   },
   openGraph: {
     title: defaultTitle,

@@ -18,7 +18,14 @@ const config: Config = {
       },
       fontFamily: {
         display: ["var(--font-display)", "sans-serif"],
-        sans: ["var(--font-sans)", "sans-serif"],
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+      },
+      letterSpacing: {
+        streaming: "0.06em",
+      },
+      boxShadow: {
+        "card-hover": "0 12px 40px rgba(0, 0, 0, 0.55)",
+        "hero-vignette": "0 4px 32px rgba(0, 0, 0, 0.75)",
       },
     },
   },

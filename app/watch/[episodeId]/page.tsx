@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { TopNav } from "@/components/layout/TopNav";
+import { ViewCount } from "@/components/ui/ViewCount";
 import { EpisodePicker } from "@/components/watch/EpisodePicker";
 import { WatchPaywall } from "@/components/watch/WatchPaywall";
 import { WatchPostCheckout } from "@/components/watch/WatchPostCheckout";
 import { canWatchEpisode, hasActiveSubscription, isEpisodeFree } from "@/lib/access";
 import { getNextEpisode } from "@/lib/episodes";
+import { resolveInitialProgress } from "@/lib/watch-progress";
 import { shouldAutoStartWatch } from "@/lib/watch-playback";
 import { verifyCheckoutSession } from "@/lib/stripe/server";
 import { createClient } from "@/lib/supabase/server";
@@ -54,6 +56,7 @@ async function getWatchData(
 
   let profile = null;
   let initialProgress = 0;
+  const isBingeNavigation = searchParams.autoplay === "true";
 
   if (user) {
     const { data: p } = await supabase
@@ -65,11 +68,11 @@ async function getWatchData(
 
     const { data: history } = await supabase
       .from("watch_history")
-      .select("progress_seconds")
+      .select("progress_seconds, completed")
       .eq("user_id", user.id)
       .eq("episode_id", episodeId)
       .maybeSingle();
-    initialProgress = history?.progress_seconds ?? 0;
+    initialProgress = resolveInitialProgress(history, isBingeNavigation);
   }
 
   const freeCount = series.free_episode_count ?? 5;
@@ -197,21 +200,19 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
           <div className="order-3 w-full max-w-md lg:max-w-none">
             <Link
               href={`/series/${series.slug}`}
-              className="inline-flex min-h-11 items-center text-sm text-gray-400 hover:text-obsidian-red"
+              className="inline-flex min-h-11 items-center text-sm font-medium text-zinc-400 transition hover:text-obsidian-red"
             >
               {series.title}
             </Link>
-            <h1 className="mt-1 font-display text-xl uppercase sm:text-2xl">
+            <h1 className="mt-2 font-display text-xl uppercase leading-tight tracking-wide text-white sm:text-2xl">
               {episode.title}
             </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Episode {episode.episode_number} ·{" "}
-              {(episode.view_count ?? 0).toLocaleString()} views
+            <p className="rw-caption mt-1.5">
+              Episode {episode.episode_number}
+              <ViewCount count={episode.view_count ?? 0} inline prefix=" · " />
             </p>
             {(episode.description || series.description) && (
-              <p className="mt-3 text-base leading-relaxed text-gray-400">
-                {episode.description ?? series.description}
-              </p>
+              <p className="rw-body mt-4">{episode.description ?? series.description}</p>
             )}
           </div>
         </div>

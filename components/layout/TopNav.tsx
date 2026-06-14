@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
 import { createClient } from "@/lib/supabase/server";
 
 export async function TopNav() {
@@ -26,39 +27,38 @@ export async function TopNav() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-black/90 pt-[env(safe-area-inset-top)] backdrop-blur-sm">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-        <Link
-          href="/"
-          className="font-display text-xl uppercase tracking-wide text-white sm:text-2xl"
-        >
-          Reel<span className="text-obsidian-red">Walia</span>
+    <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-black/80 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6">
+        <Link href="/" className="transition hover:opacity-90">
+          <ReelWaliaLogo variant="lockup" markClassName="h-8 w-8 sm:h-9 sm:w-9" />
         </Link>
 
-        <nav className="flex items-center gap-4">
+        <nav className="flex items-center gap-3 sm:gap-4">
           {user ? (
             <Link
               href="/account"
-              className="flex min-h-11 items-center gap-2 rounded-full border border-white/[0.08] py-1 pl-1 pr-3 transition hover:border-white/20"
+              className="flex min-h-11 items-center gap-2 rounded-full border border-white/[0.08] py-1 pl-1 pr-3 transition duration-200 hover:border-white/25 hover:bg-white/[0.04]"
             >
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={avatarUrl}
                   alt=""
-                  className="h-8 w-8 rounded-full object-cover"
+                  className="h-8 w-8 rounded-full object-cover ring-1 ring-white/10"
                 />
               ) : (
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-obsidian-red text-sm font-semibold">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-obsidian-red text-sm font-bold">
                   {displayName?.charAt(0).toUpperCase()}
                 </span>
               )}
-              <span className="hidden text-sm text-gray-400 sm:inline">{displayName}</span>
+              <span className="hidden text-sm font-medium text-zinc-400 sm:inline">
+                {displayName}
+              </span>
             </Link>
           ) : (
             <Link
               href="/auth/sign-in"
-              className="inline-flex min-h-11 min-w-11 items-center justify-center px-3 text-sm font-medium text-white transition hover:text-obsidian-red"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-3 text-sm font-semibold tracking-wide text-white transition duration-200 hover:bg-white/[0.06] hover:text-obsidian-red"
             >
               Sign In
             </Link>

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
 
 function CheckIcon() {
   return (
@@ -95,10 +96,8 @@ function SignInForm() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-black px-4">
       <div className="w-full max-w-md rounded-xl border border-white/[0.08] bg-black p-6 sm:p-8">
-        <p className="text-center font-display text-lg uppercase tracking-wide text-white">
-          Reel<span className="text-obsidian-red">Walia</span>
-        </p>
-        <h1 className="mt-3 text-center font-display text-2xl uppercase">Sign In</h1>
+        <ReelWaliaLogo variant="lockup-tagline" className="mx-auto" markClassName="h-11 w-11" />
+        <h1 className="mt-6 text-center font-display text-2xl uppercase tracking-wide">Sign In</h1>
         <p className="mt-2 text-center text-sm text-gray-400">
           Stream bite-sized vertical dramas from Walia Studios. Sign in to save
           your progress and manage your subscription.
@@ -198,7 +197,8 @@ export function SignInPageClient() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-black">
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-black">
+          <ReelWaliaLogo variant="lockup" markClassName="h-10 w-10" />
           <LoadingSpinner />
           <p className="text-sm text-gray-400">Loading…</p>
         </div>

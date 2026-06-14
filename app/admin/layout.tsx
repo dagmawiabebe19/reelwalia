@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
 import { requireAdmin } from "@/lib/admin";
 
 export default async function AdminLayout({
@@ -12,8 +13,11 @@ export default async function AdminLayout({
     <div className="min-h-screen bg-black">
       <header className="border-b border-white/[0.08]">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-          <Link href="/admin/series" className="font-display text-lg uppercase">
-            Reel<span className="text-obsidian-red">Walia</span> Admin
+          <Link href="/admin/series" className="flex items-center gap-2">
+            <ReelWaliaLogo variant="lockup" markClassName="h-7 w-7" />
+            <span className="font-display text-sm uppercase tracking-wide text-zinc-400">
+              Admin
+            </span>
           </Link>
           <Link href="/" className="text-sm text-gray-400 hover:text-white">
             View site

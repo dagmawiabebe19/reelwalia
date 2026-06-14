@@ -34,7 +34,7 @@ export function EpisodePicker({
               : "border-white/[0.08] hover:border-white/20"
           } ${ep.locked ? "opacity-80" : ""}`}
         >
-          <div className="aspect-[2/3] bg-zinc-900">
+          <div className="aspect-[9/16] bg-zinc-900">
             {ep.thumbnail_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -71,7 +71,7 @@ export function EpisodePicker({
         >
           &larr; Series page
         </Link>
-        <h3 className="mt-3 font-display text-sm uppercase">Episodes</h3>
+        <h3 className="rw-section-title mt-3 text-base sm:mt-4 sm:text-sm">Episodes</h3>
         <div className="mt-3">{grid}</div>
       </aside>
 
@@ -84,7 +84,7 @@ export function EpisodePicker({
           >
             &larr; Series page
           </Link>
-          <h3 className="font-display text-sm uppercase">Episodes</h3>
+          <h3 className="rw-section-title text-sm">Episodes</h3>
           {grid}
         </div>
       </aside>

@@ -4,6 +4,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { WatchEpisodeLink } from "@/components/watch/WatchEpisodeLink";
 import { WatchlistButton } from "@/components/series/WatchlistButton";
 import { Card } from "@/components/ui/Card";
+import { ViewCount } from "@/components/ui/ViewCount";
 import { canWatchEpisode } from "@/lib/access";
 import { createClient } from "@/lib/supabase/server";
 
@@ -81,7 +82,7 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
       <TopNav />
       <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-4 py-8 sm:px-6">
         <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-          <Card className="mx-auto aspect-[2/3] w-full max-w-xs overflow-hidden lg:max-w-none">
+          <Card className="mx-auto aspect-[2/3] w-full max-w-xs overflow-hidden shadow-card-hover lg:max-w-none">
             {series.poster_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -98,24 +99,18 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
 
           <div>
             {series.genre?.length > 0 && (
-              <p className="text-xs font-medium uppercase tracking-widest text-obsidian-red">
-                {series.genre.join(" · ")}
-              </p>
+              <p className="rw-genre-label">{series.genre.join(" · ")}</p>
             )}
-            <h1 className="mt-2 font-display text-3xl uppercase sm:text-5xl">
-              {series.title}
-            </h1>
+            <h1 className="rw-page-title mt-2">{series.title}</h1>
             {series.tagline && (
-              <p className="mt-2 text-base text-gray-400 sm:text-lg">{series.tagline}</p>
+              <p className="mt-3 text-base leading-relaxed text-zinc-300 sm:text-lg">
+                {series.tagline}
+              </p>
             )}
             {series.description && (
-              <p className="mt-4 max-w-2xl text-base leading-relaxed text-gray-400">
-                {series.description}
-              </p>
+              <p className="rw-body mt-4 max-w-2xl">{series.description}</p>
             )}
-            <p className="mt-2 text-sm text-gray-500">
-              {series.view_count.toLocaleString()} views
-            </p>
+            <ViewCount count={series.view_count} className="mt-2 text-sm text-gray-500" />
 
             <div className="mt-6 flex flex-wrap gap-3">
               {firstEpisode && (
@@ -129,8 +124,8 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
               <WatchlistButton seriesId={series.id} initialInWatchlist={inWatchlist} />
             </div>
 
-            <section className="mt-10">
-              <h2 className="font-display text-xl uppercase">Episodes</h2>
+            <section className="mt-10 sm:mt-12">
+              <h2 className="rw-section-title">Episodes</h2>
               {!episodes.length ? (
                 <p className="mt-4 text-sm text-gray-400">No episodes yet.</p>
               ) : (
@@ -139,9 +134,9 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
                     <li key={ep.id}>
                       <WatchEpisodeLink
                         episodeId={ep.id}
-                        className="group block min-h-11 transition hover:opacity-90"
+                        className="group block min-h-11 transition duration-200 hover:opacity-95"
                       >
-                        <div className="relative aspect-[9/16] overflow-hidden rounded-lg border border-white/[0.08] bg-zinc-900">
+                        <div className="rw-card rw-card-hover rw-card-media relative aspect-[9/16] overflow-hidden rounded-lg bg-zinc-900">
                           {ep.thumbnail_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -173,12 +168,14 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
                             </span>
                           ) : null}
                         </div>
-                        <p className="mt-1.5 text-xs text-gray-400">
+                        <p className="rw-caption mt-2">
                           Episode {ep.episode_number}
                         </p>
-                        <p className="line-clamp-2 text-sm font-medium">{ep.title}</p>
+                        <p className="line-clamp-2 text-sm font-semibold tracking-tight text-white">
+                          {ep.title}
+                        </p>
                         {ep.duration_seconds != null && ep.duration_seconds > 0 && (
-                          <p className="text-xs text-gray-500">
+                          <p className="rw-caption mt-0.5">
                             {Math.floor(ep.duration_seconds / 60)}:
                             {String(ep.duration_seconds % 60).padStart(2, "0")}
                           </p>

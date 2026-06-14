@@ -10,6 +10,11 @@ export function markWatchNavigation(): void {
   }
 }
 
+/** Chained binge navigation — keeps autoplay intent alive across episode transitions. */
+export function markBingeContinuation(): void {
+  markWatchNavigation();
+}
+
 export function watchEpisodeHref(episodeId: string): string {
   return `/watch/${episodeId}?autoplay=true`;
 }

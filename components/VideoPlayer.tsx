@@ -13,15 +13,23 @@ import {
   type TouchEvent,
 } from "react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { ReelWaliaMark } from "@/components/brand/ReelWaliaLogo";
 import { AutoplayOverlay } from "@/components/watch/AutoplayOverlay";
 import { EndOfSeriesOverlay } from "@/components/watch/EndOfSeriesOverlay";
 import type { Series } from "@/lib/types/database";
 import {
   consumeUnmutedIntent,
+  markBingeContinuation,
   persistAudioPreference,
   readPreferUnmuted,
   watchEpisodeHref,
 } from "@/lib/watch-playback";
+
+const autoplayLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV === "development") {
+    console.log(...args);
+  }
+};
 
 const AUToplay_THRESHOLD = 5;
 const FULLSCREEN_STORAGE_KEY = "rw-maintain-fullscreen";
@@ -114,6 +122,7 @@ export function VideoPlayer({
   const navigatedRef = useRef(false);
   const autoPlayStartedRef = useRef(false);
   const autoPlayInFlightRef = useRef(false);
+  const playbackReadyRef = useRef(false);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -156,7 +165,7 @@ export function VideoPlayer({
       autoPlayStartedRef.current = true;
       setPlaying(true);
       setIsInitialLoad(false);
-      console.log("[autoplay] play_succeeded");
+      autoplayLog("[autoplay] play_succeeded");
       return true;
     } catch {
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -165,7 +174,7 @@ export function VideoPlayer({
         autoPlayStartedRef.current = true;
         setPlaying(true);
         setIsInitialLoad(false);
-        console.log("[autoplay] play_succeeded");
+        autoplayLog("[autoplay] play_succeeded");
         return true;
       } catch {
         try {
@@ -176,11 +185,11 @@ export function VideoPlayer({
           setPlaying(true);
           setIsInitialLoad(false);
           setShowTapForSound(true);
-          console.log("[autoplay] play_blocked", { fallback: "muted" });
+          autoplayLog("[autoplay] play_blocked", { fallback: "muted" });
           return true;
         } catch {
           setPlaying(false);
-          console.log("[autoplay] play_blocked", { fallback: "manual" });
+          autoplayLog("[autoplay] play_blocked", { fallback: "manual" });
           return false;
         }
       }
@@ -322,29 +331,33 @@ export function VideoPlayer({
       }
       navigatedRef.current = true;
       const video = videoRef.current;
-      if (video && !video.muted) {
-        persistAudioPreference(true);
+      if (video) {
+        if (!video.muted) {
+          persistAudioPreference(true);
+        }
+        void saveProgress(video.duration || video.currentTime, true);
       }
       if (screenfull.isEnabled && screenfull.isFullscreen) {
         sessionStorage.setItem(FULLSCREEN_STORAGE_KEY, "1");
       } else if (isFullscreen) {
         sessionStorage.setItem(FULLSCREEN_STORAGE_KEY, "1");
       }
-      console.log("[autoplay] auto_navigated", {
+      markBingeContinuation();
+      autoplayLog("[autoplay] auto_navigated", {
         fromEpisode: episodeId,
         toEpisode: nextEpisode.id,
         immediate,
       });
       router.push(watchEpisodeHref(nextEpisode.id));
     },
-    [autoplayCanceled, episodeId, isFullscreen, nextEpisode, router]
+    [autoplayCanceled, episodeId, isFullscreen, nextEpisode, router, saveProgress]
   );
 
   const handleCancelAutoplay = useCallback(() => {
     setAutoplayCanceled(true);
     setCountdownVisible(false);
     countdownStartedRef.current = false;
-    console.log("[autoplay] countdown_canceled", { episodeId });
+    autoplayLog("[autoplay] countdown_canceled", { episodeId });
   }, [episodeId]);
 
   useEffect(() => {
@@ -357,6 +370,7 @@ export function VideoPlayer({
     countdownStartedRef.current = false;
     autoPlayStartedRef.current = false;
     autoPlayInFlightRef.current = false;
+    playbackReadyRef.current = false;
   }, [episodeId]);
 
   useEffect(() => {
@@ -644,12 +658,18 @@ export function VideoPlayer({
 
   const handleTimeUpdate = (time: number, total: number) => {
     setCurrentTime(time);
+
     if (
       !playing ||
+      !playbackReadyRef.current ||
       autoplayCanceled ||
       !nextEpisode ||
       loadError ||
-      showEndOfSeries
+      showEndOfSeries ||
+      !Number.isFinite(total) ||
+      total <= AUToplay_THRESHOLD + 1 ||
+      !Number.isFinite(time) ||
+      time < 1
     ) {
       return;
     }
@@ -672,7 +692,7 @@ export function VideoPlayer({
       if (!countdownStartedRef.current) {
         countdownStartedRef.current = true;
         if (!nextEpisode.locked) {
-          console.log("[autoplay] countdown_started", {
+          autoplayLog("[autoplay] countdown_started", {
             episodeId,
             nextEpisodeId: nextEpisode.id,
           });
@@ -694,7 +714,7 @@ export function VideoPlayer({
 
     if (!nextEpisode) {
       setShowEndOfSeries(true);
-      console.log("[autoplay] series_completed", { seriesSlug });
+      autoplayLog("[autoplay] series_completed", { seriesSlug });
     }
   };
 
@@ -785,6 +805,7 @@ export function VideoPlayer({
             onPlaying={() => {
               setIsBuffering(false);
               setIsInitialLoad(false);
+              playbackReadyRef.current = true;
               const video = videoRef.current;
               if (video && !video.muted) {
                 persistAudioPreference(true);
@@ -807,8 +828,9 @@ export function VideoPlayer({
           </video>
 
           {(isInitialLoad || isBuffering) && (
-            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-black/40">
-              <LoadingSpinner className="h-10 w-10" label="Loading video" />
+            <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-black/40">
+              <ReelWaliaMark className="h-10 w-10 animate-pulse" />
+              <LoadingSpinner className="h-8 w-8" label="Loading video" />
             </div>
           )}
 

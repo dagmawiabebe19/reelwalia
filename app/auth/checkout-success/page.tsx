@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
 import { createClient } from "@/lib/supabase/client";
 
 function CheckoutSuccessInner() {
@@ -82,9 +83,7 @@ function CheckoutSuccessInner() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-black px-4">
       <div className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-zinc-950 p-8 text-center">
-        <p className="font-display text-lg uppercase tracking-wide">
-          Reel<span className="text-obsidian-red">Walia</span>
-        </p>
+        <ReelWaliaLogo variant="lockup-tagline" className="mx-auto" markClassName="h-11 w-11" />
 
         {loading && (
           <p className="mt-6 text-sm text-gray-400">Confirming your subscription…</p>

@@ -20,7 +20,7 @@ interface AutoplayOverlayProps {
 }
 
 const pillPosition =
-  "pointer-events-auto absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-40";
+  "pointer-events-auto absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-40 sm:right-4 sm:top-[max(1rem,env(safe-area-inset-top))]";
 
 export function AutoplayOverlay({
   nextEpisode,

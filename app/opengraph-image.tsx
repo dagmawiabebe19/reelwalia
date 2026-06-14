@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "ReelWalia — Vertical drama streaming";
+export const alt = "ReelWalia — Stories That Move You";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -20,30 +20,55 @@ export default function OpenGraphImage() {
           fontFamily: "system-ui, sans-serif",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            fontSize: 72,
-            fontWeight: 900,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-          }}
-        >
-          <span>Reel</span>
-          <span style={{ color: "#E03C2F" }}>Walia</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
+          <svg
+            width="96"
+            height="96"
+            viewBox="0 0 48 48"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect x="14" y="5" width="20" height="38" rx="5" stroke="#FFFFFF" strokeWidth="2.75" />
+            <path d="M21 17V31L33 24L21 17Z" fill="#E03C2F" />
+            <path d="M19 9H25" stroke="#E03C2F" strokeWidth="2.75" strokeLinecap="round" />
+          </svg>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span
+              style={{
+                fontSize: 68,
+                fontWeight: 900,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                lineHeight: 1,
+              }}
+            >
+              Reel
+            </span>
+            <span
+              style={{
+                fontSize: 68,
+                fontWeight: 900,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                lineHeight: 1,
+                color: "#E03C2F",
+              }}
+            >
+              Walia
+            </span>
+          </div>
         </div>
         <p
           style={{
             display: "flex",
-            marginTop: 24,
-            fontSize: 28,
-            color: "#9CA3AF",
-            maxWidth: 720,
-            textAlign: "center",
-            lineHeight: 1.4,
+            marginTop: 28,
+            fontSize: 22,
+            letterSpacing: "0.28em",
+            textTransform: "uppercase",
+            color: "#A1A1AA",
           }}
         >
-          Bite-sized vertical dramas from Walia Studios
+          Stories That Move You
         </p>
       </div>
     ),

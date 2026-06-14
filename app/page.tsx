@@ -77,7 +77,7 @@ export default async function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
       <TopNav />
-      <main className="mx-auto w-full max-w-7xl flex-1 space-y-12 px-4 py-8 sm:px-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 space-y-10 px-4 py-6 sm:space-y-14 sm:px-6 sm:py-10">
         {isEmpty ? (
           <ComingSoon />
         ) : (

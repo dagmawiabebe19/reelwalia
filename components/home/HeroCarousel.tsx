@@ -35,47 +35,50 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
   const active = items[activeIndex];
 
   return (
-    <section className="relative overflow-hidden rounded-xl border border-white/[0.08]">
+    <section className="relative overflow-hidden rounded-xl border border-white/[0.08] shadow-hero-vignette">
       <div className="relative aspect-[21/9] min-h-[280px] w-full bg-gradient-to-br from-zinc-900 to-black sm:min-h-[360px]">
         {active.banner_url || active.poster_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={active.banner_url ?? active.poster_url ?? ""}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover opacity-60"
+            className="absolute inset-0 h-full w-full object-cover opacity-70 transition-opacity duration-700"
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black/25" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(224,60,47,0.12),transparent_60%)]" />
 
-        <div className="relative flex h-full flex-col justify-end p-6 sm:p-10">
+        <div className="relative flex h-full flex-col justify-end p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-10">
           {active.genre?.length > 0 && (
-            <p className="mb-2 text-xs font-medium uppercase tracking-widest text-obsidian-red">
+            <p className="rw-genre-label mb-2.5">
               {active.genre.slice(0, 2).join(" · ")}
             </p>
           )}
-          <h1 className="font-display text-3xl uppercase leading-tight sm:text-5xl">
-            {active.title}
-          </h1>
+          <h1 className="rw-hero-title max-w-[95%] sm:max-w-2xl">{active.title}</h1>
           {active.tagline && (
-            <p className="mt-2 max-w-lg text-sm text-gray-400 sm:text-base">{active.tagline}</p>
+            <p className="rw-hero-tagline">{active.tagline}</p>
           )}
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-7 flex flex-wrap gap-3 sm:mt-8 sm:gap-4">
             {active.firstEpisodeId ? (
               <WatchEpisodeLink
                 episodeId={active.firstEpisodeId}
-                className="rw-btn-primary inline-flex min-h-11 items-center justify-center"
+                className="rw-btn-primary min-w-[140px] flex-1 sm:flex-none"
               >
                 Watch Now
               </WatchEpisodeLink>
             ) : (
-              <Button href={`/series/${active.slug}`} className="min-h-11">
+              <Button href={`/series/${active.slug}`} className="min-w-[140px] flex-1 sm:flex-none">
                 Watch Now
               </Button>
             )}
-            <Button href={`/series/${active.slug}`} variant="secondary" className="min-h-11">
+            <Button
+              href={`/series/${active.slug}`}
+              variant="secondary"
+              className="min-w-[120px] flex-1 sm:flex-none"
+            >
               More Info
             </Button>
           </div>
@@ -90,7 +93,7 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
               type="button"
               aria-label={`Show ${item.title}`}
               onClick={() => setActiveIndex(index)}
-              className={`h-1.5 rounded-full transition-all ${
+              className={`h-1.5 rounded-full transition-all duration-300 ${
                 index === activeIndex
                   ? "w-8 bg-obsidian-red"
                   : "w-4 bg-white/30 hover:bg-white/50"
