@@ -25,7 +25,7 @@ const config: Config = {
       },
       boxShadow: {
         "card-hover": "0 12px 40px rgba(0, 0, 0, 0.55)",
-        "hero-vignette": "0 4px 32px rgba(0, 0, 0, 0.75)",
+        "hero-vignette": "0 8px 40px rgba(0, 0, 0, 0.45)",
       },
     },
   },
