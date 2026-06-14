@@ -3,9 +3,11 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { PaywallModal } from "@/components/PaywallModal";
+import type { PaywallTrigger } from "@/lib/analytics/funnel";
 
 interface WatchPaywallProps {
   episodeId: string;
+  seriesSlug: string;
   posterUrl: string | null;
   seriesTitle: string;
   episodeNumber: number;
@@ -15,6 +17,7 @@ interface WatchPaywallProps {
 
 function WatchPaywallInner({
   episodeId,
+  seriesSlug,
   posterUrl,
   seriesTitle,
   episodeNumber,
@@ -24,6 +27,9 @@ function WatchPaywallInner({
   const searchParams = useSearchParams();
   const subscribed = searchParams.get("subscribed") === "true";
   const [modalOpen, setModalOpen] = useState(showPaywall && !subscribed);
+  const [paywallTrigger, setPaywallTrigger] = useState<PaywallTrigger>(
+    "direct_navigation"
+  );
 
   useEffect(() => {
     if (subscribed) setModalOpen(false);
@@ -53,7 +59,10 @@ function WatchPaywallInner({
           {showPaywall && !modalOpen && (
             <button
               type="button"
-              onClick={() => setModalOpen(true)}
+              onClick={() => {
+                setPaywallTrigger("locked_episode_click");
+                setModalOpen(true);
+              }}
               className="rw-btn-primary mt-4"
             >
               Subscribe to watch
@@ -66,6 +75,8 @@ function WatchPaywallInner({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         episodeId={episodeId}
+        seriesSlug={seriesSlug}
+        trigger={paywallTrigger}
         isAuthenticated={isAuthenticated}
       />
     </>

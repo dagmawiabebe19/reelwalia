@@ -1,6 +1,7 @@
 "use client";
 
 import { PaywallModal } from "@/components/PaywallModal";
+import type { PaywallTrigger } from "@/lib/analytics/funnel";
 import { useEffect, useState } from "react";
 
 export interface AutoplayNextEpisode {
@@ -14,6 +15,7 @@ export interface AutoplayNextEpisode {
 
 interface AutoplayOverlayProps {
   nextEpisode: AutoplayNextEpisode;
+  seriesSlug: string;
   countdownSeconds: number;
   isAuthenticated?: boolean;
   autoOpenPaywall?: boolean;
@@ -25,15 +27,22 @@ const pillPosition =
 
 export function AutoplayOverlay({
   nextEpisode,
+  seriesSlug,
   countdownSeconds,
   isAuthenticated = false,
   autoOpenPaywall = false,
   onCancel,
 }: AutoplayOverlayProps) {
   const [paywallOpen, setPaywallOpen] = useState(autoOpenPaywall);
+  const [paywallTrigger, setPaywallTrigger] = useState<PaywallTrigger>(
+    autoOpenPaywall ? "end_of_free_trial" : "manual_subscribe_button"
+  );
 
   useEffect(() => {
-    if (autoOpenPaywall) setPaywallOpen(true);
+    if (autoOpenPaywall) {
+      setPaywallOpen(true);
+      setPaywallTrigger("end_of_free_trial");
+    }
   }, [autoOpenPaywall]);
 
   if (nextEpisode.locked) {
@@ -41,7 +50,10 @@ export function AutoplayOverlay({
       <>
         <button
           type="button"
-          onClick={() => setPaywallOpen(true)}
+          onClick={() => {
+            setPaywallTrigger("manual_subscribe_button");
+            setPaywallOpen(true);
+          }}
           className={`${pillPosition} flex max-w-[120px] items-center gap-1.5 rounded-full border border-white/15 bg-black/50 py-1.5 pl-3 pr-3 backdrop-blur-md`}
         >
           <svg
@@ -58,6 +70,8 @@ export function AutoplayOverlay({
           open={paywallOpen}
           onClose={() => setPaywallOpen(false)}
           episodeId={nextEpisode.id}
+          seriesSlug={seriesSlug}
+          trigger={paywallTrigger}
           isAuthenticated={isAuthenticated}
         />
       </>

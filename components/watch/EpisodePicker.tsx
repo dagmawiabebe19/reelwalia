@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { WatchEpisodeLink } from "@/components/watch/WatchEpisodeLink";
+import { trackEpisodeAdvanced } from "@/lib/analytics/funnel";
 
 export interface EpisodePickerItem {
   id: string;
@@ -22,12 +23,31 @@ export function EpisodePicker({
   currentEpisodeId,
   seriesSlug,
 }: EpisodePickerProps) {
+  const currentEpisode = episodes.find((ep) => ep.id === currentEpisodeId);
+  const currentEpisodeNumber = currentEpisode?.episode_number ?? 0;
+
+  const handleEpisodeTap = (targetEpisodeId: string, targetEpisodeNumber: number) => {
+    if (
+      targetEpisodeId === currentEpisodeId ||
+      targetEpisodeNumber !== currentEpisodeNumber + 1
+    ) {
+      return;
+    }
+    trackEpisodeAdvanced({
+      from_episode_id: currentEpisodeId,
+      to_episode_id: targetEpisodeId,
+      series_slug: seriesSlug,
+      method: "manual_tap",
+    });
+  };
+
   const grid = (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-2">
       {episodes.map((ep) => (
         <WatchEpisodeLink
           key={ep.id}
           episodeId={ep.id}
+          onPointerDown={() => handleEpisodeTap(ep.id, ep.episode_number)}
           className={`relative min-h-11 overflow-hidden rounded border text-center transition ${
             ep.id === currentEpisodeId
               ? "border-obsidian-red bg-obsidian-red/10"

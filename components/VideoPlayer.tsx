@@ -24,6 +24,11 @@ import {
   readPreferUnmuted,
   watchEpisodeHref,
 } from "@/lib/watch-playback";
+import {
+  trackEpisodeAdvanced,
+  trackEpisodeCompleted,
+  trackEpisodeStarted,
+} from "@/lib/analytics/funnel";
 
 const autoplayLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === "development") {
@@ -53,9 +58,12 @@ interface VideoPlayerProps {
   poster?: string | null;
   subtitleUrl?: string | null;
   episodeId: string;
+  episodeNumber: number;
   seriesId: string;
   seriesSlug: string;
   seriesTitle: string;
+  isFreeEpisode?: boolean;
+  isSubscribed?: boolean;
   nextEpisode?: NextEpisodeData | null;
   otherSeries?: OtherSeriesData[];
   initialProgress?: number;
@@ -102,9 +110,12 @@ export function VideoPlayer({
   poster,
   subtitleUrl,
   episodeId,
+  episodeNumber,
   seriesId,
   seriesSlug,
   seriesTitle,
+  isFreeEpisode = false,
+  isSubscribed = false,
   nextEpisode = null,
   otherSeries = [],
   initialProgress = 0,
@@ -123,6 +134,8 @@ export function VideoPlayer({
   const autoPlayStartedRef = useRef(false);
   const autoPlayInFlightRef = useRef(false);
   const playbackReadyRef = useRef(false);
+  const episodeStartedTrackedRef = useRef(false);
+  const episodeCompletedTrackedRef = useRef(false);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -344,6 +357,12 @@ export function VideoPlayer({
         sessionStorage.setItem(FULLSCREEN_STORAGE_KEY, "1");
       }
       markBingeContinuation();
+      trackEpisodeAdvanced({
+        from_episode_id: episodeId,
+        to_episode_id: nextEpisode.id,
+        series_slug: seriesSlug,
+        method: "autoplay",
+      });
       autoplayLog("[autoplay] auto_navigated", {
         fromEpisode: episodeId,
         toEpisode: nextEpisode.id,
@@ -351,7 +370,7 @@ export function VideoPlayer({
       });
       router.push(watchEpisodeHref(nextEpisode.id));
     },
-    [autoplayCanceled, episodeId, isFullscreen, nextEpisode, router, saveProgress]
+    [autoplayCanceled, episodeId, isFullscreen, nextEpisode, router, saveProgress, seriesSlug]
   );
 
   const handleCancelAutoplay = useCallback(() => {
@@ -373,7 +392,37 @@ export function VideoPlayer({
     autoPlayStartedRef.current = false;
     autoPlayInFlightRef.current = false;
     playbackReadyRef.current = false;
+    episodeStartedTrackedRef.current = false;
+    episodeCompletedTrackedRef.current = false;
   }, [episodeId]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const onPlaying = () => {
+      if (episodeStartedTrackedRef.current) return;
+      episodeStartedTrackedRef.current = true;
+      trackEpisodeStarted({
+        episode_id: episodeId,
+        series_slug: seriesSlug,
+        episode_number: episodeNumber,
+        is_free: isFreeEpisode,
+        is_authenticated: isAuthenticated,
+        is_subscribed: isSubscribed,
+      });
+    };
+
+    video.addEventListener("playing", onPlaying);
+    return () => video.removeEventListener("playing", onPlaying);
+  }, [
+    episodeId,
+    episodeNumber,
+    isAuthenticated,
+    isFreeEpisode,
+    isSubscribed,
+    seriesSlug,
+  ]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -662,6 +711,24 @@ export function VideoPlayer({
     setCurrentTime(time);
 
     if (
+      !episodeCompletedTrackedRef.current &&
+      Number.isFinite(total) &&
+      total > 0 &&
+      Number.isFinite(time) &&
+      time >= total * 0.9
+    ) {
+      episodeCompletedTrackedRef.current = true;
+      trackEpisodeCompleted({
+        episode_id: episodeId,
+        series_slug: seriesSlug,
+        episode_number: episodeNumber,
+        watch_time_seconds: Math.floor(time),
+        total_duration_seconds: Math.floor(total),
+        completion_percentage: Math.min(100, Math.round((time / total) * 100)),
+      });
+    }
+
+    if (
       !playing ||
       !playbackReadyRef.current ||
       autoplayCanceled ||
@@ -875,6 +942,7 @@ export function VideoPlayer({
           {(countdownVisible || showEndPaywall) && nextEpisode && !showEndOfSeries && (
             <AutoplayOverlay
               nextEpisode={nextEpisode}
+              seriesSlug={seriesSlug}
               countdownSeconds={countdownSeconds}
               isAuthenticated={isAuthenticated}
               autoOpenPaywall={showEndPaywall}

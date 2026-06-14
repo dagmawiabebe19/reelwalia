@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   STRIPE_PLANS,
   formatDailyPrice,
   formatUsd,
+  getPlanDisplay,
   savingsBadge,
   type StripePlanKey,
 } from "@/lib/stripe/plans";
+import {
+  trackPaywallViewed,
+  trackSubscriptionCheckoutStarted,
+  type PaywallTrigger,
+} from "@/lib/analytics/funnel";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
 
@@ -15,6 +21,8 @@ interface PaywallModalProps {
   open: boolean;
   onClose: () => void;
   episodeId?: string;
+  seriesSlug?: string;
+  trigger?: PaywallTrigger;
   isAuthenticated?: boolean;
 }
 
@@ -22,14 +30,22 @@ export function PaywallModal({
   open,
   onClose,
   episodeId,
+  seriesSlug,
+  trigger,
   isAuthenticated = false,
 }: PaywallModalProps) {
   const [selected, setSelected] = useState<StripePlanKey>("1month");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const paywallViewedRef = useRef(false);
+  const checkoutStartedRef = useRef(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      paywallViewedRef.current = false;
+      checkoutStartedRef.current = false;
+      return;
+    }
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -45,11 +61,34 @@ export function PaywallModal({
     };
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open || paywallViewedRef.current || !trigger || !episodeId || !seriesSlug) {
+      return;
+    }
+    paywallViewedRef.current = true;
+    trackPaywallViewed({
+      episode_id: episodeId,
+      series_slug: seriesSlug,
+      trigger,
+    });
+  }, [open, trigger, episodeId, seriesSlug]);
+
   if (!open) return null;
 
   const handleCheckout = async () => {
+    if (checkoutStartedRef.current) return;
+    checkoutStartedRef.current = true;
     setLoading(true);
     setError(null);
+
+    const plan = getPlanDisplay(selected);
+    trackSubscriptionCheckoutStarted({
+      plan: selected,
+      price_amount: plan.amount,
+      currency: "usd",
+      episode_id: episodeId,
+    });
+
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
@@ -58,6 +97,7 @@ export function PaywallModal({
       });
       const data = (await res.json()) as { url?: string; error?: string };
       if (!res.ok || !data.url) {
+        checkoutStartedRef.current = false;
         throw new Error(data.error ?? "Checkout failed");
       }
       window.location.href = data.url;

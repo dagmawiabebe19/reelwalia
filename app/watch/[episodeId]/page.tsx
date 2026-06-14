@@ -88,6 +88,7 @@ async function getWatchData(
     isFreeEpisode ||
     guestSessionUnlock ||
     hasActiveSubscription(profile);
+  const isSubscribed = hasActiveSubscription(profile) || guestSessionUnlock;
   // Paywall only for premium episodes without access — never gate free content
   const locked = !isFreeEpisode && !unlocked;
 
@@ -122,7 +123,9 @@ async function getWatchData(
     series,
     unlocked,
     locked,
+    isFreeEpisode,
     isAuthenticated: !!user,
+    isSubscribed,
     justSubscribed: searchParams.subscribed === "true",
     autoPlay: shouldAutoStartWatch(unlocked, !!episode.video_url),
     nextEpisode,
@@ -143,7 +146,9 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
     series,
     unlocked,
     locked,
+    isFreeEpisode,
     isAuthenticated,
+    isSubscribed,
     justSubscribed,
     autoPlay,
     nextEpisode,
@@ -175,9 +180,12 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
                   poster={episode.thumbnail_url}
                   subtitleUrl={episode.subtitle_url}
                   episodeId={episode.id}
+                  episodeNumber={episode.episode_number}
                   seriesId={series.id}
                   seriesSlug={series.slug}
                   seriesTitle={series.title}
+                  isFreeEpisode={isFreeEpisode}
+                  isSubscribed={isSubscribed}
                   nextEpisode={nextEpisode}
                   otherSeries={otherSeries}
                   initialProgress={initialProgress}
@@ -188,6 +196,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
             ) : (
               <WatchPaywall
                 episodeId={episode.id}
+                seriesSlug={series.slug}
                 posterUrl={episode.thumbnail_url ?? series.poster_url ?? null}
                 seriesTitle={series.title}
                 episodeNumber={episode.episode_number}

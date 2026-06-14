@@ -5,6 +5,7 @@ import type { StripePlanKey } from "@/lib/stripe/plans";
 import {
   getStripe,
 } from "@/lib/stripe/server";
+import { trackSubscriptionCompleted } from "@/lib/analytics/funnel-server";
 import { unwrapStripeResponse } from "@/lib/stripe/helpers";
 import { isForThisApp } from "@/lib/stripe/webhook-filter";
 import {
@@ -173,6 +174,55 @@ export async function POST(request: Request) {
             plan: subscription.metadata.plan,
           });
         }
+        break;
+      }
+
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as Stripe.Invoice;
+        if (invoice.billing_reason !== "subscription_create") break;
+
+        const subscriptionRef = (
+          invoice as Stripe.Invoice & {
+            subscription?: string | Stripe.Subscription | null;
+          }
+        ).subscription;
+
+        const subscriptionId =
+          typeof subscriptionRef === "string"
+            ? subscriptionRef
+            : subscriptionRef?.id;
+
+        if (!subscriptionId) break;
+
+        const customerId =
+          typeof invoice.customer === "string"
+            ? invoice.customer
+            : invoice.customer?.id;
+
+        if (!customerId) break;
+
+        const subscription = unwrapStripeResponse(
+          await stripe.subscriptions.retrieve(subscriptionId)
+        );
+
+        const planKey = subscription.metadata.plan as StripePlanKey | undefined;
+        const plan: StripePlanKey =
+          planKey === "1week" || planKey === "2week" || planKey === "1month"
+            ? planKey
+            : "1month";
+
+        await trackSubscriptionCompleted({
+          plan,
+          price_amount: (invoice.amount_paid ?? 0) / 100,
+          currency: invoice.currency ?? "usd",
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscriptionId,
+        });
+
+        console.info("[analytics] subscription_completed", {
+          plan,
+          stripe_subscription_id: subscriptionId,
+        });
         break;
       }
 
