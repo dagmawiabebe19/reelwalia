@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
+import { WatchEpisodeLink } from "@/components/watch/WatchEpisodeLink";
 import { WatchlistButton } from "@/components/series/WatchlistButton";
-import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { canWatchEpisode } from "@/lib/access";
 import { createClient } from "@/lib/supabase/server";
@@ -120,7 +119,12 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
 
             <div className="mt-6 flex flex-wrap gap-3">
               {firstEpisode && (
-                <Button href={`/watch/${firstEpisode.id}`}>Watch Now</Button>
+                <WatchEpisodeLink
+                  episodeId={firstEpisode.id}
+                  className="rw-btn-primary inline-flex items-center justify-center"
+                >
+                  Watch Now
+                </WatchEpisodeLink>
               )}
               <WatchlistButton seriesId={series.id} initialInWatchlist={inWatchlist} />
             </div>
@@ -133,8 +137,8 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
                 <ul className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
                   {episodes.map((ep) => (
                     <li key={ep.id}>
-                      <Link
-                        href={`/watch/${ep.id}`}
+                      <WatchEpisodeLink
+                        episodeId={ep.id}
                         className="group block min-h-11 transition hover:opacity-90"
                       >
                         <div className="relative aspect-[9/16] overflow-hidden rounded-lg border border-white/[0.08] bg-zinc-900">
@@ -179,7 +183,7 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
                             {String(ep.duration_seconds % 60).padStart(2, "0")}
                           </p>
                         )}
-                      </Link>
+                      </WatchEpisodeLink>
                     </li>
                   ))}
                 </ul>

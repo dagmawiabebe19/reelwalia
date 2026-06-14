@@ -7,6 +7,7 @@ import { WatchPaywall } from "@/components/watch/WatchPaywall";
 import { WatchPostCheckout } from "@/components/watch/WatchPostCheckout";
 import { canWatchEpisode, hasActiveSubscription, isEpisodeFree } from "@/lib/access";
 import { getNextEpisode } from "@/lib/episodes";
+import { shouldAutoStartWatch } from "@/lib/watch-playback";
 import { verifyCheckoutSession } from "@/lib/stripe/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -120,7 +121,7 @@ async function getWatchData(
     locked,
     isAuthenticated: !!user,
     justSubscribed: searchParams.subscribed === "true",
-    autoPlay: searchParams.autoplay === "true",
+    autoPlay: shouldAutoStartWatch(unlocked, !!episode.video_url),
     nextEpisode,
     pickerEpisodes,
     otherSeries: otherSeries ?? [],
@@ -177,7 +178,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
                   nextEpisode={nextEpisode}
                   otherSeries={otherSeries}
                   initialProgress={initialProgress}
-                  autoPlay={autoPlay && unlocked && !!episode.video_url}
+                  autoPlay={autoPlay}
                   isAuthenticated={isAuthenticated}
                 />
               </>

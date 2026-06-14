@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { WatchEpisodeLink } from "@/components/watch/WatchEpisodeLink";
 
 export interface EpisodePickerItem {
   id: string;
@@ -24,9 +25,9 @@ export function EpisodePicker({
   const grid = (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-2">
       {episodes.map((ep) => (
-        <Link
+        <WatchEpisodeLink
           key={ep.id}
-          href={`/watch/${ep.id}`}
+          episodeId={ep.id}
           className={`relative min-h-11 overflow-hidden rounded border text-center transition ${
             ep.id === currentEpisodeId
               ? "border-obsidian-red bg-obsidian-red/10"
@@ -55,7 +56,7 @@ export function EpisodePicker({
               </svg>
             </span>
           )}
-        </Link>
+        </WatchEpisodeLink>
       ))}
     </div>
   );

@@ -16,10 +16,15 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { AutoplayOverlay } from "@/components/watch/AutoplayOverlay";
 import { EndOfSeriesOverlay } from "@/components/watch/EndOfSeriesOverlay";
 import type { Series } from "@/lib/types/database";
+import {
+  consumeUnmutedIntent,
+  persistAudioPreference,
+  readPreferUnmuted,
+  watchEpisodeHref,
+} from "@/lib/watch-playback";
 
 const AUToplay_THRESHOLD = 5;
 const FULLSCREEN_STORAGE_KEY = "rw-maintain-fullscreen";
-const AUDIO_UNMUTED_KEY = "reelwalia.audio.unmuted";
 
 export interface NextEpisodeData {
   id: string;
@@ -131,26 +136,6 @@ export function VideoPlayer({
   const [showEndOfSeries, setShowEndOfSeries] = useState(false);
   const [showTapForSound, setShowTapForSound] = useState(false);
 
-  const persistAudioPreference = useCallback((unmuted: boolean) => {
-    try {
-      if (unmuted) {
-        sessionStorage.setItem(AUDIO_UNMUTED_KEY, "true");
-      } else {
-        sessionStorage.removeItem(AUDIO_UNMUTED_KEY);
-      }
-    } catch {
-      // sessionStorage unavailable (private mode)
-    }
-  }, []);
-
-  const readPreferUnmuted = useCallback((): boolean => {
-    try {
-      return sessionStorage.getItem(AUDIO_UNMUTED_KEY) === "true";
-    } catch {
-      return false;
-    }
-  }, []);
-
   const attemptAutoPlay = useCallback(async () => {
     const video = videoRef.current;
     if (!video || !autoPlay || loadError || autoPlayStartedRef.current || autoPlayInFlightRef.current) {
@@ -159,7 +144,7 @@ export function VideoPlayer({
 
     autoPlayInFlightRef.current = true;
 
-    const preferUnmuted = readPreferUnmuted();
+    const preferUnmuted = readPreferUnmuted() || consumeUnmutedIntent();
     video.muted = !preferUnmuted;
     setMuted(!preferUnmuted);
     setShowTapForSound(false);
@@ -202,7 +187,7 @@ export function VideoPlayer({
     } finally {
       autoPlayInFlightRef.current = false;
     }
-  }, [autoPlay, loadError, readPreferUnmuted]);
+  }, [autoPlay, loadError]);
 
   const saveProgress = useCallback(
     async (progressSeconds: number, completed: boolean) => {
@@ -262,7 +247,7 @@ export function VideoPlayer({
       setPlaying(false);
     }
     bumpControls(false);
-  }, [bumpControls, persistAudioPreference]);
+  }, [bumpControls]);
 
   const retryLoad = useCallback(() => {
     setLoadError(false);
@@ -350,9 +335,9 @@ export function VideoPlayer({
         toEpisode: nextEpisode.id,
         immediate,
       });
-      router.push(`/watch/${nextEpisode.id}?autoplay=true`);
+      router.push(watchEpisodeHref(nextEpisode.id));
     },
-    [autoplayCanceled, episodeId, isFullscreen, nextEpisode, persistAudioPreference, router]
+    [autoplayCanceled, episodeId, isFullscreen, nextEpisode, router]
   );
 
   const handleCancelAutoplay = useCallback(() => {
@@ -620,7 +605,7 @@ export function VideoPlayer({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [loadError, persistAudioPreference, skip, togglePlay, toggleFullscreen]);
+  }, [loadError, skip, togglePlay, toggleFullscreen]);
 
   const toggleMute = () => {
     const video = videoRef.current;
