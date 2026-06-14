@@ -65,6 +65,7 @@ Apply in order via Supabase SQL Editor or CLI:
 3. `supabase/migrations/003_phase1_schema.sql` — `free_episode_count`, `bunny_video_id`, subtitles
 4. `supabase/migrations/004_phase2_stripe.sql` — Stripe columns on profiles, plan enum values
 5. `supabase/migrations/005_creator_submissions.sql` — creator submission intake table + RLS
+6. `supabase/migrations/006_redbird_free_episodes.sql` — REDBIRD 3-episode free tier
 
 ## Stripe subscriptions
 
@@ -77,12 +78,12 @@ Intro pricing auto-renews at standard rates via Subscription Schedules (set up i
    - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
 5. For local testing: `stripe listen --forward-to localhost:3000/api/stripe/webhook`
 
-Locked episodes show the paywall modal to everyone (signed-in or logged-out). Free episodes (`episode_number <= series.free_episode_count`) play with no sign-in — guests can browse the catalog and watch free episodes end-to-end.
+Locked episodes show the paywall modal to everyone (signed-in or logged-out). Free episodes (`episode_number <= series.free_episode_count`, default 3) play with no sign-in — guests can browse the catalog and watch free episodes end-to-end.
 
 **Typical guest journey:**
 1. Land on reelwalia.com → browse series (no account)
-2. Open a series → watch episodes 1–5 free, no friction
-3. Episode 6+ → paywall modal (not a sign-in redirect)
+2. Open a series → watch episodes 1–3 free, no friction
+3. Episode 4+ → paywall modal (not a sign-in redirect)
 4. Enter card + email in Stripe → account auto-created via webhook
 5. Magic link emailed → click to sign in with an active subscription
 

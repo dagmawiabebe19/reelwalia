@@ -1,5 +1,13 @@
 import type { Profile } from "@/lib/types/database";
 
+/** Default free episodes when series.free_episode_count is unset. */
+export const DEFAULT_FREE_EPISODE_COUNT = 3;
+
+export function resolveFreeEpisodeCount(count: number | null | undefined): number {
+  if (count == null || count < 0) return DEFAULT_FREE_EPISODE_COUNT;
+  return count;
+}
+
 export function isEpisodeFree(
   episodeNumber: number,
   freeEpisodeCount: number

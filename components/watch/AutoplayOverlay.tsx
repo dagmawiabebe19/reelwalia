@@ -1,7 +1,7 @@
 "use client";
 
 import { PaywallModal } from "@/components/PaywallModal";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export interface AutoplayNextEpisode {
   id: string;
@@ -16,6 +16,7 @@ interface AutoplayOverlayProps {
   nextEpisode: AutoplayNextEpisode;
   countdownSeconds: number;
   isAuthenticated?: boolean;
+  autoOpenPaywall?: boolean;
   onCancel: () => void;
 }
 
@@ -26,9 +27,14 @@ export function AutoplayOverlay({
   nextEpisode,
   countdownSeconds,
   isAuthenticated = false,
+  autoOpenPaywall = false,
   onCancel,
 }: AutoplayOverlayProps) {
-  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(autoOpenPaywall);
+
+  useEffect(() => {
+    if (autoOpenPaywall) setPaywallOpen(true);
+  }, [autoOpenPaywall]);
 
   if (nextEpisode.locked) {
     return (

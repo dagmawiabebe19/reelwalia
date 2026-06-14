@@ -5,7 +5,7 @@ import { WatchEpisodeLink } from "@/components/watch/WatchEpisodeLink";
 import { WatchlistButton } from "@/components/series/WatchlistButton";
 import { Card } from "@/components/ui/Card";
 import { ViewCount } from "@/components/ui/ViewCount";
-import { canWatchEpisode } from "@/lib/access";
+import { canWatchEpisode, resolveFreeEpisodeCount } from "@/lib/access";
 import { createClient } from "@/lib/supabase/server";
 
 interface SeriesPageProps {
@@ -54,7 +54,7 @@ async function getSeries(slug: string) {
     inWatchlist = !!wl;
   }
 
-  const freeCount = series.free_episode_count ?? 5;
+  const freeCount = resolveFreeEpisodeCount(series.free_episode_count);
   const episodesWithLock = (episodes ?? []).map((ep) => ({
     ...ep,
     locked: !canWatchEpisode(ep.episode_number, freeCount, profile),

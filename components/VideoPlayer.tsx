@@ -143,6 +143,7 @@ export function VideoPlayer({
   const [countdownSeconds, setCountdownSeconds] = useState(AUToplay_THRESHOLD);
   const [autoplayCanceled, setAutoplayCanceled] = useState(false);
   const [showEndOfSeries, setShowEndOfSeries] = useState(false);
+  const [showEndPaywall, setShowEndPaywall] = useState(false);
   const [showTapForSound, setShowTapForSound] = useState(false);
 
   const attemptAutoPlay = useCallback(async () => {
@@ -365,6 +366,7 @@ export function VideoPlayer({
     setCountdownVisible(false);
     setCountdownSeconds(AUToplay_THRESHOLD);
     setShowEndOfSeries(false);
+    setShowEndPaywall(false);
     setShowTapForSound(false);
     navigatedRef.current = false;
     countdownStartedRef.current = false;
@@ -689,28 +691,39 @@ export function VideoPlayer({
     const secs = Math.ceil(remaining);
     if (!countdownVisible) {
       setCountdownVisible(true);
-      if (!countdownStartedRef.current) {
+      if (!countdownStartedRef.current && !nextEpisode.locked) {
         countdownStartedRef.current = true;
-        if (!nextEpisode.locked) {
-          autoplayLog("[autoplay] countdown_started", {
-            episodeId,
-            nextEpisodeId: nextEpisode.id,
-          });
-        }
+        autoplayLog("[autoplay] countdown_started", {
+          episodeId,
+          nextEpisodeId: nextEpisode.id,
+        });
       }
     }
-    setCountdownSeconds(secs);
+    if (!nextEpisode.locked) {
+      setCountdownSeconds(secs);
+    }
   };
 
   const handleEnded = () => {
     setPlaying(false);
     void saveProgress(duration, true);
-    setCountdownVisible(false);
 
-    if (nextEpisode && !autoplayCanceled && !navigatedRef.current && !nextEpisode.locked) {
+    if (nextEpisode && !autoplayCanceled && !navigatedRef.current) {
+      if (nextEpisode.locked) {
+        setCountdownVisible(false);
+        setShowEndPaywall(true);
+        autoplayLog("[autoplay] paywall_before_locked_episode", {
+          episodeId,
+          nextEpisodeId: nextEpisode.id,
+        });
+        return;
+      }
+      setCountdownVisible(false);
       navigateToNext(false);
       return;
     }
+
+    setCountdownVisible(false);
 
     if (!nextEpisode) {
       setShowEndOfSeries(true);
@@ -859,11 +872,12 @@ export function VideoPlayer({
             </button>
           )}
 
-          {countdownVisible && nextEpisode && !showEndOfSeries && (
+          {(countdownVisible || showEndPaywall) && nextEpisode && !showEndOfSeries && (
             <AutoplayOverlay
               nextEpisode={nextEpisode}
               countdownSeconds={countdownSeconds}
               isAuthenticated={isAuthenticated}
+              autoOpenPaywall={showEndPaywall}
               onCancel={handleCancelAutoplay}
             />
           )}

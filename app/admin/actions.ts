@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
 import { slugify } from "@/lib/slug";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { syncEpisodeFreeFlags } from "@/lib/sync-episode-free-flags";
 import type { SeriesGenre } from "@/lib/types/database";
 
 export interface SeriesFormData {
@@ -42,9 +43,11 @@ export async function saveSeries(data: SeriesFormData) {
   if (data.id) {
     const { error } = await admin.from("series").update(payload).eq("id", data.id);
     if (error) throw new Error(error.message);
+    await syncEpisodeFreeFlags(admin, data.id, data.free_episode_count);
     revalidatePath("/admin/series");
     revalidatePath(`/admin/series/${data.id}`);
     revalidatePath("/");
+    revalidatePath(`/series/${payload.slug}`);
     return { id: data.id };
   }
 

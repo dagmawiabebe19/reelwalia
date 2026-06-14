@@ -6,7 +6,7 @@ import { ViewCount } from "@/components/ui/ViewCount";
 import { EpisodePicker } from "@/components/watch/EpisodePicker";
 import { WatchPaywall } from "@/components/watch/WatchPaywall";
 import { WatchPostCheckout } from "@/components/watch/WatchPostCheckout";
-import { canWatchEpisode, hasActiveSubscription, isEpisodeFree } from "@/lib/access";
+import { canWatchEpisode, hasActiveSubscription, isEpisodeFree, resolveFreeEpisodeCount } from "@/lib/access";
 import { getNextEpisode } from "@/lib/episodes";
 import { resolveInitialProgress } from "@/lib/watch-progress";
 import { shouldAutoStartWatch } from "@/lib/watch-playback";
@@ -75,7 +75,7 @@ async function getWatchData(
     initialProgress = resolveInitialProgress(history, isBingeNavigation);
   }
 
-  const freeCount = series.free_episode_count ?? 5;
+  const freeCount = resolveFreeEpisodeCount(series.free_episode_count);
   const isFreeEpisode = isEpisodeFree(episode.episode_number, freeCount);
 
   let guestSessionUnlock = false;

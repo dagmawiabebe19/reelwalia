@@ -1,7 +1,13 @@
 /**
- * Launch validation — playback routing and binge chain logic.
+ * Launch validation — playback routing, binge chain, and paywall gating logic.
  * Run: npx tsx scripts/validate-playback.ts
  */
+import {
+  canWatchEpisode,
+  DEFAULT_FREE_EPISODE_COUNT,
+  isEpisodeFree,
+  resolveFreeEpisodeCount,
+} from "../lib/access";
 import { getNextEpisode, getEpisodeByNumber } from "../lib/episodes";
 import {
   resolveInitialProgress,
@@ -53,6 +59,37 @@ assert(getNextEpisode(episodes, "ep6") === null, "Ep6 should have no next");
 assert(getEpisodeByNumber(episodes, 1)?.id === "ep1", "getEpisodeByNumber(1)");
 assert(getEpisodeByNumber(episodes, 3)?.id === "ep3", "getEpisodeByNumber(3)");
 
+// --- Paywall gating (REDBIRD: 3 free episodes) ---
+const freeCount = resolveFreeEpisodeCount(3);
+assert(freeCount === 3, "resolveFreeEpisodeCount uses series value");
+assert(
+  resolveFreeEpisodeCount(undefined) === DEFAULT_FREE_EPISODE_COUNT,
+  "Default free episode count is 3"
+);
+assert(isEpisodeFree(1, freeCount), "Episode 1 is free");
+assert(isEpisodeFree(3, freeCount), "Episode 3 is free");
+assert(!isEpisodeFree(4, freeCount), "Episode 4 is locked");
+assert(
+  canWatchEpisode(4, freeCount, { subscription_status: "active" }),
+  "Subscribers can watch episode 4"
+);
+assert(
+  !canWatchEpisode(4, freeCount, { subscription_status: "none" }),
+  "Guests cannot watch episode 4"
+);
+assert(
+  !canWatchEpisode(4, freeCount, null),
+  "Logged-out users cannot watch episode 4"
+);
+
+// Binge chain stops at paywall boundary — ep3 next is ep4 (locked for guests)
+const ep3Next = getNextEpisode(episodes, "ep3");
+assert(ep3Next?.id === "ep4", "After ep3 binge targets ep4");
+assert(
+  !canWatchEpisode(ep3Next!.episode_number, freeCount, null),
+  "Ep4 requires subscription after free tier"
+);
+
 // --- Progress resolution (root-cause fix) ---
 const nearComplete: WatchHistoryProgress = { progress_seconds: 420, completed: false };
 assert(
@@ -91,5 +128,6 @@ assert(storage.has(WATCH_USER_INITIATED_KEY), "markBingeContinuation sets flag")
 
 console.log("✓ All playback validation checks passed");
 console.log("  Entry: /watch/{id}?autoplay=true");
-console.log("  Chain: ep1 → ep2 → ep3 → ep4 → ep5 → ep6");
+console.log("  Chain: ep1 → ep2 → ep3 → [paywall] → ep4+");
+console.log(`  Free tier: episodes 1–${DEFAULT_FREE_EPISODE_COUNT}`);
 console.log("  Binge progress: always starts at 0");

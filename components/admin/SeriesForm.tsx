@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { saveSeries, type SeriesFormData } from "@/app/admin/actions";
 import { PosterUpload } from "@/components/admin/PosterUpload";
+import { DEFAULT_FREE_EPISODE_COUNT } from "@/lib/access";
 import { slugify } from "@/lib/slug";
 import { SERIES_GENRES, type Series } from "@/lib/types/database";
 
@@ -26,7 +27,7 @@ export function SeriesForm({ initial }: SeriesFormProps) {
   );
   const [totalEpisodes, setTotalEpisodes] = useState(initial?.total_episodes ?? 10);
   const [freeEpisodeCount, setFreeEpisodeCount] = useState(
-    initial?.free_episode_count ?? 5
+    initial?.free_episode_count ?? DEFAULT_FREE_EPISODE_COUNT
   );
   const [posterUrl, setPosterUrl] = useState(initial?.poster_url ?? "");
   const [heroBannerUrl, setHeroBannerUrl] = useState(initial?.banner_url ?? "");
