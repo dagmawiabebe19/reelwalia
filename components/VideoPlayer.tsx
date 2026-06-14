@@ -13,6 +13,26 @@ import {
   type TouchEvent,
 } from "react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { AutoplayOverlay } from "@/components/watch/AutoplayOverlay";
+import { EndOfSeriesOverlay } from "@/components/watch/EndOfSeriesOverlay";
+import type { Series } from "@/lib/types/database";
+
+const AUToplay_THRESHOLD = 5;
+const FULLSCREEN_STORAGE_KEY = "rw-maintain-fullscreen";
+
+export interface NextEpisodeData {
+  id: string;
+  episodeNumber: number;
+  title: string;
+  description?: string | null;
+  thumbnailUrl?: string | null;
+  locked: boolean;
+}
+
+type OtherSeriesData = Pick<
+  Series,
+  "id" | "title" | "slug" | "tagline" | "poster_url" | "genre"
+>;
 
 interface VideoPlayerProps {
   src: string;
@@ -20,8 +40,13 @@ interface VideoPlayerProps {
   subtitleUrl?: string | null;
   episodeId: string;
   seriesId: string;
-  nextEpisodeId?: string | null;
+  seriesSlug: string;
+  seriesTitle: string;
+  nextEpisode?: NextEpisodeData | null;
+  otherSeries?: OtherSeriesData[];
   initialProgress?: number;
+  autoPlay?: boolean;
+  isAuthenticated?: boolean;
 }
 
 const SPEEDS = [0.5, 1, 1.25, 1.5, 2] as const;
@@ -64,8 +89,13 @@ export function VideoPlayer({
   subtitleUrl,
   episodeId,
   seriesId,
-  nextEpisodeId,
+  seriesSlug,
+  seriesTitle,
+  nextEpisode = null,
+  otherSeries = [],
   initialProgress = 0,
+  autoPlay = false,
+  isAuthenticated = false,
 }: VideoPlayerProps) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -74,6 +104,8 @@ export function VideoPlayer({
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownStartedRef = useRef(false);
+  const navigatedRef = useRef(false);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -90,6 +122,10 @@ export function VideoPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fitToScreen, setFitToScreen] = useState(false);
   const [isLandscapeMobile, setIsLandscapeMobile] = useState(false);
+  const [countdownVisible, setCountdownVisible] = useState(false);
+  const [countdownSeconds, setCountdownSeconds] = useState(AUToplay_THRESHOLD);
+  const [autoplayCanceled, setAutoplayCanceled] = useState(false);
+  const [showEndOfSeries, setShowEndOfSeries] = useState(false);
 
   const saveProgress = useCallback(
     async (progressSeconds: number, completed: boolean) => {
@@ -215,17 +251,63 @@ export function VideoPlayer({
     return () => video.removeEventListener("loadedmetadata", onMeta);
   }, [initialProgress]);
 
+  const navigateToNext = useCallback(
+    (immediate: boolean) => {
+      if (!nextEpisode || nextEpisode.locked || autoplayCanceled || navigatedRef.current) {
+        return;
+      }
+      navigatedRef.current = true;
+      if (screenfull.isEnabled && screenfull.isFullscreen) {
+        sessionStorage.setItem(FULLSCREEN_STORAGE_KEY, "1");
+      } else if (isFullscreen) {
+        sessionStorage.setItem(FULLSCREEN_STORAGE_KEY, "1");
+      }
+      console.log("[autoplay] auto_navigated", {
+        fromEpisode: episodeId,
+        toEpisode: nextEpisode.id,
+        immediate,
+      });
+      router.push(`/watch/${nextEpisode.id}?autoplay=true`);
+    },
+    [autoplayCanceled, episodeId, isFullscreen, nextEpisode, router]
+  );
+
+  const handleCancelAutoplay = useCallback(() => {
+    setAutoplayCanceled(true);
+    setCountdownVisible(false);
+    countdownStartedRef.current = false;
+    console.log("[autoplay] countdown_canceled", { episodeId });
+  }, [episodeId]);
+
   useEffect(() => {
+    setAutoplayCanceled(false);
+    setCountdownVisible(false);
+    setCountdownSeconds(AUToplay_THRESHOLD);
+    setShowEndOfSeries(false);
+    navigatedRef.current = false;
+    countdownStartedRef.current = false;
+  }, [episodeId]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !screenfull.isEnabled) return;
+    if (sessionStorage.getItem(FULLSCREEN_STORAGE_KEY) !== "1") return;
+    sessionStorage.removeItem(FULLSCREEN_STORAGE_KEY);
+    void screenfull.request(container);
+  }, [src]);
+
+  useEffect(() => {
+    if (!autoPlay) return;
     const video = videoRef.current;
     if (!video) return;
 
-    const tryAutoplay = async () => {
+    const tryPlay = async () => {
+      video.muted = false;
+      setMuted(false);
       try {
         await video.play();
         setPlaying(true);
       } catch {
-        video.muted = true;
-        setMuted(true);
         try {
           await video.play();
           setPlaying(true);
@@ -235,8 +317,46 @@ export function VideoPlayer({
       }
     };
 
-    void tryAutoplay();
-  }, [src]);
+    if (video.readyState >= 1) {
+      void tryPlay();
+    } else {
+      video.addEventListener("loadedmetadata", () => void tryPlay(), { once: true });
+    }
+  }, [autoPlay, src]);
+
+  useEffect(() => {
+    if (
+      !countdownVisible ||
+      autoplayCanceled ||
+      !nextEpisode ||
+      nextEpisode.locked ||
+      countdownSeconds > 0
+    ) {
+      return;
+    }
+    navigateToNext(false);
+  }, [
+    autoplayCanceled,
+    countdownSeconds,
+    countdownVisible,
+    navigateToNext,
+    nextEpisode,
+  ]);
+
+  useEffect(() => {
+    if (!playing && countdownVisible) {
+      setCountdownVisible(false);
+      setCountdownSeconds(AUToplay_THRESHOLD);
+      countdownStartedRef.current = false;
+    }
+  }, [countdownVisible, playing]);
+
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -374,13 +494,66 @@ export function VideoPlayer({
     if (!video) return;
     video.currentTime = value;
     setCurrentTime(value);
+    if (duration - value > AUToplay_THRESHOLD && !autoplayCanceled) {
+      setCountdownVisible(false);
+      setCountdownSeconds(AUToplay_THRESHOLD);
+      countdownStartedRef.current = false;
+    }
+  };
+
+  const handleTimeUpdate = (time: number, total: number) => {
+    setCurrentTime(time);
+    if (
+      !playing ||
+      autoplayCanceled ||
+      !nextEpisode ||
+      loadError ||
+      showEndOfSeries
+    ) {
+      return;
+    }
+
+    const remaining = total - time;
+    if (remaining > AUToplay_THRESHOLD) {
+      if (countdownVisible) {
+        setCountdownVisible(false);
+        setCountdownSeconds(AUToplay_THRESHOLD);
+        countdownStartedRef.current = false;
+      }
+      return;
+    }
+
+    if (remaining <= 0) return;
+
+    const secs = Math.ceil(remaining);
+    if (!countdownVisible) {
+      setCountdownVisible(true);
+      if (!countdownStartedRef.current) {
+        countdownStartedRef.current = true;
+        if (!nextEpisode.locked) {
+          console.log("[autoplay] countdown_started", {
+            episodeId,
+            nextEpisodeId: nextEpisode.id,
+          });
+        }
+      }
+    }
+    setCountdownSeconds(secs);
   };
 
   const handleEnded = () => {
     setPlaying(false);
     void saveProgress(duration, true);
-    if (nextEpisodeId) {
-      router.push(`/watch/${nextEpisodeId}`);
+    setCountdownVisible(false);
+
+    if (nextEpisode && !autoplayCanceled && !navigatedRef.current && !nextEpisode.locked) {
+      navigateToNext(false);
+      return;
+    }
+
+    if (!nextEpisode) {
+      setShowEndOfSeries(true);
+      console.log("[autoplay] series_completed", { seriesSlug });
     }
   };
 
@@ -457,7 +630,9 @@ export function VideoPlayer({
             poster={poster ?? undefined}
             playsInline
             preload="metadata"
-            onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+            onTimeUpdate={(e) =>
+              handleTimeUpdate(e.currentTarget.currentTime, e.currentTarget.duration)
+            }
             onLoadedMetadata={(e) => {
               setDuration(e.currentTarget.duration);
               setIsInitialLoad(false);
@@ -489,7 +664,7 @@ export function VideoPlayer({
             </div>
           )}
 
-          {!playing && !isInitialLoad && (
+          {!playing && !isInitialLoad && !showEndOfSeries && (
             <button
               type="button"
               onClick={togglePlay}
@@ -502,6 +677,24 @@ export function VideoPlayer({
                 </svg>
               </span>
             </button>
+          )}
+
+          {countdownVisible && nextEpisode && !showEndOfSeries && (
+            <AutoplayOverlay
+              nextEpisode={nextEpisode}
+              countdownSeconds={countdownSeconds}
+              isAuthenticated={isAuthenticated}
+              onCancel={handleCancelAutoplay}
+              onWatchNow={() => navigateToNext(true)}
+            />
+          )}
+
+          {showEndOfSeries && (
+            <EndOfSeriesOverlay
+              seriesTitle={seriesTitle}
+              seriesSlug={seriesSlug}
+              otherSeries={otherSeries}
+            />
           )}
 
           <div

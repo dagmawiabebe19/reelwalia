@@ -6,17 +6,18 @@ import { EpisodePicker } from "@/components/watch/EpisodePicker";
 import { WatchPaywall } from "@/components/watch/WatchPaywall";
 import { WatchPostCheckout } from "@/components/watch/WatchPostCheckout";
 import { canWatchEpisode, hasActiveSubscription, isEpisodeFree } from "@/lib/access";
+import { getNextEpisode } from "@/lib/episodes";
 import { verifyCheckoutSession } from "@/lib/stripe/server";
 import { createClient } from "@/lib/supabase/server";
 
 interface WatchPageProps {
   params: { episodeId: string };
-  searchParams: { subscribed?: string; session_id?: string };
+  searchParams: { subscribed?: string; session_id?: string; autoplay?: string };
 }
 
 async function getWatchData(
   episodeId: string,
-  searchParams: { subscribed?: string; session_id?: string }
+  searchParams: { subscribed?: string; session_id?: string; autoplay?: string }
 ) {
   const supabase = createClient();
 
@@ -42,7 +43,7 @@ async function getWatchData(
 
   const { data: allEpisodes } = await supabase
     .from("episodes")
-    .select("id, episode_number, title, thumbnail_url")
+    .select("id, episode_number, title, description, thumbnail_url")
     .eq("series_id", series.id)
     .order("episode_number", { ascending: true });
 
@@ -86,16 +87,31 @@ async function getWatchData(
   // Paywall only for premium episodes without access — never gate free content
   const locked = !isFreeEpisode && !unlocked;
 
-  const currentIndex = (allEpisodes ?? []).findIndex((e) => e.id === episodeId);
-  const nextEpisode =
-    currentIndex >= 0 && allEpisodes && currentIndex < allEpisodes.length - 1
-      ? allEpisodes[currentIndex + 1]
-      : null;
+  const nextEp = getNextEpisode(allEpisodes ?? [], episodeId);
+
+  const { data: otherSeries } = await supabase
+    .from("series")
+    .select("id, title, slug, tagline, poster_url, genre")
+    .eq("status", "published")
+    .neq("id", series.id)
+    .order("created_at", { ascending: false })
+    .limit(10);
 
   const pickerEpisodes = (allEpisodes ?? []).map((ep) => ({
     ...ep,
     locked: !canWatchEpisode(ep.episode_number, freeCount, profile),
   }));
+
+  const nextEpisode = nextEp
+    ? {
+        id: nextEp.id,
+        episodeNumber: nextEp.episode_number,
+        title: nextEp.title,
+        description: nextEp.description,
+        thumbnailUrl: nextEp.thumbnail_url,
+        locked: !canWatchEpisode(nextEp.episode_number, freeCount, profile),
+      }
+    : null;
 
   return {
     episode,
@@ -104,8 +120,10 @@ async function getWatchData(
     locked,
     isAuthenticated: !!user,
     justSubscribed: searchParams.subscribed === "true",
-    nextEpisodeId: nextEpisode?.id ?? null,
+    autoPlay: searchParams.autoplay === "true",
+    nextEpisode,
     pickerEpisodes,
+    otherSeries: otherSeries ?? [],
     initialProgress,
   };
 }
@@ -123,8 +141,10 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
     locked,
     isAuthenticated,
     justSubscribed,
-    nextEpisodeId,
+    autoPlay,
+    nextEpisode,
     pickerEpisodes,
+    otherSeries,
     initialProgress,
   } = data;
 
@@ -152,8 +172,13 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
                   subtitleUrl={episode.subtitle_url}
                   episodeId={episode.id}
                   seriesId={series.id}
-                  nextEpisodeId={nextEpisodeId}
+                  seriesSlug={series.slug}
+                  seriesTitle={series.title}
+                  nextEpisode={nextEpisode}
+                  otherSeries={otherSeries}
                   initialProgress={initialProgress}
+                  autoPlay={autoPlay && unlocked && !!episode.video_url}
+                  isAuthenticated={isAuthenticated}
                 />
               </>
             ) : (
