@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import {
   STRIPE_PLANS,
-  formatPlanPrice,
+  formatDailyPrice,
+  formatUsd,
+  savingsBadge,
   type StripePlanKey,
 } from "@/lib/stripe/plans";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -22,7 +24,7 @@ export function PaywallModal({
   episodeId,
   isAuthenticated = false,
 }: PaywallModalProps) {
-  const [selected, setSelected] = useState<StripePlanKey>("2week");
+  const [selected, setSelected] = useState<StripePlanKey>("1month");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,6 +102,7 @@ export function PaywallModal({
         <div className="mt-5 space-y-3">
           {STRIPE_PLANS.map((p) => {
             const isSelected = selected === p.key;
+            const badge = savingsBadge(p);
 
             return (
               <div key={p.key} className="relative">
@@ -111,29 +114,41 @@ export function PaywallModal({
                 <button
                   type="button"
                   onClick={() => setSelected(p.key)}
-                  className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition hover:-translate-y-0.5 ${
+                  className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition hover:-translate-y-0.5 ${
                     p.mostPopular
-                      ? "mt-3 scale-[1.02] border-obsidian-red/60 ring-2 ring-obsidian-red"
+                      ? "mt-3 border-obsidian-red/60 ring-2 ring-obsidian-red"
                       : "border-white/[0.08]"
                   } ${isSelected ? "border-obsidian-red ring-2 ring-obsidian-red" : ""}`}
                 >
                   <span
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
                       isSelected ? "border-obsidian-red bg-obsidian-red" : "border-gray-500"
                     }`}
                   >
                     {isSelected && <span className="h-2 w-2 rounded-full bg-white" />}
                   </span>
 
-                  <p className="min-w-0 flex-1 font-display text-base font-bold uppercase tracking-wide">
-                    {p.label}
-                  </p>
-
-                  <div className="shrink-0 text-right">
-                    <p className="font-display text-base font-bold text-white">
-                      {formatPlanPrice(p)}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-base font-bold uppercase leading-tight tracking-wide">
+                      {p.label}
                     </p>
-                    <p className="mt-0.5 text-xs text-zinc-500">{p.renewalLabel}</p>
+                    {badge && (
+                      <span className="mt-1.5 inline-flex rounded bg-amber-400/95 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">
+                        {badge}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="shrink-0 text-right leading-none">
+                    <p className="whitespace-nowrap font-display text-lg font-bold tabular-nums text-white">
+                      {formatUsd(p.amount)}
+                    </p>
+                    <p className="mt-1.5 whitespace-nowrap text-sm font-bold tabular-nums text-obsidian-red">
+                      {formatDailyPrice(p)}
+                    </p>
+                    <p className="mt-1 whitespace-nowrap text-[10px] text-zinc-500">
+                      {p.renewalLabel}
+                    </p>
                   </div>
                 </button>
               </div>
