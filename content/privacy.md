@@ -1,6 +1,6 @@
 Welcome to ReelWalia. We’re glad you’re here. This Privacy Policy explains how **Walia Studios** (“**Walia Studios**,” “**we**,” “**us**,” or “**our**”) collects, uses, shares, and protects information when you use **ReelWalia** — our vertical drama streaming platform available at [reelwalia.com](https://reelwalia.com) and related services (collectively, the “**Service**”).
 
-ReelWalia is a product of Walia Studios, founded and operated by Dagmawi Abebe. Walia Studios is a company based in Los Angeles, California, United States (LLC formation pending). If you have questions about this policy, contact us at **dagmawiabebe19@gmail.com**.
+ReelWalia is a product of Walia Studios LLC, founded and operated by Dagmawi Abebe. Walia Studios LLC is a California limited liability company based in Los Angeles. If you have questions about this policy, contact us at **dagmawiabebe19@gmail.com**.
 
 By using the Service, you agree to the collection and use of information as described in this Privacy Policy. If you do not agree, please do not use the Service.
 

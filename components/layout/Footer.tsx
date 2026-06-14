@@ -35,7 +35,7 @@ export function Footer() {
         </nav>
 
         <p className="mt-6 text-xs text-zinc-500">
-          &copy; {new Date().getFullYear()} Walia Studios
+          &copy; 2026 Walia Studios LLC. All rights reserved.
         </p>
       </div>
     </footer>

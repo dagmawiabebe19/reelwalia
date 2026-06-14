@@ -1,6 +1,6 @@
 Welcome to ReelWalia. These Terms of Service (“**Terms**”) govern your access to and use of **ReelWalia**, the vertical drama streaming platform operated by **Walia Studios** (“**Walia Studios**,” “**we**,” “**us**,” or “**our**”), available at [reelwalia.com](https://reelwalia.com) and related applications and services (collectively, the “**Service**”).
 
-ReelWalia is a Walia Studios product, founded and operated by Dagmawi Abebe, based in Los Angeles, California, United States (LLC formation pending).
+ReelWalia is a Walia Studios LLC product, founded and operated by Dagmawi Abebe. Walia Studios LLC is a California limited liability company based in Los Angeles.
 
 Please read these Terms carefully. **By accessing or using the Service, you agree to be bound by these Terms.** If you do not agree, do not use the Service.
 
