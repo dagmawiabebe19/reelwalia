@@ -7,7 +7,7 @@ import {
   scheduleIntroToStandardTransition,
 } from "@/lib/stripe/server";
 import { unwrapStripeResponse } from "@/lib/stripe/helpers";
-import { isReelWaliaEvent, resolveEventApp } from "@/lib/stripe/webhook-filter";
+import { isForThisApp } from "@/lib/stripe/webhook-filter";
 import {
   deactivateSubscription,
   findUserIdByCustomerId,
@@ -40,11 +40,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  const app = await resolveEventApp(stripe, event);
-  if (!isReelWaliaEvent(app)) {
-    console.log(
-      `Ignoring event ${event.type} - not for reelwalia (app: ${app ?? "none"})`
-    );
+  if (!isForThisApp(event)) {
     return new Response("OK - not for this app", { status: 200 });
   }
 
