@@ -1,4 +1,5 @@
 import { SHOW_VIEW_COUNTS } from "@/lib/feature-flags";
+import { formatViewCount } from "@/lib/format";
 
 interface ViewCountProps {
   count: number | null | undefined;
@@ -14,9 +15,12 @@ export function ViewCount({
   inline = false,
   prefix = "",
 }: ViewCountProps) {
-  if (!SHOW_VIEW_COUNTS || count == null || count <= 0) return null;
+  if (!SHOW_VIEW_COUNTS) return null;
 
-  const text = `${prefix}${count.toLocaleString()} views`;
+  const formatted = formatViewCount(count);
+  if (formatted == null) return null;
+
+  const text = `${prefix}${formatted} views`;
 
   if (inline) {
     return <span className={className}>{text}</span>;
