@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { WatchEpisodeLink } from "@/components/watch/WatchEpisodeLink";
 import type { Series } from "@/lib/types/database";
 
 type HeroItem = Pick<
   Series,
   "id" | "title" | "slug" | "tagline" | "banner_url" | "poster_url" | "genre"
->;
+> & {
+  firstEpisodeId: string | null;
+};
 
 interface HeroCarouselProps {
   items: HeroItem[];
@@ -60,9 +63,18 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
             <p className="mt-2 max-w-lg text-sm text-gray-400 sm:text-base">{active.tagline}</p>
           )}
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button href={`/series/${active.slug}`} className="min-h-11">
-              Watch Now
-            </Button>
+            {active.firstEpisodeId ? (
+              <WatchEpisodeLink
+                episodeId={active.firstEpisodeId}
+                className="rw-btn-primary inline-flex min-h-11 items-center justify-center"
+              >
+                Watch Now
+              </WatchEpisodeLink>
+            ) : (
+              <Button href={`/series/${active.slug}`} className="min-h-11">
+                Watch Now
+              </Button>
+            )}
             <Button href={`/series/${active.slug}`} variant="secondary" className="min-h-11">
               More Info
             </Button>

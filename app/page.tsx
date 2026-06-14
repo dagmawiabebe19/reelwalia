@@ -39,11 +39,40 @@ async function getCatalog() {
     newSeries.length === 0 &&
     trendingSeries.length === 0;
 
-  return { featuredItems, newSeries, trendingSeries, isEmpty };
+  let featuredWithEpisodes = featuredItems.map((item) => ({
+    ...item,
+    firstEpisodeId: null as string | null,
+  }));
+
+  if (featuredItems.length > 0) {
+    const { data: episodes } = await supabase
+      .from("episodes")
+      .select("id, series_id, episode_number")
+      .in(
+        "series_id",
+        featuredItems.map((s) => s.id)
+      )
+      .order("episode_number", { ascending: true });
+
+    const firstBySeries = new Map<string, string>();
+    for (const ep of episodes ?? []) {
+      if (!firstBySeries.has(ep.series_id)) {
+        firstBySeries.set(ep.series_id, ep.id);
+      }
+    }
+
+    featuredWithEpisodes = featuredItems.map((item) => ({
+      ...item,
+      firstEpisodeId: firstBySeries.get(item.id) ?? null,
+    }));
+  }
+
+  return { featuredWithEpisodes, newSeries, trendingSeries, isEmpty };
 }
 
 export default async function HomePage() {
-  const { featuredItems, newSeries, trendingSeries, isEmpty } = await getCatalog();
+  const { featuredWithEpisodes, newSeries, trendingSeries, isEmpty } =
+    await getCatalog();
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -53,7 +82,9 @@ export default async function HomePage() {
           <ComingSoon />
         ) : (
           <>
-            {featuredItems.length > 0 && <HeroCarousel items={featuredItems} />}
+            {featuredWithEpisodes.length > 0 && (
+              <HeroCarousel items={featuredWithEpisodes} />
+            )}
             {newSeries.length > 0 && (
               <SeriesRow title="New Series" series={newSeries} />
             )}
