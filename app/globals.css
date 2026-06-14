@@ -124,6 +124,18 @@ body.player-fullscreen header {
     @apply items-center;
   }
 
+  .rw-brand-lockup-text {
+    @apply flex flex-col justify-center gap-0.5 sm:gap-1;
+  }
+
+  .rw-brand-lockup-text .rw-brand-wordmark {
+    @apply translate-y-0;
+  }
+
+  .rw-brand-nav-tagline {
+    @apply font-sans font-normal leading-none tracking-[0.04em] text-zinc-400/90;
+  }
+
   .rw-brand-lockup svg {
     @apply -translate-y-px;
   }

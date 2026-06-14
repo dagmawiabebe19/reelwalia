@@ -35,14 +35,21 @@ export function ReelWaliaTagline({ className = "" }: { className?: string }) {
   );
 }
 
+/** Nav tagline — secondary to wordmark, sans-serif, light weight. */
+export function ReelWaliaNavTagline({ className = "" }: { className?: string }) {
+  return (
+    <p className={`rw-brand-nav-tagline ${className}`}>{BRAND_TAGLINE}</p>
+  );
+}
+
 export type BrandScale = "nav" | "footer" | "auth" | "loading";
 
 const SCALE = {
   nav: {
     mark: "h-[3.4375rem] w-[3.4375rem] sm:h-[3.8125rem] sm:w-[3.8125rem]",
     wordmark: "text-[1.875rem] sm:text-[2.1875rem]",
-    tagline: "text-xs sm:text-sm tracking-normal",
-    lockupGap: "gap-3.5 sm:gap-4",
+    tagline: "text-[10px] sm:text-[11px]",
+    lockupGap: "gap-3 sm:gap-3.5",
     stackedMarkGap: "mt-0",
     stackedWordmarkGap: "mt-0",
     stackedTaglineGap: "mt-0",
@@ -125,7 +132,14 @@ export function ReelWaliaLogo({
   return (
     <div className={`rw-brand-lockup flex items-center ${s.lockupGap} ${className}`}>
       <ReelWaliaMark className={`${markSize} shrink-0`} />
-      <ReelWaliaWordmark className={s.wordmark} />
+      {scale === "nav" ? (
+        <div className="rw-brand-lockup-text min-w-0">
+          <ReelWaliaWordmark className={s.wordmark} />
+          <ReelWaliaNavTagline className={s.tagline} />
+        </div>
+      ) : (
+        <ReelWaliaWordmark className={s.wordmark} />
+      )}
     </div>
   );
 }
