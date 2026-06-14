@@ -24,7 +24,7 @@ export async function requireAdmin() {
   }
 
   if (!isAdminEmail(user.email)) {
-    redirect("/?error=unauthorized");
+    redirect("/not-authorized");
   }
 
   return { user, supabase };

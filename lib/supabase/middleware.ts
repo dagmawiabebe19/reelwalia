@@ -50,7 +50,7 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (!isAdminEmail(user.email)) {
-      return NextResponse.redirect(new URL("/?error=unauthorized", request.url));
+      return NextResponse.redirect(new URL("/not-authorized", request.url));
     }
   }
 

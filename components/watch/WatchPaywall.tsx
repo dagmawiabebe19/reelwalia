@@ -50,6 +50,15 @@ function WatchPaywallInner({
           </div>
           <p className="text-xs uppercase tracking-widest text-gray-400">{seriesTitle}</p>
           <p className="mt-1 font-display text-lg uppercase">Episode {episodeNumber}</p>
+          {showPaywall && !modalOpen && (
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="rw-btn-primary mt-4"
+            >
+              Subscribe to watch
+            </button>
+          )}
         </div>
       </div>
 

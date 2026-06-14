@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 export function ManageSubscriptionButton() {
   const [loading, setLoading] = useState(false);
@@ -28,8 +29,9 @@ export function ManageSubscriptionButton() {
         type="button"
         disabled={loading}
         onClick={() => void openPortal()}
-        className="rw-btn-secondary text-sm"
+        className="rw-btn-secondary inline-flex items-center gap-2 text-sm"
       >
+        {loading && <LoadingSpinner className="h-4 w-4" label="Opening billing portal" />}
         {loading ? "Opening…" : "Manage subscription"}
       </button>
       {error && <p className="mt-2 text-xs text-red-400">{error}</p>}

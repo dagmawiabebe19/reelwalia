@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 interface WatchlistButtonProps {
   seriesId: string;
@@ -23,7 +24,7 @@ export function WatchlistButton({
         body: JSON.stringify({ seriesId }),
       });
       if (res.status === 401) {
-        window.location.href = "/auth/sign-in";
+        window.location.href = `/auth/sign-in?redirect=${encodeURIComponent(window.location.pathname)}`;
         return;
       }
       const data = (await res.json()) as { added?: boolean };
@@ -38,8 +39,9 @@ export function WatchlistButton({
       type="button"
       disabled={loading}
       onClick={() => void toggle()}
-      className="rw-btn-secondary"
+      className="rw-btn-secondary inline-flex items-center gap-2"
     >
+      {loading && <LoadingSpinner className="h-4 w-4" label="Updating watchlist" />}
       {inWatchlist ? "In Watchlist" : "Add to Watchlist"}
     </button>
   );

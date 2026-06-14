@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { ManageSubscriptionButton } from "@/components/account/ManageSubscriptionButton";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
@@ -12,6 +13,11 @@ interface AccountPageProps {
   searchParams: { subscribed?: string };
 }
 
+export const metadata: Metadata = {
+  title: "Account — ReelWalia",
+  description: "Manage your ReelWalia profile and subscription.",
+};
+
 export default async function AccountPage({ searchParams }: AccountPageProps) {
   const supabase = createClient();
   const {
@@ -19,7 +25,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth/sign-in");
+    redirect("/auth/sign-in?redirect=/account");
   }
 
   const { data: profile } = await supabase
@@ -58,7 +64,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={profile?.avatar_url ?? user.user_metadata?.avatar_url}
-                alt=""
+                alt={`${displayName} avatar`}
                 className="h-16 w-16 rounded-full object-cover"
               />
             ) : (
@@ -105,10 +111,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-400">
             Library
           </h2>
-          <ul className="mt-3 space-y-2 text-sm text-gray-400">
-            <li>Watch history — placeholder</li>
-            <li>Watchlist — placeholder</li>
-          </ul>
+          <p className="mt-3 text-sm text-gray-400">
+            Watch history and saved series are coming soon. Keep watching — your
+            progress is saved automatically while you stream.
+          </p>
+          <p className="mt-2 text-xs text-gray-500">Coming soon</p>
         </Card>
 
         <div className="mt-8 flex items-center gap-4">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 function CheckIcon() {
   return (
@@ -30,6 +31,9 @@ function SignInForm() {
   const searchParams = useSearchParams();
   const err = searchParams.get("error");
   const redirectTo = searchParams.get("redirect") ?? searchParams.get("next") ?? "/";
+
+  const buildCallbackUrl = () =>
+    `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`;
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -62,7 +66,7 @@ function SignInForm() {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: buildCallbackUrl(),
         shouldCreateUser: true,
       },
     });
@@ -81,7 +85,7 @@ function SignInForm() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: buildCallbackUrl(),
       },
     });
     setLoading(false);
@@ -91,12 +95,13 @@ function SignInForm() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-black px-4">
       <div className="w-full max-w-md rounded-xl border border-white/[0.08] bg-black p-8">
-        <p className="text-center font-display text-sm uppercase tracking-[0.2em] text-obsidian-red">
-          ReelWalia
+        <p className="text-center font-display text-lg uppercase tracking-wide text-white">
+          Reel<span className="text-obsidian-red">Walia</span>
         </p>
         <h1 className="mt-3 text-center font-display text-2xl uppercase">Sign In</h1>
         <p className="mt-2 text-center text-sm text-gray-400">
-          Vertical dramas from Walia Studios.
+          Stream bite-sized vertical dramas from Walia Studios. Sign in to save
+          your progress and manage your subscription.
         </p>
 
         {err === "callback_failed" && (
@@ -130,7 +135,29 @@ function SignInForm() {
           </div>
         ) : (
           <>
-            <label className="mt-8 block space-y-2 text-sm">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => void signInGoogle()}
+              className="rw-btn-primary mt-8 flex w-full items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <LoadingSpinner className="h-5 w-5" label="Signing in" />
+                  Connecting…
+                </>
+              ) : (
+                "Continue with Google"
+              )}
+            </button>
+
+            <div className="my-6 flex items-center gap-3">
+              <div className="h-px flex-1 bg-white/[0.08]" />
+              <span className="text-xs text-gray-400">or</span>
+              <div className="h-px flex-1 bg-white/[0.08]" />
+            </div>
+
+            <label className="block space-y-2 text-sm">
               <span className="text-gray-400">Email</span>
               <input
                 type="email"
@@ -146,24 +173,9 @@ function SignInForm() {
               type="button"
               disabled={loading}
               onClick={() => void signInMagicLink()}
-              className="rw-btn-primary mt-4 w-full"
+              className="rw-btn-secondary mt-4 w-full"
             >
-              Continue with magic link
-            </button>
-
-            <div className="my-6 flex items-center gap-3">
-              <div className="h-px flex-1 bg-white/[0.08]" />
-              <span className="text-xs text-gray-400">or</span>
-              <div className="h-px flex-1 bg-white/[0.08]" />
-            </div>
-
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => void signInGoogle()}
-              className="rw-btn-secondary w-full"
-            >
-              Continue with Google
+              {loading ? "Sending link…" : "Continue with magic link"}
             </button>
 
             {message && (
@@ -186,8 +198,9 @@ export function SignInPageClient() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-black text-sm text-gray-400">
-          Loading…
+        <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-black">
+          <LoadingSpinner />
+          <p className="text-sm text-gray-400">Loading…</p>
         </div>
       }
     >

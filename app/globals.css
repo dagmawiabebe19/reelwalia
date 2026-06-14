@@ -39,6 +39,15 @@ body {
   @apply antialiased font-sans;
 }
 
+@layer base {
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  [role="slider"]:focus-visible {
+    @apply outline-none ring-2 ring-obsidian-red ring-offset-2 ring-offset-black;
+  }
+}
+
 @layer components {
   .rw-card {
     @apply rounded-lg border border-white/[0.08] bg-black;

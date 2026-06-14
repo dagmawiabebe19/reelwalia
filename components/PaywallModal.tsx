@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   STRIPE_PLANS,
   dailyPrice,
@@ -8,6 +8,7 @@ import {
   savePercent,
   type StripePlanKey,
 } from "@/lib/stripe/plans";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 interface PaywallModalProps {
   open: boolean;
@@ -25,6 +26,23 @@ export function PaywallModal({
   const [selected, setSelected] = useState<StripePlanKey>("2week");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -51,7 +69,12 @@ export function PaywallModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="paywall-title"
+    >
       <button
         type="button"
         className="absolute inset-0 bg-black/80 backdrop-blur-sm"
@@ -67,14 +90,14 @@ export function PaywallModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-gray-400 hover:bg-white/10 hover:text-white"
-            aria-label="Close"
+            className="rounded border border-white/20 p-1.5 text-white hover:bg-white/10"
+            aria-label="Close paywall"
           >
             ✕
           </button>
         </div>
 
-        <h2 className="font-display text-2xl font-black leading-tight">
+        <h2 id="paywall-title" className="font-display text-2xl font-black leading-tight">
           Get Full Access Pass to Exclusive Drama Collections
         </h2>
         <p className="mt-2 text-sm text-gray-400">Choose your perfect plan:</p>
@@ -95,7 +118,9 @@ export function PaywallModal({
                   type="button"
                   onClick={() => setSelected(p.key)}
                   className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition hover:-translate-y-0.5 ${
-                    p.mostPopular ? "mt-3 ring-2 ring-obsidian-red" : "border-white/[0.08]"
+                    p.mostPopular
+                      ? "mt-3 scale-[1.02] border-obsidian-red/60 ring-2 ring-obsidian-red"
+                      : "border-white/[0.08]"
                   } ${isSelected ? "border-obsidian-red ring-2 ring-obsidian-red" : ""}`}
                 >
                   <span
@@ -143,9 +168,16 @@ export function PaywallModal({
           type="button"
           disabled={loading}
           onClick={() => void handleCheckout()}
-          className="mt-4 w-full rounded-xl bg-obsidian-red py-3.5 text-base font-bold text-white transition hover:bg-obsidian-red-hover disabled:opacity-50"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-obsidian-red py-3.5 text-base font-bold text-white transition hover:bg-obsidian-red-hover disabled:opacity-50"
         >
-          {loading ? "Redirecting…" : "Get Full Access"}
+          {loading ? (
+            <>
+              <LoadingSpinner className="h-5 w-5" label="Redirecting to checkout" />
+              Redirecting…
+            </>
+          ) : (
+            "Get Full Access"
+          )}
         </button>
 
         <p className="mt-3 text-center text-[11px] text-gray-500">

@@ -41,6 +41,7 @@ export function VideoPlayer({
   const [duration, setDuration] = useState(0);
   const [subtitlesOn, setSubtitlesOn] = useState(true);
   const [showControls, setShowControls] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const saveProgress = useCallback(
@@ -64,11 +65,14 @@ export function VideoPlayer({
   );
 
   useEffect(() => {
+    setLoadError(false);
     const video = videoRef.current;
     if (!video) return;
 
     const canNativeHls =
       video.canPlayType("application/vnd.apple.mpegurl") !== "";
+
+    const onVideoError = () => setLoadError(true);
 
     if (canNativeHls) {
       video.src = src;
@@ -78,13 +82,19 @@ export function VideoPlayer({
       hls.loadSource(src);
       hls.attachMedia(video);
       hls.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal) console.error("HLS fatal error:", data);
+        if (data.fatal) {
+          console.error("HLS fatal error:", data);
+          setLoadError(true);
+        }
       });
     } else {
       video.src = src;
     }
 
+    video.addEventListener("error", onVideoError);
+
     return () => {
+      video.removeEventListener("error", onVideoError);
       hlsRef.current?.destroy();
       hlsRef.current = null;
     };
@@ -184,10 +194,29 @@ export function VideoPlayer({
     }
   };
 
+  useEffect(() => {
+    if (!playing) setShowControls(true);
+  }, [playing]);
+
+  const retryLoad = () => {
+    setLoadError(false);
+    const video = videoRef.current;
+    if (!video) return;
+    video.load();
+    if (hlsRef.current) {
+      hlsRef.current.loadSource(src);
+    } else {
+      video.src = src;
+    }
+  };
+
   const bumpControls = () => {
+    if (loadError) return;
     setShowControls(true);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = setTimeout(() => setShowControls(false), 3000);
+    if (playing) {
+      hideTimerRef.current = setTimeout(() => setShowControls(false), 3000);
+    }
   };
 
   return (
@@ -197,6 +226,15 @@ export function VideoPlayer({
       onMouseMove={bumpControls}
       onTouchStart={bumpControls}
     >
+      {loadError ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black p-6 text-center">
+          <p className="text-sm text-gray-300">This episode couldn&apos;t load.</p>
+          <button type="button" onClick={retryLoad} className="rw-btn-primary text-sm">
+            Try again
+          </button>
+        </div>
+      ) : (
+        <>
       <video
         ref={videoRef}
         className="h-full w-full object-contain"
@@ -219,6 +257,21 @@ export function VideoPlayer({
           />
         )}
       </video>
+
+      {!playing && (
+        <button
+          type="button"
+          onClick={togglePlay}
+          className="absolute inset-0 flex items-center justify-center bg-black/20"
+          aria-label="Play episode"
+        >
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-black/60 ring-2 ring-white/30">
+            <svg viewBox="0 0 24 24" className="ml-1 h-8 w-8 fill-white">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </span>
+        </button>
+      )}
 
       <div
         className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-3 transition-opacity ${
@@ -292,6 +345,7 @@ export function VideoPlayer({
                 className={`rounded px-2 py-1 text-xs font-medium ${
                   subtitlesOn ? "bg-obsidian-red text-white" : "bg-white/10"
                 }`}
+                aria-label={subtitlesOn ? "Turn off subtitles" : "Turn on subtitles"}
               >
                 CC
               </button>
@@ -310,6 +364,8 @@ export function VideoPlayer({
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

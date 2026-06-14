@@ -4,11 +4,17 @@ import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+function safeRedirectPath(next: string | null): string {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/";
+  return next;
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const token_hash = requestUrl.searchParams.get("token_hash");
   const type = requestUrl.searchParams.get("type");
+  const redirectPath = safeRedirectPath(requestUrl.searchParams.get("next"));
 
   const cookieStore = cookies();
 
@@ -44,7 +50,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.redirect(new URL("/", requestUrl.origin));
+    return NextResponse.redirect(new URL(redirectPath, requestUrl.origin));
   }
 
   if (code) {
