@@ -13,6 +13,7 @@ export interface AdminEpisode {
   video_url: string | null;
   thumbnail_url: string | null;
   duration_seconds: number | null;
+  display_view_count: number | null;
 }
 
 interface EpisodeManagerProps {
@@ -92,6 +93,8 @@ export function EpisodeManager({
 
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [viewCountDrafts, setViewCountDrafts] = useState<Record<string, string>>({});
+  const [viewCountSavingId, setViewCountSavingId] = useState<string | null>(null);
 
   const replaceFileRef = useRef<HTMLInputElement>(null);
   const bulkFileRef = useRef<HTMLInputElement>(null);
@@ -104,6 +107,52 @@ export function EpisodeManager({
     setEditTarget(ep);
     setEditTitle(ep.title);
     setActionError(null);
+  };
+
+  const getViewCountDraft = (ep: AdminEpisode) =>
+    viewCountDrafts[ep.id] ??
+    (ep.display_view_count != null ? String(ep.display_view_count) : "");
+
+  const saveViewCount = async (ep: AdminEpisode) => {
+    const raw = getViewCountDraft(ep).trim();
+    const parsed: number | null =
+      raw === "" ? null : Number.parseInt(raw, 10);
+
+    if (raw !== "" && (parsed === null || Number.isNaN(parsed) || parsed < 0)) {
+      setActionError("Display view count must be a non-negative integer or empty");
+      return;
+    }
+
+    if (parsed === ep.display_view_count) return;
+
+    setViewCountSavingId(ep.id);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/admin/episodes/${ep.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ display_view_count: parsed }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Update failed");
+      setEpisodes((prev) =>
+        prev.map((e) =>
+          e.id === ep.id ? { ...e, display_view_count: parsed } : e
+        )
+      );
+      setViewCountDrafts((prev) => {
+        const next = { ...prev };
+        delete next[ep.id];
+        return next;
+      });
+      refresh();
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Display view count update failed"
+      );
+    } finally {
+      setViewCountSavingId(null);
+    }
   };
 
   const saveEdit = async () => {
@@ -324,6 +373,12 @@ export function EpisodeManager({
         </div>
       </div>
 
+      {actionError && (
+        <p className="text-sm text-red-400" role="alert">
+          {actionError}
+        </p>
+      )}
+
       {!episodes.length ? (
         <p className="text-sm text-gray-400">No episodes uploaded yet.</p>
       ) : (
@@ -356,6 +411,38 @@ export function EpisodeManager({
                       ? ` · ${ep.bunny_video_id.startsWith("demo-") ? "Demo" : "Bunny"}`
                       : " · No video"}
                   </p>
+                  <label className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-gray-400">Display View Count</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={getViewCountDraft(ep)}
+                      onChange={(e) =>
+                        setViewCountDrafts((prev) => ({
+                          ...prev,
+                          [ep.id]: e.target.value,
+                        }))
+                      }
+                      onBlur={() => void saveViewCount(ep)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void saveViewCount(ep);
+                        }
+                      }}
+                      placeholder="Not set"
+                      className="w-28 rounded border border-white/[0.08] bg-black px-2 py-1 text-white"
+                    />
+                    {viewCountSavingId === ep.id && (
+                      <span className="text-gray-500">Saving…</span>
+                    )}
+                    {ep.display_view_count != null && viewCountSavingId !== ep.id && (
+                      <span className="text-gray-500">
+                        Showing {ep.display_view_count.toLocaleString()} views
+                      </span>
+                    )}
+                  </label>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">

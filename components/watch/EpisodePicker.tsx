@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { WatchEpisodeLink } from "@/components/watch/WatchEpisodeLink";
+import { ViewCount } from "@/components/ui/ViewCount";
 import { trackEpisodeAdvanced } from "@/lib/analytics/funnel";
+import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
 
 export interface EpisodePickerItem {
   id: string;
@@ -10,6 +12,8 @@ export interface EpisodePickerItem {
   title: string;
   thumbnail_url: string | null;
   locked: boolean;
+  display_view_count?: number | null;
+  view_count?: number | null;
 }
 
 interface EpisodePickerProps {
@@ -68,7 +72,12 @@ export function EpisodePicker({
               </div>
             )}
           </div>
-          <p className="truncate px-1 py-1.5 text-sm">{ep.episode_number}</p>
+          <p className="truncate px-1 py-1 text-sm">{ep.episode_number}</p>
+          <ViewCount
+            count={getEpisodeDisplayViewCount(ep)}
+            className="truncate px-1 pb-1.5 text-[10px] leading-tight text-gray-500 sm:text-xs"
+            inline
+          />
           {ep.locked && (
             <span className="absolute right-1 top-1 rounded bg-black/70 p-1">
               <svg viewBox="0 0 16 16" className="h-3 w-3 text-gray-300" fill="currentColor">

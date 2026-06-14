@@ -1,7 +1,7 @@
 import { SHOW_VIEW_COUNTS } from "@/lib/feature-flags";
 
 interface ViewCountProps {
-  count: number;
+  count: number | null | undefined;
   className?: string;
   /** Inline span for lines like "Episode 1 · N views" */
   inline?: boolean;
@@ -14,7 +14,7 @@ export function ViewCount({
   inline = false,
   prefix = "",
 }: ViewCountProps) {
-  if (!SHOW_VIEW_COUNTS) return null;
+  if (!SHOW_VIEW_COUNTS || count == null || count <= 0) return null;
 
   const text = `${prefix}${count.toLocaleString()} views`;
 

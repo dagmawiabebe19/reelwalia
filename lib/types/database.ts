@@ -56,6 +56,7 @@ export interface Episode {
   duration_seconds: number | null;
   is_free: boolean;
   view_count: number;
+  display_view_count: number | null;
   published_at: string | null;
   created_at: string;
   updated_at: string;
@@ -113,7 +114,14 @@ export type SeriesCard = Pick<
 
 export type EpisodeListItem = Pick<
   Episode,
-  "id" | "episode_number" | "title" | "thumbnail_url" | "duration_seconds" | "is_free"
+  | "id"
+  | "episode_number"
+  | "title"
+  | "thumbnail_url"
+  | "duration_seconds"
+  | "is_free"
+  | "display_view_count"
+  | "view_count"
 >;
 
 export type SubmissionStatus =

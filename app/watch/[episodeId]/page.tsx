@@ -7,6 +7,7 @@ import { EpisodePicker } from "@/components/watch/EpisodePicker";
 import { WatchPaywall } from "@/components/watch/WatchPaywall";
 import { WatchPostCheckout } from "@/components/watch/WatchPostCheckout";
 import { canWatchEpisode, hasActiveSubscription, isEpisodeFree, resolveFreeEpisodeCount } from "@/lib/access";
+import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
 import { getNextEpisode } from "@/lib/episodes";
 import { resolveInitialProgress } from "@/lib/watch-progress";
 import { shouldAutoStartWatch } from "@/lib/watch-playback";
@@ -27,7 +28,7 @@ async function getWatchData(
   const { data: episode } = await supabase
     .from("episodes")
     .select(
-      "id, episode_number, title, description, video_url, thumbnail_url, subtitle_url, view_count, series_id"
+      "id, episode_number, title, description, video_url, thumbnail_url, subtitle_url, view_count, display_view_count, series_id"
     )
     .eq("id", episodeId)
     .maybeSingle();
@@ -46,7 +47,9 @@ async function getWatchData(
 
   const { data: allEpisodes } = await supabase
     .from("episodes")
-    .select("id, episode_number, title, description, thumbnail_url")
+    .select(
+      "id, episode_number, title, description, thumbnail_url, display_view_count, view_count"
+    )
     .eq("series_id", series.id)
     .order("episode_number", { ascending: true });
 
@@ -218,7 +221,11 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
             </h1>
             <p className="rw-caption mt-1.5">
               Episode {episode.episode_number}
-              <ViewCount count={episode.view_count ?? 0} inline prefix=" · " />
+              <ViewCount
+                count={getEpisodeDisplayViewCount(episode)}
+                inline
+                prefix=" · "
+              />
             </p>
             {(episode.description || series.description) && (
               <p className="rw-body mt-4">{episode.description ?? series.description}</p>

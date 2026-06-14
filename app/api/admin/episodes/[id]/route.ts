@@ -26,15 +26,41 @@ export async function PATCH(
   }
 
   try {
-    const body = (await request.json()) as { title?: string };
-    if (!body.title?.trim()) {
-      return NextResponse.json({ error: "title is required" }, { status: 400 });
+    const body = (await request.json()) as {
+      title?: string;
+      display_view_count?: number | null;
+    };
+
+    const updates: { title?: string; display_view_count?: number | null } = {};
+
+    if (body.title !== undefined) {
+      if (!body.title.trim()) {
+        return NextResponse.json({ error: "title cannot be empty" }, { status: 400 });
+      }
+      updates.title = body.title.trim();
+    }
+
+    if (body.display_view_count !== undefined) {
+      if (
+        body.display_view_count !== null &&
+        (!Number.isInteger(body.display_view_count) || body.display_view_count < 0)
+      ) {
+        return NextResponse.json(
+          { error: "display_view_count must be a non-negative integer or null" },
+          { status: 400 }
+        );
+      }
+      updates.display_view_count = body.display_view_count;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
     const admin = createAdminClient();
     const { data, error } = await admin
       .from("episodes")
-      .update({ title: body.title.trim() })
+      .update(updates)
       .eq("id", params.id)
       .select()
       .single();

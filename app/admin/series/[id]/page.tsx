@@ -23,7 +23,7 @@ export default async function AdminSeriesEditPage({ params }: AdminSeriesEditPag
   const { data: episodes } = await admin
     .from("episodes")
     .select(
-      "id, episode_number, title, bunny_video_id, video_url, thumbnail_url, duration_seconds"
+      "id, episode_number, title, bunny_video_id, video_url, thumbnail_url, duration_seconds, display_view_count"
     )
     .eq("series_id", params.id)
     .order("episode_number", { ascending: true });

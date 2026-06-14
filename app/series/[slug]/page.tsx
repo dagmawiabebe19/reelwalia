@@ -6,6 +6,7 @@ import { WatchlistButton } from "@/components/series/WatchlistButton";
 import { Card } from "@/components/ui/Card";
 import { ViewCount } from "@/components/ui/ViewCount";
 import { canWatchEpisode, resolveFreeEpisodeCount } from "@/lib/access";
+import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
 import { createClient } from "@/lib/supabase/server";
 
 interface SeriesPageProps {
@@ -26,7 +27,9 @@ async function getSeries(slug: string) {
 
   const { data: episodes } = await supabase
     .from("episodes")
-    .select("id, episode_number, title, thumbnail_url, duration_seconds, is_free")
+    .select(
+      "id, episode_number, title, thumbnail_url, duration_seconds, is_free, display_view_count, view_count"
+    )
     .eq("series_id", series.id)
     .order("episode_number", { ascending: true });
 
@@ -180,6 +183,10 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
                             {String(ep.duration_seconds % 60).padStart(2, "0")}
                           </p>
                         )}
+                        <ViewCount
+                          count={getEpisodeDisplayViewCount(ep)}
+                          className="rw-caption mt-0.5"
+                        />
                       </WatchEpisodeLink>
                     </li>
                   ))}
