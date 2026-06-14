@@ -25,30 +25,31 @@ export function getStripePriceEnvKeys(): string[] {
     .sort();
 }
 
+/** Recurring price ID for checkout and renewals (former intro price). */
 export function getPlanPriceIds(plan: StripePlanKey): {
   introPriceId: string;
-  standardPriceId: string;
+  /** Legacy standard price — unused; renewals bill introPriceId only. */
+  standardPriceId?: string;
 } {
   const keys = PLAN_PRICE_ENV_KEYS[plan];
   const introPriceId = process.env[keys.intro]?.trim() ?? "";
   const standardPriceId = process.env[keys.standard]?.trim() ?? "";
 
-  const missing: string[] = [];
-  if (!introPriceId) missing.push(keys.intro);
-  if (!standardPriceId) missing.push(keys.standard);
-
-  if (missing.length > 0) {
+  if (!introPriceId) {
     const available = getStripePriceEnvKeys();
     console.error(
       `[stripe/prices] plan="${plan}" missing:`,
-      missing.join(", "),
+      keys.intro,
       "| Available STRIPE_PRICE keys:",
       available.length > 0 ? available.join(", ") : "(none — restart dev server after editing .env.local)"
     );
     throw new Error(
-      `Missing Stripe price env vars for plan: ${plan} (${missing.join(", ")})`
+      `Missing Stripe price env vars for plan: ${plan} (${keys.intro})`
     );
   }
 
-  return { introPriceId, standardPriceId };
+  return {
+    introPriceId,
+    ...(standardPriceId ? { standardPriceId } : {}),
+  };
 }

@@ -4,7 +4,6 @@ import type Stripe from "stripe";
 import type { StripePlanKey } from "@/lib/stripe/plans";
 import {
   getStripe,
-  scheduleIntroToStandardTransition,
 } from "@/lib/stripe/server";
 import { unwrapStripeResponse } from "@/lib/stripe/helpers";
 import { isForThisApp } from "@/lib/stripe/webhook-filter";
@@ -87,10 +86,6 @@ export async function POST(request: Request) {
           subscription,
           plan,
         });
-
-        if (plan) {
-          await scheduleIntroToStandardTransition(subscriptionId, plan);
-        }
 
         if (!session.metadata?.user_id) {
           await stripe.subscriptions.update(subscriptionId, {

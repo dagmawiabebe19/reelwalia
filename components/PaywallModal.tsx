@@ -3,9 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   STRIPE_PLANS,
-  dailyPrice,
-  formatUsd,
-  savePercent,
+  formatPlanPrice,
   type StripePlanKey,
 } from "@/lib/stripe/plans";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -46,8 +44,6 @@ export function PaywallModal({
   }, [open, onClose]);
 
   if (!open) return null;
-
-  const plan = STRIPE_PLANS.find((p) => p.key === selected)!;
 
   const handleCheckout = async () => {
     setLoading(true);
@@ -104,7 +100,6 @@ export function PaywallModal({
         <div className="mt-5 space-y-3">
           {STRIPE_PLANS.map((p) => {
             const isSelected = selected === p.key;
-            const pct = savePercent(p.introAmount, p.standardAmount);
 
             return (
               <div key={p.key} className="relative">
@@ -130,38 +125,23 @@ export function PaywallModal({
                     {isSelected && <span className="h-2 w-2 rounded-full bg-white" />}
                   </span>
 
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold uppercase tracking-wide">{p.label}</p>
-                    <span className="mt-1 inline-block rounded bg-yellow-400/90 px-1.5 py-0.5 text-[10px] font-bold uppercase text-black">
-                      Save {pct}%
-                    </span>
-                    <p className="mt-1 text-sm">
-                      <span className="text-gray-500 line-through">
-                        {formatUsd(p.standardAmount)}
-                      </span>{" "}
-                      <span className="font-semibold text-white">
-                        {formatUsd(p.introAmount)}
-                      </span>
-                    </p>
-                  </div>
+                  <p className="min-w-0 flex-1 font-display text-base font-bold uppercase tracking-wide">
+                    {p.label}
+                  </p>
 
-                  <span className="shrink-0 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold">
-                    {dailyPrice(p.introAmount, p.days)}
-                  </span>
+                  <div className="shrink-0 text-right">
+                    <p className="font-display text-base font-bold text-white">
+                      {formatPlanPrice(p)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-zinc-500">{p.renewalLabel}</p>
+                  </div>
                 </button>
               </div>
             );
           })}
         </div>
 
-        <p className="mt-4 text-[11px] leading-relaxed text-gray-500">
-          By clicking &apos;Get Full Access&apos; you will be billed{" "}
-          {formatUsd(plan.introAmount)} for the first {plan.periodLabel}. Your subscription
-          then auto renews for {plan.periodLabel} periods at full price (
-          {formatUsd(plan.standardAmount)}).
-        </p>
-
-        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+        {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
 
         <button
           type="button"
@@ -179,11 +159,15 @@ export function PaywallModal({
           )}
         </button>
 
-        <p className="mt-3 text-center text-[11px] text-gray-500">
-          {isAuthenticated
-            ? "Cancel anytime in account settings."
-            : "Enter your email in Stripe Checkout — we'll create your account automatically."}
+        <p className="mt-3 text-center text-[11px] leading-relaxed text-gray-500">
+          Subscriptions renew automatically. Cancel anytime in your account.
         </p>
+
+        {!isAuthenticated && (
+          <p className="mt-2 text-center text-[11px] text-gray-500">
+            Enter your email in Stripe Checkout — we&apos;ll create your account automatically.
+          </p>
+        )}
       </div>
     </div>
   );
