@@ -132,41 +132,43 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
     <div className="min-h-screen overflow-x-hidden bg-black">
       <TopNav />
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-4 sm:py-6 lg:flex-row lg:px-6">
-        <div className="flex w-full flex-1 flex-col items-center gap-4">
-          <WatchPostCheckout
-            unlocked={unlocked}
-            locked={locked}
-            isAuthenticated={isAuthenticated}
-          />
-          {unlocked && episode.video_url ? (
-            <>
-              {justSubscribed && isAuthenticated && (
-                <p className="w-full max-w-md rounded-lg border border-obsidian-red/30 bg-obsidian-red/10 px-4 py-2 text-center text-sm text-obsidian-red lg:max-w-none">
-                  Subscription active — enjoy full access!
-                </p>
-              )}
-              <VideoPlayer
-                src={episode.video_url}
-                poster={episode.thumbnail_url}
-                subtitleUrl={episode.subtitle_url}
-                episodeId={episode.id}
-                seriesId={series.id}
-                nextEpisodeId={nextEpisodeId}
-                initialProgress={initialProgress}
-              />
-            </>
-          ) : (
-            <WatchPaywall
-              episodeId={episode.id}
-              posterUrl={episode.thumbnail_url ?? series.poster_url ?? null}
-              seriesTitle={series.title}
-              episodeNumber={episode.episode_number}
-              showPaywall={locked}
+        <div className="contents lg:flex lg:w-full lg:flex-1 lg:flex-col lg:items-center lg:gap-4">
+          <div className="order-1 flex w-full flex-col items-center gap-4">
+            <WatchPostCheckout
+              unlocked={unlocked}
+              locked={locked}
               isAuthenticated={isAuthenticated}
             />
-          )}
+            {unlocked && episode.video_url ? (
+              <>
+                {justSubscribed && isAuthenticated && (
+                  <p className="w-full max-w-md rounded-lg border border-obsidian-red/30 bg-obsidian-red/10 px-4 py-2 text-center text-sm text-obsidian-red lg:max-w-none">
+                    Subscription active — enjoy full access!
+                  </p>
+                )}
+                <VideoPlayer
+                  src={episode.video_url}
+                  poster={episode.thumbnail_url}
+                  subtitleUrl={episode.subtitle_url}
+                  episodeId={episode.id}
+                  seriesId={series.id}
+                  nextEpisodeId={nextEpisodeId}
+                  initialProgress={initialProgress}
+                />
+              </>
+            ) : (
+              <WatchPaywall
+                episodeId={episode.id}
+                posterUrl={episode.thumbnail_url ?? series.poster_url ?? null}
+                seriesTitle={series.title}
+                episodeNumber={episode.episode_number}
+                showPaywall={locked}
+                isAuthenticated={isAuthenticated}
+              />
+            )}
+          </div>
 
-          <div className="w-full max-w-md lg:max-w-none">
+          <div className="order-3 w-full max-w-md lg:max-w-none">
             <Link
               href={`/series/${series.slug}`}
               className="inline-flex min-h-11 items-center text-sm text-gray-400 hover:text-obsidian-red"
@@ -188,11 +190,13 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
           </div>
         </div>
 
-        <EpisodePicker
-          episodes={pickerEpisodes}
-          currentEpisodeId={episode.id}
-          seriesSlug={series.slug}
-        />
+        <div className="order-2 lg:order-none lg:shrink-0">
+          <EpisodePicker
+            episodes={pickerEpisodes}
+            currentEpisodeId={episode.id}
+            seriesSlug={series.slug}
+          />
+        </div>
       </main>
     </div>
   );
