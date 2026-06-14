@@ -19,6 +19,7 @@ import type { Series } from "@/lib/types/database";
 
 const AUToplay_THRESHOLD = 5;
 const FULLSCREEN_STORAGE_KEY = "rw-maintain-fullscreen";
+const AUDIO_UNMUTED_KEY = "reelwalia.audio.unmuted";
 
 export interface NextEpisodeData {
   id: string;
@@ -106,6 +107,8 @@ export function VideoPlayer({
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countdownStartedRef = useRef(false);
   const navigatedRef = useRef(false);
+  const autoPlayStartedRef = useRef(false);
+  const autoPlayInFlightRef = useRef(false);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -126,6 +129,80 @@ export function VideoPlayer({
   const [countdownSeconds, setCountdownSeconds] = useState(AUToplay_THRESHOLD);
   const [autoplayCanceled, setAutoplayCanceled] = useState(false);
   const [showEndOfSeries, setShowEndOfSeries] = useState(false);
+  const [showTapForSound, setShowTapForSound] = useState(false);
+
+  const persistAudioPreference = useCallback((unmuted: boolean) => {
+    try {
+      if (unmuted) {
+        sessionStorage.setItem(AUDIO_UNMUTED_KEY, "true");
+      } else {
+        sessionStorage.removeItem(AUDIO_UNMUTED_KEY);
+      }
+    } catch {
+      // sessionStorage unavailable (private mode)
+    }
+  }, []);
+
+  const readPreferUnmuted = useCallback((): boolean => {
+    try {
+      return sessionStorage.getItem(AUDIO_UNMUTED_KEY) === "true";
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const attemptAutoPlay = useCallback(async () => {
+    const video = videoRef.current;
+    if (!video || !autoPlay || loadError || autoPlayStartedRef.current || autoPlayInFlightRef.current) {
+      return false;
+    }
+
+    autoPlayInFlightRef.current = true;
+
+    const preferUnmuted = readPreferUnmuted();
+    video.muted = !preferUnmuted;
+    setMuted(!preferUnmuted);
+    setShowTapForSound(false);
+
+    const tryPlay = () => video.play();
+
+    try {
+      await tryPlay();
+      autoPlayStartedRef.current = true;
+      setPlaying(true);
+      setIsInitialLoad(false);
+      console.log("[autoplay] play_succeeded");
+      return true;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      try {
+        await tryPlay();
+        autoPlayStartedRef.current = true;
+        setPlaying(true);
+        setIsInitialLoad(false);
+        console.log("[autoplay] play_succeeded");
+        return true;
+      } catch {
+        try {
+          video.muted = true;
+          setMuted(true);
+          await tryPlay();
+          autoPlayStartedRef.current = true;
+          setPlaying(true);
+          setIsInitialLoad(false);
+          setShowTapForSound(true);
+          console.log("[autoplay] play_blocked", { fallback: "muted" });
+          return true;
+        } catch {
+          setPlaying(false);
+          console.log("[autoplay] play_blocked", { fallback: "manual" });
+          return false;
+        }
+      }
+    } finally {
+      autoPlayInFlightRef.current = false;
+    }
+  }, [autoPlay, loadError, readPreferUnmuted]);
 
   const saveProgress = useCallback(
     async (progressSeconds: number, completed: boolean) => {
@@ -176,14 +253,16 @@ export function VideoPlayer({
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
-      void video.play();
-      setPlaying(true);
+      void video.play().then(() => {
+        setPlaying(true);
+        if (!video.muted) persistAudioPreference(true);
+      });
     } else {
       video.pause();
       setPlaying(false);
     }
     bumpControls(false);
-  }, [bumpControls]);
+  }, [bumpControls, persistAudioPreference]);
 
   const retryLoad = useCallback(() => {
     setLoadError(false);
@@ -257,6 +336,10 @@ export function VideoPlayer({
         return;
       }
       navigatedRef.current = true;
+      const video = videoRef.current;
+      if (video && !video.muted) {
+        persistAudioPreference(true);
+      }
       if (screenfull.isEnabled && screenfull.isFullscreen) {
         sessionStorage.setItem(FULLSCREEN_STORAGE_KEY, "1");
       } else if (isFullscreen) {
@@ -269,7 +352,7 @@ export function VideoPlayer({
       });
       router.push(`/watch/${nextEpisode.id}?autoplay=true`);
     },
-    [autoplayCanceled, episodeId, isFullscreen, nextEpisode, router]
+    [autoplayCanceled, episodeId, isFullscreen, nextEpisode, persistAudioPreference, router]
   );
 
   const handleCancelAutoplay = useCallback(() => {
@@ -284,8 +367,11 @@ export function VideoPlayer({
     setCountdownVisible(false);
     setCountdownSeconds(AUToplay_THRESHOLD);
     setShowEndOfSeries(false);
+    setShowTapForSound(false);
     navigatedRef.current = false;
     countdownStartedRef.current = false;
+    autoPlayStartedRef.current = false;
+    autoPlayInFlightRef.current = false;
   }, [episodeId]);
 
   useEffect(() => {
@@ -298,31 +384,74 @@ export function VideoPlayer({
 
   useEffect(() => {
     if (!autoPlay) return;
-    const video = videoRef.current;
-    if (!video) return;
 
-    const tryPlay = async () => {
-      video.muted = false;
-      setMuted(false);
-      try {
-        await video.play();
-        setPlaying(true);
-      } catch {
-        try {
-          await video.play();
-          setPlaying(true);
-        } catch {
-          setPlaying(false);
-        }
+    let cancelled = false;
+
+    const startAutoPlay = () => {
+      if (cancelled || autoPlayStartedRef.current) return;
+
+      const video = videoRef.current;
+      if (!video) {
+        requestAnimationFrame(startAutoPlay);
+        return;
       }
+
+      const onReady = () => {
+        if (cancelled) return;
+        void attemptAutoPlay();
+      };
+
+      if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+        onReady();
+      } else {
+        video.addEventListener("loadedmetadata", onReady, { once: true });
+      }
+
+      video.addEventListener(
+        "canplay",
+        () => {
+          if (cancelled || !video.paused) return;
+          void attemptAutoPlay();
+        },
+        { once: true }
+      );
     };
 
-    if (video.readyState >= 1) {
-      void tryPlay();
-    } else {
-      video.addEventListener("loadedmetadata", () => void tryPlay(), { once: true });
-    }
-  }, [autoPlay, src]);
+    startAutoPlay();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [autoPlay, src, episodeId, attemptAutoPlay]);
+
+  useEffect(() => {
+    if (!autoPlay) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    let touchHandler: (() => void) | null = null;
+
+    const timeoutId = setTimeout(() => {
+      const video = videoRef.current;
+      if (!video || !video.paused) return;
+
+      touchHandler = () => {
+        void attemptAutoPlay();
+      };
+
+      container.addEventListener("touchstart", touchHandler, { once: true, passive: true });
+      container.addEventListener("click", touchHandler, { once: true });
+    }, 500);
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (touchHandler) {
+        container.removeEventListener("touchstart", touchHandler);
+        container.removeEventListener("click", touchHandler);
+      }
+    };
+  }, [autoPlay, src, episodeId, attemptAutoPlay]);
 
   useEffect(() => {
     if (
@@ -452,7 +581,10 @@ export function VideoPlayer({
           event.preventDefault();
           video.volume = Math.min(1, video.volume + 0.1);
           setVolume(video.volume);
+          video.muted = false;
           setMuted(false);
+          persistAudioPreference(true);
+          setShowTapForSound(false);
           break;
         case "ArrowDown":
           event.preventDefault();
@@ -460,10 +592,18 @@ export function VideoPlayer({
           setVolume(video.volume);
           break;
         case "m":
-        case "M":
-          video.muted = !video.muted;
-          setMuted(video.muted);
+        case "M": {
+          const nextMuted = !video.muted;
+          video.muted = nextMuted;
+          setMuted(nextMuted);
+          if (nextMuted) {
+            persistAudioPreference(false);
+          } else {
+            persistAudioPreference(true);
+            setShowTapForSound(false);
+          }
           break;
+        }
         case "f":
         case "F":
           void toggleFullscreen();
@@ -480,13 +620,29 @@ export function VideoPlayer({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [loadError, skip, togglePlay, toggleFullscreen]);
+  }, [loadError, persistAudioPreference, skip, togglePlay, toggleFullscreen]);
 
   const toggleMute = () => {
     const video = videoRef.current;
     if (!video) return;
-    video.muted = !video.muted;
-    setMuted(video.muted);
+    const nextMuted = !video.muted;
+    video.muted = nextMuted;
+    setMuted(nextMuted);
+    if (nextMuted) {
+      persistAudioPreference(false);
+    } else {
+      persistAudioPreference(true);
+      setShowTapForSound(false);
+    }
+  };
+
+  const unmuteFromTap = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = false;
+    setMuted(false);
+    persistAudioPreference(true);
+    setShowTapForSound(false);
   };
 
   const handleSeek = (value: number) => {
@@ -636,11 +792,18 @@ export function VideoPlayer({
             onLoadedMetadata={(e) => {
               setDuration(e.currentTarget.duration);
               setIsInitialLoad(false);
+              if (autoPlay) {
+                void attemptAutoPlay();
+              }
             }}
             onWaiting={() => setIsBuffering(true)}
             onPlaying={() => {
               setIsBuffering(false);
               setIsInitialLoad(false);
+              const video = videoRef.current;
+              if (video && !video.muted) {
+                persistAudioPreference(true);
+              }
             }}
             onCanPlay={() => setIsBuffering(false)}
             onPlay={() => setPlaying(true)}
@@ -662,6 +825,16 @@ export function VideoPlayer({
             <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-black/40">
               <LoadingSpinner className="h-10 w-10" label="Loading video" />
             </div>
+          )}
+
+          {showTapForSound && (
+            <button
+              type="button"
+              onClick={unmuteFromTap}
+              className="pointer-events-auto absolute left-1/2 top-[max(1rem,env(safe-area-inset-top))] z-40 -translate-x-1/2 rounded-full border border-white/15 bg-black/50 px-3 py-1.5 text-xs text-white backdrop-blur-md"
+            >
+              Tap for sound
+            </button>
           )}
 
           {!playing && !isInitialLoad && !showEndOfSeries && (
@@ -779,6 +952,10 @@ export function VideoPlayer({
                         video.muted = v === 0;
                         setVolume(v);
                         setMuted(v === 0);
+                        if (v > 0) {
+                          persistAudioPreference(true);
+                          setShowTapForSound(false);
+                        }
                       }}
                       className="rw-player-progress w-20"
                       aria-label="Volume"
