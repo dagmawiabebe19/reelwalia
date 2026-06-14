@@ -10,7 +10,6 @@ import {
 } from "@/lib/stripe/plans";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
-import { BRAND_TAGLINE_UPPER } from "@/lib/brand";
 
 interface PaywallModalProps {
   open: boolean;
@@ -86,12 +85,7 @@ export function PaywallModal({
 
       <div className="relative max-h-[92vh] w-full max-w-[480px] overflow-y-auto rounded-2xl border border-white/[0.08] bg-black p-5 shadow-2xl sm:p-6">
         <div className="mb-5 flex items-start justify-between">
-          <div>
-            <ReelWaliaLogo variant="wordmark" />
-            <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">
-              {BRAND_TAGLINE_UPPER}
-            </p>
-          </div>
+          <ReelWaliaLogo variant="lockup" scale="nav" />
           <button
             type="button"
             onClick={onClose}

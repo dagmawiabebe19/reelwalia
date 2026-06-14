@@ -96,8 +96,10 @@ function SignInForm() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-black px-4">
       <div className="w-full max-w-md rounded-xl border border-white/[0.08] bg-black p-6 sm:p-8">
-        <ReelWaliaLogo variant="lockup-tagline" className="mx-auto" markClassName="h-11 w-11" />
-        <h1 className="mt-6 text-center font-display text-2xl uppercase tracking-wide">Sign In</h1>
+        <ReelWaliaLogo variant="stacked" scale="auth" className="mx-auto" />
+        <h1 className="mt-8 text-center font-display text-2xl uppercase tracking-wide sm:mt-10 sm:text-3xl">
+          Sign In
+        </h1>
         <p className="mt-2 text-center text-sm text-gray-400">
           Stream bite-sized vertical dramas from Walia Studios. Sign in to save
           your progress and manage your subscription.
@@ -197,8 +199,8 @@ export function SignInPageClient() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-black">
-          <ReelWaliaLogo variant="lockup" markClassName="h-10 w-10" />
+        <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-black">
+          <ReelWaliaLogo variant="stacked" scale="loading" />
           <LoadingSpinner />
           <p className="text-sm text-gray-400">Loading…</p>
         </div>

@@ -13,9 +13,9 @@ export default async function AdminLayout({
     <div className="min-h-screen bg-black">
       <header className="border-b border-white/[0.08]">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-          <Link href="/admin/series" className="flex items-center gap-2">
-            <ReelWaliaLogo variant="lockup" markClassName="h-7 w-7" />
-            <span className="font-display text-sm uppercase tracking-wide text-zinc-400">
+          <Link href="/admin/series" className="flex items-center gap-3">
+            <ReelWaliaLogo variant="lockup" scale="nav" />
+            <span className="font-display text-sm uppercase tracking-wide text-zinc-500">
               Admin
             </span>
           </Link>

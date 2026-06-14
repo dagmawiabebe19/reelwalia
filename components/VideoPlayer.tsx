@@ -13,7 +13,7 @@ import {
   type TouchEvent,
 } from "react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { ReelWaliaMark } from "@/components/brand/ReelWaliaLogo";
+import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
 import { AutoplayOverlay } from "@/components/watch/AutoplayOverlay";
 import { EndOfSeriesOverlay } from "@/components/watch/EndOfSeriesOverlay";
 import type { Series } from "@/lib/types/database";
@@ -828,9 +828,9 @@ export function VideoPlayer({
           </video>
 
           {(isInitialLoad || isBuffering) && (
-            <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-black/40">
-              <ReelWaliaMark className="h-10 w-10 animate-pulse" />
-              <LoadingSpinner className="h-8 w-8" label="Loading video" />
+            <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center gap-5 bg-black/50">
+              <ReelWaliaLogo variant="lockup" scale="loading" className="animate-pulse" />
+              <LoadingSpinner className="h-7 w-7" label="Loading video" />
             </div>
           )}
 

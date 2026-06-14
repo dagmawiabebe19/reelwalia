@@ -83,7 +83,7 @@ function CheckoutSuccessInner() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-black px-4">
       <div className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-zinc-950 p-8 text-center">
-        <ReelWaliaLogo variant="lockup-tagline" className="mx-auto" markClassName="h-11 w-11" />
+        <ReelWaliaLogo variant="stacked" scale="auth" className="mx-auto" />
 
         {loading && (
           <p className="mt-6 text-sm text-gray-400">Confirming your subscription…</p>

@@ -14,8 +14,8 @@ export default function NotAuthorizedPage() {
     <div className="flex min-h-screen flex-col">
       <TopNav />
       <main className="mx-auto flex max-w-lg flex-1 flex-col items-center justify-center px-4 py-16 text-center">
-        <ReelWaliaLogo variant="lockup-tagline" className="mx-auto" markClassName="h-11 w-11" />
-        <h1 className="mt-6 font-display text-3xl uppercase">Not authorized</h1>
+        <ReelWaliaLogo variant="stacked" scale="auth" className="mx-auto" />
+        <h1 className="mt-10 font-display text-3xl uppercase sm:text-4xl">Not authorized</h1>
         <p className="mt-3 text-sm text-gray-400">
           This area is for Walia Studios admins only. If you believe this is a
           mistake, contact support.

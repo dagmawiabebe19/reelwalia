@@ -27,10 +27,14 @@ export async function TopNav() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-black/80 pt-[env(safe-area-inset-top)] backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6">
-        <Link href="/" className="transition hover:opacity-90">
-          <ReelWaliaLogo variant="lockup" markClassName="h-8 w-8 sm:h-9 sm:w-9" />
+    <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-black/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+      <div className="mx-auto flex h-[3.75rem] max-w-7xl items-center justify-between px-4 sm:h-[4.25rem] sm:px-6">
+        <Link
+          href="/"
+          className="transition duration-200 hover:opacity-90 active:opacity-80"
+          aria-label="Reel Walia home"
+        >
+          <ReelWaliaLogo variant="lockup" scale="nav" />
         </Link>
 
         <nav className="flex items-center gap-3 sm:gap-4">
@@ -58,7 +62,7 @@ export async function TopNav() {
           ) : (
             <Link
               href="/auth/sign-in"
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-3 text-sm font-semibold tracking-wide text-white transition duration-200 hover:bg-white/[0.06] hover:text-obsidian-red"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-4 text-sm font-semibold text-white transition duration-200 hover:bg-white/[0.06] hover:text-obsidian-red"
             >
               Sign In
             </Link>
