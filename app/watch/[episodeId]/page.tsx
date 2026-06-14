@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { TopNav } from "@/components/layout/TopNav";
@@ -6,6 +5,7 @@ import { ViewCount } from "@/components/ui/ViewCount";
 import { EpisodePicker } from "@/components/watch/EpisodePicker";
 import { WatchPaywall } from "@/components/watch/WatchPaywall";
 import { WatchPostCheckout } from "@/components/watch/WatchPostCheckout";
+import { WatchSeriesInfo } from "@/components/watch/WatchSeriesInfo";
 import { canWatchEpisode, hasActiveSubscription, isEpisodeFree, resolveFreeEpisodeCount } from "@/lib/access";
 import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
 import { getNextEpisode } from "@/lib/episodes";
@@ -38,7 +38,7 @@ async function getWatchData(
   const { data: series } = await supabase
     .from("series")
     .select(
-      "id, title, slug, description, view_count, free_episode_count, status, poster_url"
+      "id, title, slug, description, genre, view_count, free_episode_count, status, poster_url"
     )
     .eq("id", episode.series_id)
     .maybeSingle();
@@ -121,9 +121,15 @@ async function getWatchData(
       }
     : null;
 
+  const totalSeriesViews = (allEpisodes ?? []).reduce(
+    (sum, ep) => sum + (getEpisodeDisplayViewCount(ep) ?? 0),
+    0
+  );
+
   return {
     episode,
     series,
+    totalSeriesViews,
     unlocked,
     locked,
     isFreeEpisode,
@@ -147,6 +153,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
   const {
     episode,
     series,
+    totalSeriesViews,
     unlocked,
     locked,
     isFreeEpisode,
@@ -209,14 +216,16 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
             )}
           </div>
 
-          <div className="order-3 w-full max-w-md lg:max-w-none">
-            <Link
-              href={`/series/${series.slug}`}
-              className="inline-flex min-h-11 items-center text-sm font-medium text-zinc-400 transition hover:text-obsidian-red"
-            >
-              {series.title}
-            </Link>
-            <h1 className="mt-2 font-display text-xl uppercase leading-tight tracking-wide text-white sm:text-2xl">
+          <WatchSeriesInfo
+            title={series.title}
+            genres={series.genre ?? []}
+            totalViews={totalSeriesViews}
+            description={series.description}
+            className="order-3 lg:order-none"
+          />
+
+          <div className="order-4 w-full max-w-md lg:order-none lg:max-w-none">
+            <h1 className="font-display text-xl uppercase leading-tight tracking-wide text-white sm:text-2xl">
               {episode.title}
             </h1>
             <p className="rw-caption mt-1.5">
@@ -227,8 +236,8 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
                 prefix=" · "
               />
             </p>
-            {(episode.description || series.description) && (
-              <p className="rw-body mt-4">{episode.description ?? series.description}</p>
+            {episode.description && (
+              <p className="rw-body mt-4">{episode.description}</p>
             )}
           </div>
         </div>
