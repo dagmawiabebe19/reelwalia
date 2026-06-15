@@ -7,9 +7,7 @@ import type { ContinueWatchingItem } from "@/components/home/ContinueWatchingRow
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { SeriesRow } from "@/components/home/SeriesRow";
 import {
-  COMING_SOON_SLUGS,
   filterPublishedCatalogRows,
-  isComingSoonSeries,
 } from "@/lib/coming-soon";
 import { createClient } from "@/lib/supabase/server";
 
@@ -36,34 +34,34 @@ async function getCatalog() {
       .limit(3),
     supabase
       .from("series")
-      .select("id, title, slug, tagline, poster_url, genre")
+      .select("id, title, slug, tagline, poster_url, genre, status")
       .eq("status", "published")
       .order("created_at", { ascending: false })
       .limit(12),
     supabase
       .from("series")
-      .select("id, title, slug, tagline, poster_url, genre")
+      .select("id, title, slug, tagline, poster_url, genre, status")
       .eq("status", "published")
       .order("view_count", { ascending: false })
       .limit(12),
     supabase
       .from("series")
-      .select("id, title, slug, tagline, poster_url, genre")
+      .select("id, title, slug, tagline, poster_url, genre, status")
       .eq("status", "published")
       .eq("is_featured", true)
       .order("featured_order", { ascending: true, nullsFirst: false })
       .limit(12),
     supabase
       .from("series")
-      .select("id, title, slug, tagline, poster_url, genre")
+      .select("id, title, slug, tagline, poster_url, genre, status")
       .eq("status", "published")
       .order("title", { ascending: true })
       .limit(12),
     supabase
       .from("series")
-      .select("id, title, slug, description, poster_url, genre")
+      .select("id, title, slug, description, poster_url, genre, status, created_at")
       .eq("status", "coming_soon")
-      .order("title", { ascending: true }),
+      .order("created_at", { ascending: false }),
     supabase.auth.getUser(),
   ]);
 
@@ -73,24 +71,7 @@ async function getCatalog() {
   const editorsPicksList = filterPublishedCatalogRows(editorsPicks ?? []);
   const allPublishedFiltered = filterPublishedCatalogRows(allPublished ?? []);
 
-  const comingSoonByStatus = comingSoon ?? [];
-  const { data: comingSoonBySlug } = await supabase
-    .from("series")
-    .select("id, title, slug, description, poster_url, genre, status")
-    .in("slug", [...COMING_SOON_SLUGS]);
-
-  const comingSoonMap = new Map<string, (typeof comingSoonByStatus)[number]>();
-  for (const item of comingSoonByStatus) {
-    comingSoonMap.set(item.slug, item);
-  }
-  for (const item of comingSoonBySlug ?? []) {
-    if (isComingSoonSeries(item) && !comingSoonMap.has(item.slug)) {
-      comingSoonMap.set(item.slug, item);
-    }
-  }
-  const comingSoonList = Array.from(comingSoonMap.values()).sort((a, b) =>
-    a.title.localeCompare(b.title)
-  );
+  const comingSoonList = comingSoon ?? [];
   const isEmpty =
     featuredItems.length === 0 &&
     newSeries.length === 0 &&

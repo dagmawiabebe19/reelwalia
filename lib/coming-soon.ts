@@ -26,8 +26,13 @@ export function isComingSoonSeries(series: {
 }
 
 /** Exclude Coming Soon titles from published homepage rows. */
-export function filterPublishedCatalogRows<T extends { slug: string }>(
-  rows: T[]
-): T[] {
-  return rows.filter((row) => !isComingSoonSlug(row.slug));
+export function filterPublishedCatalogRows<
+  T extends { slug: string; status?: string | null },
+>(rows: T[]): T[] {
+  return rows.filter(
+    (row) =>
+      row.status !== "coming_soon" &&
+      row.status !== "in_development" &&
+      !isComingSoonSlug(row.slug)
+  );
 }
