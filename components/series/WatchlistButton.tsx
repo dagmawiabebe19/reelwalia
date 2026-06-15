@@ -6,11 +6,15 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 interface WatchlistButtonProps {
   seriesId: string;
   initialInWatchlist?: boolean;
+  addLabel?: string;
+  inWatchlistLabel?: string;
 }
 
 export function WatchlistButton({
   seriesId,
   initialInWatchlist = false,
+  addLabel = "Add to Watchlist",
+  inWatchlistLabel = "In Watchlist",
 }: WatchlistButtonProps) {
   const [inWatchlist, setInWatchlist] = useState(initialInWatchlist);
   const [loading, setLoading] = useState(false);
@@ -42,7 +46,7 @@ export function WatchlistButton({
       className="rw-btn-secondary inline-flex items-center gap-2"
     >
       {loading && <LoadingSpinner className="h-4 w-4" label="Updating watchlist" />}
-      {inWatchlist ? "In Watchlist" : "Add to Watchlist"}
+      {inWatchlist ? inWatchlistLabel : addLabel}
     </button>
   );
 }

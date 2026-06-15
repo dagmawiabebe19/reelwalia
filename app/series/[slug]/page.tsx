@@ -9,6 +9,7 @@ import { SeriesComingSoonView } from "@/components/series/SeriesComingSoonView";
 import { Card } from "@/components/ui/Card";
 import { ViewCount } from "@/components/ui/ViewCount";
 import { canWatchEpisode, hasActiveSubscription, resolveFreeEpisodeCount } from "@/lib/access";
+import { isComingSoonSeries } from "@/lib/coming-soon";
 import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,8 +28,28 @@ async function getSeries(slug: string) {
 
   if (!series) return null;
 
-  if (series.status === "coming_soon" || series.status === "in_development") {
-    return { kind: "coming_soon" as const, series };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let inWatchlist = false;
+
+  if (user) {
+    const { data: wl } = await supabase
+      .from("watchlist")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("series_id", series.id)
+      .maybeSingle();
+    inWatchlist = !!wl;
+  }
+
+  if (isComingSoonSeries(series)) {
+    return {
+      kind: "coming_soon" as const,
+      series,
+      inWatchlist,
+    };
   }
 
   if (series.status !== "published") return null;
@@ -41,12 +62,7 @@ async function getSeries(slug: string) {
     .eq("series_id", series.id)
     .order("episode_number", { ascending: true });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   let profile = null;
-  let inWatchlist = false;
 
   if (user) {
     const { data: p } = await supabase
@@ -55,14 +71,6 @@ async function getSeries(slug: string) {
       .eq("id", user.id)
       .maybeSingle();
     profile = p;
-
-    const { data: wl } = await supabase
-      .from("watchlist")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("series_id", series.id)
-      .maybeSingle();
-    inWatchlist = !!wl;
   }
 
   const freeCount = resolveFreeEpisodeCount(series.free_episode_count);
@@ -89,7 +97,12 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
   if (!data) notFound();
 
   if (data.kind === "coming_soon") {
-    return <SeriesComingSoonView series={data.series} />;
+    return (
+      <SeriesComingSoonView
+        series={data.series}
+        inWatchlist={data.inWatchlist}
+      />
+    );
   }
 
   const { series, episodes, inWatchlist, isAuthenticated, isSubscribed } = data;

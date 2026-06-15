@@ -6,6 +6,11 @@ import { ContinueWatchingRow } from "@/components/home/ContinueWatchingRow";
 import type { ContinueWatchingItem } from "@/components/home/ContinueWatchingRow";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { SeriesRow } from "@/components/home/SeriesRow";
+import {
+  COMING_SOON_SLUGS,
+  filterPublishedCatalogRows,
+  isComingSoonSeries,
+} from "@/lib/coming-soon";
 import { createClient } from "@/lib/supabase/server";
 
 async function getCatalog() {
@@ -62,9 +67,30 @@ async function getCatalog() {
     supabase.auth.getUser(),
   ]);
 
-  const featuredItems = featured ?? [];
-  const newSeries = recent ?? [];
-  const trendingSeries = trending ?? [];
+  const featuredItems = filterPublishedCatalogRows(featured ?? []);
+  const newSeries = filterPublishedCatalogRows(recent ?? []);
+  const trendingSeries = filterPublishedCatalogRows(trending ?? []);
+  const editorsPicksList = filterPublishedCatalogRows(editorsPicks ?? []);
+  const allPublishedFiltered = filterPublishedCatalogRows(allPublished ?? []);
+
+  const comingSoonByStatus = comingSoon ?? [];
+  const { data: comingSoonBySlug } = await supabase
+    .from("series")
+    .select("id, title, slug, description, poster_url, genre, status")
+    .in("slug", [...COMING_SOON_SLUGS]);
+
+  const comingSoonMap = new Map<string, (typeof comingSoonByStatus)[number]>();
+  for (const item of comingSoonByStatus) {
+    comingSoonMap.set(item.slug, item);
+  }
+  for (const item of comingSoonBySlug ?? []) {
+    if (isComingSoonSeries(item) && !comingSoonMap.has(item.slug)) {
+      comingSoonMap.set(item.slug, item);
+    }
+  }
+  const comingSoonList = Array.from(comingSoonMap.values()).sort((a, b) =>
+    a.title.localeCompare(b.title)
+  );
   const isEmpty =
     featuredItems.length === 0 &&
     newSeries.length === 0 &&
@@ -162,15 +188,15 @@ async function getCatalog() {
     continueWatching = rows;
   }
 
-  const recommended = [...(allPublished ?? [])].reverse();
+  const recommended = [...allPublishedFiltered].reverse();
 
   return {
     featuredWithEpisodes,
     newSeries,
     trendingSeries,
-    editorsPicks: editorsPicks ?? [],
+    editorsPicks: editorsPicksList,
     recommended,
-    comingSoon: comingSoon ?? [],
+    comingSoon: comingSoonList,
     continueWatching,
     isEmpty,
   };

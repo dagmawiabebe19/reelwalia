@@ -1,8 +1,8 @@
+import Link from "next/link";
 import type { Series } from "@/lib/types/database";
-import {
-  formatGenreLabel,
-  getComingSoonPosterClass,
-} from "@/lib/coming-soon-poster";
+import { ComingSoonBadge } from "@/components/series/ComingSoonBadge";
+import { ComingSoonPosterArt } from "@/components/series/ComingSoonPosterArt";
+import { formatGenreLabel } from "@/lib/coming-soon-poster";
 
 export type ComingSoonSeriesCard = Pick<
   Series,
@@ -26,42 +26,34 @@ export function ComingSoonRow({ series }: ComingSoonRowProps) {
       </div>
       <div className="rw-scroll-x">
         {series.map((item) => (
-          <div
+          <Link
             key={item.id}
+            href={`/series/${item.slug}`}
             className="group w-[7.5rem] shrink-0 sm:w-36 lg:w-40"
             aria-label={`${item.title} — coming soon`}
           >
             <div className="rw-card relative aspect-[9/16] overflow-hidden rounded-lg border border-white/10">
               {item.poster_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.poster_url}
-                  alt=""
-                  className="h-full w-full object-cover opacity-90"
-                />
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={item.poster_url}
+                    alt=""
+                    className="h-full w-full object-cover opacity-90"
+                  />
+                  <ComingSoonBadge className="absolute right-2 top-2 z-10" />
+                </>
               ) : (
-                <div
-                  className={`flex h-full flex-col justify-between p-3 ${getComingSoonPosterClass(item.genre)}`}
-                >
-                  <span className="text-[10px] font-medium uppercase tracking-widest text-white/40">
-                    Walia Studios
-                  </span>
-                  <p className="font-display text-sm uppercase leading-tight tracking-wide text-white">
-                    {item.title}
-                  </p>
-                </div>
+                <ComingSoonPosterArt title={item.title} genres={item.genre} />
               )}
-              <span className="absolute right-2 top-2 rounded-full bg-obsidian-red px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                Coming Soon
-              </span>
             </div>
-            <p className="mt-2.5 font-display text-sm uppercase leading-tight tracking-wide text-white">
+            <p className="mt-2.5 font-display text-sm uppercase leading-tight tracking-wide text-white group-hover:text-obsidian-red">
               {item.title}
             </p>
             <p className="mt-1 text-xs uppercase tracking-wide text-obsidian-red/90">
               {formatGenreLabel(item.genre)}
             </p>
-          </div>
+          </Link>
         ))}
       </div>
     </section>

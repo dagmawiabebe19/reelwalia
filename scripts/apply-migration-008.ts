@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import dotenv from "dotenv";
+import { COMING_SOON_SLUGS } from "../lib/coming-soon";
 import { createAdminClient } from "../lib/supabase/admin";
 
 dotenv.config({ path: resolve(process.cwd(), ".env.local") });
@@ -104,6 +105,21 @@ async function main() {
     console.warn("REDBIRD publish check:", redbirdError.message);
   } else {
     console.log("✓ REDBIRD status confirmed published");
+  }
+
+  const { error: statusFixError } = await admin
+    .from("series")
+    .update({
+      status: "coming_soon",
+      is_featured: false,
+      total_episodes: 0,
+    })
+    .in("slug", [...COMING_SOON_SLUGS]);
+
+  if (statusFixError) {
+    console.warn("Status fix for slate series:", statusFixError.message);
+  } else {
+    console.log("✓ Coming Soon slate status corrected");
   }
 
   console.log("\nComing Soon slate ready.");
