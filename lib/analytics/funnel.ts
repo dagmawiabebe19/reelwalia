@@ -5,7 +5,8 @@ export type PaywallTrigger =
   | "end_of_free_trial"
   | "locked_episode_click"
   | "direct_navigation"
-  | "manual_subscribe_button";
+  | "manual_subscribe_button"
+  | "persistent_cta";
 
 export function trackEpisodeStarted(props: {
   episode_id: string;

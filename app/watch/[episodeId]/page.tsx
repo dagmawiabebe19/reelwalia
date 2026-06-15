@@ -6,6 +6,8 @@ import { EpisodePicker } from "@/components/watch/EpisodePicker";
 import { WatchPaywall } from "@/components/watch/WatchPaywall";
 import { WatchPostCheckout } from "@/components/watch/WatchPostCheckout";
 import { WatchSeriesInfo } from "@/components/watch/WatchSeriesInfo";
+import { PaywallOpenProvider } from "@/components/watch/PaywallOpenContext";
+import { SubscribeBanner } from "@/components/watch/SubscribeBanner";
 import { canWatchEpisode, hasActiveSubscription, isEpisodeFree, resolveFreeEpisodeCount } from "@/lib/access";
 import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
 import { getNextEpisode } from "@/lib/episodes";
@@ -168,9 +170,10 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
   } = data;
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-black">
-      <TopNav />
-      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-4 sm:py-6 lg:flex-row lg:px-6">
+    <PaywallOpenProvider>
+      <div className="min-h-screen overflow-x-hidden bg-black">
+        <TopNav />
+        <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-4 sm:py-6 lg:flex-row lg:px-6">
         <div className="contents lg:flex lg:w-full lg:flex-1 lg:flex-col lg:items-center lg:gap-4">
           <div className="order-1 flex w-full flex-col items-center gap-4">
             <WatchPostCheckout
@@ -250,6 +253,14 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
           />
         </div>
       </main>
+      {!isSubscribed && (
+        <SubscribeBanner
+          episodeId={episode.id}
+          seriesSlug={series.slug}
+          isAuthenticated={isAuthenticated}
+        />
+      )}
     </div>
+    </PaywallOpenProvider>
   );
 }

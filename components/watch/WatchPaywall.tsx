@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { PaywallModal } from "@/components/PaywallModal";
 import type { PaywallTrigger } from "@/lib/analytics/funnel";
+import { useSyncPaywallOpen } from "@/components/watch/PaywallOpenContext";
 
 interface WatchPaywallProps {
   episodeId: string;
@@ -34,6 +35,8 @@ function WatchPaywallInner({
   useEffect(() => {
     if (subscribed) setModalOpen(false);
   }, [subscribed]);
+
+  useSyncPaywallOpen(modalOpen);
 
   return (
     <>

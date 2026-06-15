@@ -2,6 +2,7 @@
 
 import { PaywallModal } from "@/components/PaywallModal";
 import type { PaywallTrigger } from "@/lib/analytics/funnel";
+import { useSyncPaywallOpen } from "@/components/watch/PaywallOpenContext";
 import { useEffect, useState } from "react";
 
 export interface AutoplayNextEpisode {
@@ -44,6 +45,8 @@ export function AutoplayOverlay({
       setPaywallTrigger("end_of_free_trial");
     }
   }, [autoOpenPaywall]);
+
+  useSyncPaywallOpen(paywallOpen);
 
   if (nextEpisode.locked) {
     return (

@@ -2,10 +2,12 @@ import { notFound } from "next/navigation";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import { WatchEpisodeLink } from "@/components/watch/WatchEpisodeLink";
+import { PaywallOpenProvider } from "@/components/watch/PaywallOpenContext";
+import { SubscribeBanner } from "@/components/watch/SubscribeBanner";
 import { WatchlistButton } from "@/components/series/WatchlistButton";
 import { Card } from "@/components/ui/Card";
 import { ViewCount } from "@/components/ui/ViewCount";
-import { canWatchEpisode, resolveFreeEpisodeCount } from "@/lib/access";
+import { canWatchEpisode, hasActiveSubscription, resolveFreeEpisodeCount } from "@/lib/access";
 import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
 import { createClient } from "@/lib/supabase/server";
 
@@ -68,6 +70,8 @@ async function getSeries(slug: string) {
     series,
     episodes: episodesWithLock,
     inWatchlist,
+    isAuthenticated: !!user,
+    isSubscribed: hasActiveSubscription(profile),
   };
 }
 
@@ -77,11 +81,12 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
 
   if (!data) notFound();
 
-  const { series, episodes, inWatchlist } = data;
+  const { series, episodes, inWatchlist, isAuthenticated, isSubscribed } = data;
   const firstEpisode = episodes[0];
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <PaywallOpenProvider>
+      <div className="flex min-h-screen flex-col">
       <TopNav />
       <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-4 py-8 sm:px-6">
         <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
@@ -197,6 +202,14 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
         </div>
       </main>
       <Footer />
+      {firstEpisode && !isSubscribed && (
+        <SubscribeBanner
+          episodeId={firstEpisode.id}
+          seriesSlug={series.slug}
+          isAuthenticated={isAuthenticated}
+        />
+      )}
     </div>
+    </PaywallOpenProvider>
   );
 }

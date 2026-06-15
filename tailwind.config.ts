@@ -27,6 +27,20 @@ const config: Config = {
         "card-hover": "0 12px 40px rgba(0, 0, 0, 0.55)",
         "hero-vignette": "0 8px 40px rgba(0, 0, 0, 0.45)",
       },
+      keyframes: {
+        "subscribe-fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "subscribe-slide-up": {
+          from: { transform: "translateY(100%)", opacity: "0" },
+          to: { transform: "translateY(0)", opacity: "1" },
+        },
+      },
+      animation: {
+        "subscribe-fade-in": "subscribe-fade-in 0.35s ease-out",
+        "subscribe-slide-up": "subscribe-slide-up 0.35s ease-out",
+      },
     },
   },
   plugins: [require("@tailwindcss/typography")],
