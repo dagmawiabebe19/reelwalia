@@ -41,7 +41,7 @@ export function ComingSoonRow({ series }: ComingSoonRowProps) {
                     alt=""
                     className="h-full w-full object-cover opacity-90"
                   />
-                  <ComingSoonBadge className="absolute right-2 top-2 z-10" />
+                  <ComingSoonBadge className="absolute left-2 top-2 z-10" />
                 </>
               ) : (
                 <ComingSoonPosterArt title={item.title} genres={item.genre} />

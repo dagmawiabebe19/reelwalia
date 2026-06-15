@@ -24,7 +24,7 @@ export function ComingSoonPosterArt({
     >
       <ComingSoonBadge
         size={badgeSize}
-        className="absolute right-2 top-2 z-10"
+        className="absolute left-2 top-2 z-10"
       />
       <div className="flex flex-1 items-center justify-center px-4 py-6">
         <p
