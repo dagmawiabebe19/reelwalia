@@ -102,6 +102,7 @@ export default async function HomePage() {
           </>
         ) : (
           <>
+            {/* Catalog order: Hero → Coming Soon → Trending Now → New Series */}
             {featuredWithEpisodes.length > 0 && (
               <HeroCarousel items={featuredWithEpisodes} />
             )}
