@@ -41,10 +41,14 @@ export function ComingSoonRow({ series }: ComingSoonRowProps) {
                     alt=""
                     className="h-full w-full object-cover opacity-90"
                   />
-                  <ComingSoonBadge className="absolute left-2 top-2 z-10" />
+                  <ComingSoonBadge className="absolute bottom-2 left-2 z-10" />
                 </>
               ) : (
-                <ComingSoonPosterArt title={item.title} genres={item.genre} />
+                <ComingSoonPosterArt
+                  title={item.title}
+                  genres={item.genre}
+                  badgeClassName="absolute bottom-2 left-2 z-10"
+                />
               )}
             </div>
             <p className="mt-2.5 font-display text-sm uppercase leading-tight tracking-wide text-white group-hover:text-obsidian-red">

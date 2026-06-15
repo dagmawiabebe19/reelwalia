@@ -10,6 +10,7 @@ interface ComingSoonPosterArtProps {
   genres: string[];
   badgeSize?: "sm" | "md";
   titleClassName?: string;
+  badgeClassName?: string;
 }
 
 export function ComingSoonPosterArt({
@@ -17,6 +18,7 @@ export function ComingSoonPosterArt({
   genres,
   badgeSize = "sm",
   titleClassName = "text-base sm:text-lg",
+  badgeClassName = "absolute left-2 top-2 z-10",
 }: ComingSoonPosterArtProps) {
   return (
     <div
@@ -24,7 +26,7 @@ export function ComingSoonPosterArt({
     >
       <ComingSoonBadge
         size={badgeSize}
-        className="absolute left-2 top-2 z-10"
+        className={badgeClassName}
       />
       <div className="flex flex-1 items-center justify-center px-4 py-6">
         <p
