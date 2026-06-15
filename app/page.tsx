@@ -228,6 +228,7 @@ export default async function HomePage() {
             {featuredWithEpisodes.length > 0 && (
               <HeroCarousel items={featuredWithEpisodes} />
             )}
+            {comingSoon.length > 0 && <ComingSoonRow series={comingSoon} />}
             {continueWatching.length > 0 && (
               <ContinueWatchingRow items={continueWatching} />
             )}
@@ -243,7 +244,6 @@ export default async function HomePage() {
             {recommended.length > 0 && (
               <SeriesRow title="Recommended For You" series={recommended} />
             )}
-            {comingSoon.length > 0 && <ComingSoonRow series={comingSoon} />}
           </>
         )}
       </main>
