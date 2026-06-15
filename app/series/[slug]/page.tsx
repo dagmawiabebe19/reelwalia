@@ -5,6 +5,7 @@ import { WatchEpisodeLink } from "@/components/watch/WatchEpisodeLink";
 import { PaywallOpenProvider } from "@/components/watch/PaywallOpenContext";
 import { SubscribeBanner } from "@/components/watch/SubscribeBanner";
 import { WatchlistButton } from "@/components/series/WatchlistButton";
+import { SeriesComingSoonView } from "@/components/series/SeriesComingSoonView";
 import { Card } from "@/components/ui/Card";
 import { ViewCount } from "@/components/ui/ViewCount";
 import { canWatchEpisode, hasActiveSubscription, resolveFreeEpisodeCount } from "@/lib/access";
@@ -22,10 +23,15 @@ async function getSeries(slug: string) {
     .from("series")
     .select("*")
     .eq("slug", slug)
-    .eq("status", "published")
     .maybeSingle();
 
   if (!series) return null;
+
+  if (series.status === "coming_soon" || series.status === "in_development") {
+    return { kind: "coming_soon" as const, series };
+  }
+
+  if (series.status !== "published") return null;
 
   const { data: episodes } = await supabase
     .from("episodes")
@@ -67,6 +73,7 @@ async function getSeries(slug: string) {
   }));
 
   return {
+    kind: "published" as const,
     series,
     episodes: episodesWithLock,
     inWatchlist,
@@ -80,6 +87,10 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
   const data = await getSeries(slug);
 
   if (!data) notFound();
+
+  if (data.kind === "coming_soon") {
+    return <SeriesComingSoonView series={data.series} />;
+  }
 
   const { series, episodes, inWatchlist, isAuthenticated, isSubscribed } = data;
   const firstEpisode = episodes[0];

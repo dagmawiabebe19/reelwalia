@@ -1,6 +1,7 @@
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import { ComingSoon } from "@/components/home/ComingSoon";
+import { ComingSoonRow } from "@/components/home/ComingSoonRow";
 import { ContinueWatchingRow } from "@/components/home/ContinueWatchingRow";
 import type { ContinueWatchingItem } from "@/components/home/ContinueWatchingRow";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
@@ -16,6 +17,7 @@ async function getCatalog() {
     { data: trending },
     { data: editorsPicks },
     { data: allPublished },
+    { data: comingSoon },
     {
       data: { user },
     },
@@ -52,6 +54,11 @@ async function getCatalog() {
       .eq("status", "published")
       .order("title", { ascending: true })
       .limit(12),
+    supabase
+      .from("series")
+      .select("id, title, slug, description, poster_url, genre")
+      .eq("status", "coming_soon")
+      .order("title", { ascending: true }),
     supabase.auth.getUser(),
   ]);
 
@@ -163,6 +170,7 @@ async function getCatalog() {
     trendingSeries,
     editorsPicks: editorsPicks ?? [],
     recommended,
+    comingSoon: comingSoon ?? [],
     continueWatching,
     isEmpty,
   };
@@ -175,6 +183,7 @@ export default async function HomePage() {
     trendingSeries,
     editorsPicks,
     recommended,
+    comingSoon,
     continueWatching,
     isEmpty,
   } = await getCatalog();
@@ -184,7 +193,10 @@ export default async function HomePage() {
       <TopNav />
       <main className="mx-auto w-full max-w-7xl flex-1 space-y-11 px-4 py-6 sm:space-y-14 sm:px-6 sm:py-10">
         {isEmpty ? (
-          <ComingSoon />
+          <>
+            <ComingSoon />
+            {comingSoon.length > 0 && <ComingSoonRow series={comingSoon} />}
+          </>
         ) : (
           <>
             {featuredWithEpisodes.length > 0 && (
@@ -205,6 +217,7 @@ export default async function HomePage() {
             {recommended.length > 0 && (
               <SeriesRow title="Recommended For You" series={recommended} />
             )}
+            {comingSoon.length > 0 && <ComingSoonRow series={comingSoon} />}
           </>
         )}
       </main>

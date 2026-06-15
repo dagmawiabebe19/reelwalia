@@ -1,4 +1,9 @@
-export type SeriesStatus = "draft" | "published" | "completed";
+export type SeriesStatus =
+  | "draft"
+  | "published"
+  | "completed"
+  | "coming_soon"
+  | "in_development";
 export type SubscriptionStatus =
   | "none"
   | "active"
