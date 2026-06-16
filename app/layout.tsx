@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Anton, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { getSiteUrlFromEnv } from "@/lib/site-url";
+import { BRAND_TAGLINE } from "@/lib/brand";
 import "./globals.css";
 
 const inter = Inter({
@@ -18,8 +19,7 @@ const anton = Anton({
 
 const siteUrl = getSiteUrlFromEnv();
 const defaultTitle = "ReelWalia — Vertical drama streaming";
-const defaultDescription =
-  "Stories That Move You. Bite-sized vertical dramas from Walia Studios.";
+const defaultDescription = BRAND_TAGLINE;
 
 export const viewport: Viewport = {
   width: "device-width",
