@@ -880,10 +880,10 @@ export function VideoPlayer({
   const iconClass = "h-6 w-6 fill-white md:h-5 md:w-5";
 
   const containerClassName = isLandscapeSeries
-    ? `relative mx-auto w-full max-w-md overflow-hidden rounded-xl bg-black ${
+    ? `relative mx-auto w-full overflow-hidden rounded-xl bg-black ${
         isFullscreen
           ? "fixed inset-0 z-[100] max-h-none max-w-none rounded-none"
-          : "flex max-h-[calc(100dvh-5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] aspect-[9/16] items-center justify-center"
+          : "aspect-video"
       }`
     : `relative mx-auto w-full max-w-md overflow-hidden rounded-xl bg-black ${
         isFullscreen
@@ -1173,11 +1173,7 @@ export function VideoPlayer({
       className={containerClassName}
       onMouseMove={() => bumpControls()}
     >
-      {isLandscapeSeries && !isFullscreen ? (
-        <div className="relative w-full aspect-video">{playerContent}</div>
-      ) : (
-        playerContent
-      )}
+      {playerContent}
     </div>
   );
 }
