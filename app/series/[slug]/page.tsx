@@ -11,6 +11,7 @@ import { ViewCount } from "@/components/ui/ViewCount";
 import { canWatchEpisode, hasActiveSubscription, resolveFreeEpisodeCount } from "@/lib/access";
 import { isComingSoonSeries } from "@/lib/coming-soon";
 import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
+import { normalizeSeriesOrientation } from "@/lib/series-orientation";
 import { createClient } from "@/lib/supabase/server";
 
 interface SeriesPageProps {
@@ -107,6 +108,12 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
 
   const { series, episodes, inWatchlist, isAuthenticated, isSubscribed } = data;
   const firstEpisode = episodes[0];
+  const seriesOrientation = normalizeSeriesOrientation(series.orientation);
+  const isLandscapeSeries = seriesOrientation === "landscape";
+  const isLandscapeStandaloneFilm = isLandscapeSeries && episodes.length === 1;
+  const episodeThumbnailAspectClass = isLandscapeSeries
+    ? "aspect-video"
+    : "aspect-[9/16]";
 
   return (
     <PaywallOpenProvider>
@@ -156,6 +163,7 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
               <WatchlistButton seriesId={series.id} initialInWatchlist={inWatchlist} />
             </div>
 
+            {!isLandscapeStandaloneFilm && (
             <section className="mt-10 sm:mt-12">
               <h2 className="rw-section-title">Episodes</h2>
               {!episodes.length ? (
@@ -168,7 +176,9 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
                         episodeId={ep.id}
                         className="group block min-h-11 transition duration-200 hover:opacity-95"
                       >
-                        <div className="rw-card rw-card-hover rw-card-media relative aspect-[9/16] overflow-hidden rounded-lg bg-zinc-900">
+                        <div
+                          className={`rw-card rw-card-hover rw-card-media relative ${episodeThumbnailAspectClass} overflow-hidden rounded-lg bg-zinc-900`}
+                        >
                           {ep.thumbnail_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -222,6 +232,7 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
                 </ul>
               )}
             </section>
+            )}
           </div>
         </div>
       </main>
