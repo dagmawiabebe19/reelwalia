@@ -171,14 +171,24 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
   } = data;
 
   const seriesOrientation = normalizeSeriesOrientation(series.orientation);
+  const isLandscapeStandaloneFilm =
+    seriesOrientation === "landscape" && pickerEpisodes.length === 1;
 
   if (seriesOrientation === "landscape") {
     return (
       <PaywallOpenProvider>
         <div className="min-h-screen overflow-x-hidden bg-black">
           <TopNav />
-          <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:py-6 lg:flex-row lg:gap-6 lg:px-6">
-            <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <main
+            className={`mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:py-6 lg:px-6 ${
+              isLandscapeStandaloneFilm ? "" : "lg:flex-row lg:gap-6"
+            }`}
+          >
+            <div
+              className={`flex min-w-0 flex-col gap-3 ${
+                isLandscapeStandaloneFilm ? "mx-auto w-full max-w-[1000px]" : "flex-1"
+              }`}
+            >
               <header className="w-full space-y-2">
                 <h1 className="font-display text-xl uppercase leading-tight tracking-wide text-white sm:text-2xl">
                   {series.title}
@@ -195,14 +205,16 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
                     ))}
                   </div>
                 )}
-                <p className="rw-caption">
-                  Episode {episode.episode_number}
-                  <ViewCount
-                    count={getEpisodeDisplayViewCount(episode)}
-                    inline
-                    prefix=" · "
-                  />
-                </p>
+                {!isLandscapeStandaloneFilm && (
+                  <p className="rw-caption">
+                    Episode {episode.episode_number}
+                    <ViewCount
+                      count={getEpisodeDisplayViewCount(episode)}
+                      inline
+                      prefix=" · "
+                    />
+                  </p>
+                )}
                 {series.description && (
                   <p className="max-w-2xl text-sm leading-relaxed text-gray-300">
                     {series.description}
@@ -265,13 +277,15 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
               )}
             </div>
 
-            <div className="lg:shrink-0">
-              <EpisodePicker
-                episodes={pickerEpisodes}
-                currentEpisodeId={episode.id}
-                seriesSlug={series.slug}
-              />
-            </div>
+            {!isLandscapeStandaloneFilm && (
+              <div className="lg:shrink-0">
+                <EpisodePicker
+                  episodes={pickerEpisodes}
+                  currentEpisodeId={episode.id}
+                  seriesSlug={series.slug}
+                />
+              </div>
+            )}
           </main>
         </div>
       </PaywallOpenProvider>
