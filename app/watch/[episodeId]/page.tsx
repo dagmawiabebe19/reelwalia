@@ -223,7 +223,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
                       Subscription active — enjoy full access!
                     </p>
                   )}
-                  <div className="relative mx-auto w-full max-w-[1000px]">
+                  <div className="mx-auto flex w-full max-w-[1000px] flex-col">
                     <VideoPlayer
                       src={episode.video_url}
                       poster={episode.thumbnail_url}
@@ -247,7 +247,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
                         episodeId={episode.id}
                         seriesSlug={series.slug}
                         isAuthenticated={isAuthenticated}
-                        placement="player"
+                        placement="below-player"
                       />
                     )}
                   </div>

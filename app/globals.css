@@ -50,7 +50,7 @@ body.player-fullscreen header {
   display: none;
 }
 
-body.player-fullscreen [data-subscribe-banner="player"] {
+body.player-fullscreen [data-subscribe-banner="below-player"] {
   display: none;
 }
 

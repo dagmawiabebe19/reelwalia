@@ -9,7 +9,7 @@ interface SubscribeBannerProps {
   episodeId: string;
   seriesSlug: string;
   isAuthenticated: boolean;
-  placement?: "viewport" | "player";
+  placement?: "viewport" | "below-player";
 }
 
 const weekPlan = getPlanDisplay("1week");
@@ -26,22 +26,47 @@ export function SubscribeBanner({
   useSyncPaywallOpen(modalOpen);
 
   const openPaywall = () => setModalOpen(true);
-  const attachToPlayer = placement === "player";
-  const mobileBarClass = attachToPlayer
-    ? "absolute inset-x-0 bottom-0 z-40 border-t border-white/15 bg-black/90 backdrop-blur-md px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 animate-subscribe-slide-up lg:hidden"
+  const isBelowPlayer = placement === "below-player";
+  const mobileBarClass = isBelowPlayer
+    ? ""
     : "fixed inset-x-0 bottom-0 z-40 border-t border-white/15 bg-black/90 backdrop-blur-md px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 animate-subscribe-slide-up lg:hidden";
-  const desktopPillClass = attachToPlayer
-    ? "absolute bottom-3 right-3 z-40 hidden w-full max-w-[280px] animate-subscribe-fade-in rounded-2xl border border-white/15 bg-black/90 p-4 backdrop-blur-md lg:block"
+  const desktopPillClass = isBelowPlayer
+    ? ""
     : "fixed bottom-4 right-4 z-40 hidden w-full max-w-[320px] animate-subscribe-fade-in rounded-2xl border border-white/15 bg-black/90 p-4 backdrop-blur-md lg:block";
 
   return (
     <>
       {!isPaywallOpen && (
         <>
+          {isBelowPlayer ? (
+            <div
+              className="mt-4 w-full animate-subscribe-slide-up rounded-2xl border border-white/15 bg-black/90 p-4 backdrop-blur-md"
+              data-subscribe-banner="below-player"
+              role="region"
+              aria-label="Subscribe to unlock all episodes"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs uppercase tracking-wide text-white/70">
+                    UNLOCK ALL EPISODES
+                  </p>
+                  <p className="text-sm font-semibold text-white">{fromPriceLabel}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={openPaywall}
+                  aria-label="Get full access to all episodes"
+                  className="min-h-11 shrink-0 rounded-full bg-obsidian-red px-4 py-2 text-sm font-semibold text-white transition hover:bg-obsidian-red-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-obsidian-red focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:ml-auto"
+                >
+                  Get Full Access
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
           {/* Mobile: sticky bottom bar */}
           <div
             className={mobileBarClass}
-            data-subscribe-banner={attachToPlayer ? "player" : undefined}
             role="region"
             aria-label="Subscribe to unlock all episodes"
           >
@@ -66,7 +91,6 @@ export function SubscribeBanner({
           {/* Desktop: floating bottom-right pill */}
           <div
             className={desktopPillClass}
-            data-subscribe-banner={attachToPlayer ? "player" : undefined}
             role="region"
             aria-label="Subscribe to unlock all episodes"
           >
@@ -83,6 +107,8 @@ export function SubscribeBanner({
               Get Full Access
             </button>
           </div>
+            </>
+          )}
         </>
       )}
 
