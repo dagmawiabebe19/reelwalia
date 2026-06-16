@@ -6,7 +6,7 @@ import { requireAdmin } from "@/lib/admin";
 import { slugify } from "@/lib/slug";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncEpisodeFreeFlags } from "@/lib/sync-episode-free-flags";
-import type { SeriesGenre } from "@/lib/types/database";
+import type { SeriesGenre, SeriesOrientation } from "@/lib/types/database";
 
 export interface SeriesFormData {
   id?: string;
@@ -20,6 +20,7 @@ export interface SeriesFormData {
   hero_banner_url: string;
   is_featured: boolean;
   is_published: boolean;
+  orientation: SeriesOrientation;
 }
 
 export async function saveSeries(data: SeriesFormData) {
@@ -37,6 +38,7 @@ export async function saveSeries(data: SeriesFormData) {
     poster_url: data.poster_url || null,
     banner_url: data.hero_banner_url || null,
     is_featured: data.is_featured,
+    orientation: data.orientation,
     status: data.is_published ? "published" : "draft",
   };
 

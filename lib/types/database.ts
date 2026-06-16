@@ -28,6 +28,8 @@ export const SERIES_GENRES = [
 
 export type SeriesGenre = (typeof SERIES_GENRES)[number];
 
+export type SeriesOrientation = "vertical" | "landscape";
+
 export interface Series {
   id: string;
   title: string;
@@ -39,6 +41,7 @@ export interface Series {
   genre: string[];
   tags: string[];
   status: SeriesStatus;
+  orientation: SeriesOrientation;
   total_episodes: number;
   free_episode_count: number;
   is_featured: boolean;

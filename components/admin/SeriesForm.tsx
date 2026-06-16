@@ -6,8 +6,9 @@ import { useState, useTransition } from "react";
 import { saveSeries, type SeriesFormData } from "@/app/admin/actions";
 import { PosterUpload } from "@/components/admin/PosterUpload";
 import { DEFAULT_FREE_EPISODE_COUNT } from "@/lib/access";
+import { DEFAULT_SERIES_ORIENTATION } from "@/lib/series-orientation";
 import { slugify } from "@/lib/slug";
-import { SERIES_GENRES, type Series } from "@/lib/types/database";
+import { SERIES_GENRES, type Series, type SeriesOrientation } from "@/lib/types/database";
 
 interface SeriesFormProps {
   initial?: Partial<Series> & { id?: string };
@@ -33,6 +34,9 @@ export function SeriesForm({ initial }: SeriesFormProps) {
   const [heroBannerUrl, setHeroBannerUrl] = useState(initial?.banner_url ?? "");
   const [isFeatured, setIsFeatured] = useState(initial?.is_featured ?? false);
   const [isPublished, setIsPublished] = useState(initial?.status === "published");
+  const [orientation, setOrientation] = useState<SeriesOrientation>(
+    initial?.orientation ?? DEFAULT_SERIES_ORIENTATION
+  );
 
   const handleTitleChange = (value: string) => {
     setTitle(value);
@@ -53,6 +57,7 @@ export function SeriesForm({ initial }: SeriesFormProps) {
       hero_banner_url: heroBannerUrl,
       is_featured: isFeatured,
       is_published: isPublished,
+      orientation,
     };
 
     startTransition(async () => {
@@ -121,6 +126,32 @@ export function SeriesForm({ initial }: SeriesFormProps) {
           ))}
         </select>
       </label>
+
+      <fieldset className="space-y-2 text-sm">
+        <legend className="text-gray-400">Orientation</legend>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="radio"
+              name="orientation"
+              value="vertical"
+              checked={orientation === "vertical"}
+              onChange={() => setOrientation("vertical")}
+            />
+            Vertical (9:16)
+          </label>
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="radio"
+              name="orientation"
+              value="landscape"
+              checked={orientation === "landscape"}
+              onChange={() => setOrientation("landscape")}
+            />
+            Landscape (16:9)
+          </label>
+        </div>
+      </fieldset>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block space-y-1 text-sm">

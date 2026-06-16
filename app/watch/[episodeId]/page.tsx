@@ -11,6 +11,7 @@ import { SubscribeBanner } from "@/components/watch/SubscribeBanner";
 import { canWatchEpisode, hasActiveSubscription, isEpisodeFree, resolveFreeEpisodeCount } from "@/lib/access";
 import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
 import { getNextEpisode } from "@/lib/episodes";
+import { normalizeSeriesOrientation } from "@/lib/series-orientation";
 import { resolveInitialProgress } from "@/lib/watch-progress";
 import { shouldAutoStartWatch } from "@/lib/watch-playback";
 import { verifyCheckoutSession } from "@/lib/stripe/server";
@@ -40,7 +41,7 @@ async function getWatchData(
   const { data: series } = await supabase
     .from("series")
     .select(
-      "id, title, slug, description, genre, view_count, free_episode_count, status, poster_url"
+      "id, title, slug, description, genre, view_count, free_episode_count, status, poster_url, orientation"
     )
     .eq("id", episode.series_id)
     .maybeSingle();
@@ -169,6 +170,8 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
     initialProgress,
   } = data;
 
+  const seriesOrientation = normalizeSeriesOrientation(series.orientation);
+
   return (
     <PaywallOpenProvider>
       <div className="min-h-screen overflow-x-hidden bg-black">
@@ -188,23 +191,40 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
                     Subscription active — enjoy full access!
                   </p>
                 )}
-                <VideoPlayer
-                  src={episode.video_url}
-                  poster={episode.thumbnail_url}
-                  subtitleUrl={episode.subtitle_url}
-                  episodeId={episode.id}
-                  episodeNumber={episode.episode_number}
-                  seriesId={series.id}
-                  seriesSlug={series.slug}
-                  seriesTitle={series.title}
-                  isFreeEpisode={isFreeEpisode}
-                  isSubscribed={isSubscribed}
-                  nextEpisode={nextEpisode}
-                  otherSeries={otherSeries}
-                  initialProgress={initialProgress}
-                  autoPlay={autoPlay}
-                  isAuthenticated={isAuthenticated}
-                />
+                <div
+                  className={
+                    seriesOrientation === "landscape"
+                      ? "relative mx-auto w-full max-w-md"
+                      : "contents"
+                  }
+                >
+                  <VideoPlayer
+                    src={episode.video_url}
+                    poster={episode.thumbnail_url}
+                    subtitleUrl={episode.subtitle_url}
+                    episodeId={episode.id}
+                    episodeNumber={episode.episode_number}
+                    seriesId={series.id}
+                    seriesSlug={series.slug}
+                    seriesTitle={series.title}
+                    seriesOrientation={seriesOrientation}
+                    isFreeEpisode={isFreeEpisode}
+                    isSubscribed={isSubscribed}
+                    nextEpisode={nextEpisode}
+                    otherSeries={otherSeries}
+                    initialProgress={initialProgress}
+                    autoPlay={autoPlay}
+                    isAuthenticated={isAuthenticated}
+                  />
+                  {seriesOrientation === "landscape" && !isSubscribed && (
+                    <SubscribeBanner
+                      episodeId={episode.id}
+                      seriesSlug={series.slug}
+                      isAuthenticated={isAuthenticated}
+                      placement="player"
+                    />
+                  )}
+                </div>
               </>
             ) : (
               <WatchPaywall
@@ -253,7 +273,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
           />
         </div>
       </main>
-      {!isSubscribed && (
+      {!isSubscribed && seriesOrientation !== "landscape" && (
         <SubscribeBanner
           episodeId={episode.id}
           seriesSlug={series.slug}

@@ -9,6 +9,7 @@ interface SubscribeBannerProps {
   episodeId: string;
   seriesSlug: string;
   isAuthenticated: boolean;
+  placement?: "viewport" | "player";
 }
 
 const weekPlan = getPlanDisplay("1week");
@@ -18,12 +19,20 @@ export function SubscribeBanner({
   episodeId,
   seriesSlug,
   isAuthenticated,
+  placement = "viewport",
 }: SubscribeBannerProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const { isPaywallOpen } = usePaywallOpen();
   useSyncPaywallOpen(modalOpen);
 
   const openPaywall = () => setModalOpen(true);
+  const attachToPlayer = placement === "player";
+  const mobileBarClass = attachToPlayer
+    ? "absolute inset-x-0 bottom-0 z-40 border-t border-white/15 bg-black/90 backdrop-blur-md px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 animate-subscribe-slide-up lg:hidden"
+    : "fixed inset-x-0 bottom-0 z-40 border-t border-white/15 bg-black/90 backdrop-blur-md px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 animate-subscribe-slide-up lg:hidden";
+  const desktopPillClass = attachToPlayer
+    ? "absolute bottom-3 right-3 z-40 hidden w-full max-w-[280px] animate-subscribe-fade-in rounded-2xl border border-white/15 bg-black/90 p-4 backdrop-blur-md lg:block"
+    : "fixed bottom-4 right-4 z-40 hidden w-full max-w-[320px] animate-subscribe-fade-in rounded-2xl border border-white/15 bg-black/90 p-4 backdrop-blur-md lg:block";
 
   return (
     <>
@@ -31,7 +40,8 @@ export function SubscribeBanner({
         <>
           {/* Mobile: sticky bottom bar */}
           <div
-            className="fixed inset-x-0 bottom-0 z-40 border-t border-white/15 bg-black/90 backdrop-blur-md px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 animate-subscribe-slide-up lg:hidden"
+            className={mobileBarClass}
+            data-subscribe-banner={attachToPlayer ? "player" : undefined}
             role="region"
             aria-label="Subscribe to unlock all episodes"
           >
@@ -55,7 +65,8 @@ export function SubscribeBanner({
 
           {/* Desktop: floating bottom-right pill */}
           <div
-            className="fixed bottom-4 right-4 z-40 hidden w-full max-w-[320px] animate-subscribe-fade-in rounded-2xl border border-white/15 bg-black/90 p-4 backdrop-blur-md lg:block"
+            className={desktopPillClass}
+            data-subscribe-banner={attachToPlayer ? "player" : undefined}
             role="region"
             aria-label="Subscribe to unlock all episodes"
           >

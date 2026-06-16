@@ -29,6 +29,7 @@ import {
   trackEpisodeCompleted,
   trackEpisodeStarted,
 } from "@/lib/analytics/funnel";
+import type { SeriesOrientation } from "@/lib/types/database";
 
 const autoplayLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === "development") {
@@ -69,6 +70,7 @@ interface VideoPlayerProps {
   initialProgress?: number;
   autoPlay?: boolean;
   isAuthenticated?: boolean;
+  seriesOrientation?: SeriesOrientation;
 }
 
 const SPEEDS = [0.5, 1, 1.25, 1.5, 2] as const;
@@ -121,7 +123,9 @@ export function VideoPlayer({
   initialProgress = 0,
   autoPlay = false,
   isAuthenticated = false,
+  seriesOrientation = "vertical",
 }: VideoPlayerProps) {
+  const isLandscapeSeries = seriesOrientation === "landscape";
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -571,6 +575,39 @@ export function VideoPlayer({
   }, []);
 
   useEffect(() => {
+    if (!isLandscapeSeries || !screenfull.isEnabled) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const syncRotateFullscreen = () => {
+      const mobile = window.matchMedia("(max-width: 768px)").matches;
+      const deviceLandscape = window.innerWidth > window.innerHeight;
+
+      if (mobile && deviceLandscape && !screenfull.isFullscreen) {
+        void screenfull.request(container);
+        return;
+      }
+
+      if (
+        screenfull.isFullscreen &&
+        screenfull.element === container &&
+        (!mobile || !deviceLandscape)
+      ) {
+        void screenfull.exit();
+      }
+    };
+
+    syncRotateFullscreen();
+    window.addEventListener("orientationchange", syncRotateFullscreen);
+    window.addEventListener("resize", syncRotateFullscreen);
+    return () => {
+      window.removeEventListener("orientationchange", syncRotateFullscreen);
+      window.removeEventListener("resize", syncRotateFullscreen);
+    };
+  }, [isLandscapeSeries]);
+
+  useEffect(() => {
     if (!screenfull.isEnabled) return;
 
     const onChange = () => {
@@ -832,21 +869,30 @@ export function VideoPlayer({
     handleSurfaceTap(touch.clientX, rect.width, rect.left);
   };
 
-  const objectFitClass =
-    fitToScreen && isLandscapeMobile ? "object-cover" : "object-contain";
+  const objectFitClass = isLandscapeSeries
+    ? isFullscreen
+      ? "object-cover"
+      : "object-contain"
+    : fitToScreen && isLandscapeMobile
+      ? "object-cover"
+      : "object-contain";
 
   const iconClass = "h-6 w-6 fill-white md:h-5 md:w-5";
 
-  return (
-    <div
-      ref={containerRef}
-      className={`relative mx-auto w-full max-w-md overflow-hidden rounded-xl bg-black ${
+  const containerClassName = isLandscapeSeries
+    ? `relative mx-auto w-full max-w-md overflow-hidden rounded-xl bg-black ${
+        isFullscreen
+          ? "fixed inset-0 z-[100] max-h-none max-w-none rounded-none"
+          : "flex max-h-[calc(100dvh-5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] aspect-[9/16] items-center justify-center"
+      }`
+    : `relative mx-auto w-full max-w-md overflow-hidden rounded-xl bg-black ${
         isFullscreen
           ? "fixed inset-0 z-[100] max-h-none max-w-none rounded-none"
           : "max-h-[calc(100dvh-5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] aspect-[9/16]"
-      }`}
-      onMouseMove={() => bumpControls()}
-    >
+      }`;
+
+  const playerContent = (
+    <>
       {loadError ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black p-6 text-center">
           <p className="text-base text-gray-300">
@@ -1051,7 +1097,7 @@ export function VideoPlayer({
                     />
                   </div>
 
-                  {isLandscapeMobile && (
+                  {isLandscapeMobile && !isLandscapeSeries && (
                     <ControlButton
                       label={fitToScreen ? "Fit video" : "Fill screen"}
                       onClick={() => setFitToScreen((v) => !v)}
@@ -1117,6 +1163,20 @@ export function VideoPlayer({
             </div>
           </div>
         </>
+      )}
+    </>
+  );
+
+  return (
+    <div
+      ref={containerRef}
+      className={containerClassName}
+      onMouseMove={() => bumpControls()}
+    >
+      {isLandscapeSeries && !isFullscreen ? (
+        <div className="relative w-full aspect-video">{playerContent}</div>
+      ) : (
+        playerContent
       )}
     </div>
   );
