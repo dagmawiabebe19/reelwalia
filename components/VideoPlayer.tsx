@@ -610,7 +610,12 @@ export function VideoPlayer({
         const landscape = isDeviceLandscape();
         const active = isLandscapeRotateFullscreenActive(video, container);
 
-        if (mobile && landscape) {
+        // Desktop: manual fullscreen only — never auto-enter or auto-exit on resize.
+        if (!mobile) {
+          return;
+        }
+
+        if (landscape) {
           if (active || enterInFlight || !canAutoRotateFullscreen(video)) {
             return;
           }
@@ -627,14 +632,13 @@ export function VideoPlayer({
           return;
         }
 
+        // Mobile portrait: exit rotate-triggered fullscreen.
         if (active) {
           void exitLandscapeRotateFullscreen(video, container).then(() => {
             if (!disposed && !isLandscapeRotateFullscreenActive(video, container)) {
               applyFullscreenState(false);
             }
           });
-        } else if (!disposed) {
-          applyFullscreenState(false);
         }
       }, 200);
     };
