@@ -30,6 +30,14 @@ import {
   trackEpisodeStarted,
 } from "@/lib/analytics/funnel";
 import type { SeriesOrientation } from "@/lib/types/database";
+import {
+  canAutoRotateFullscreen,
+  enterLandscapeRotateFullscreen,
+  exitLandscapeRotateFullscreen,
+  isDeviceLandscape,
+  isLandscapeRotateFullscreenActive,
+  isMobileViewport,
+} from "@/lib/landscape-rotate-fullscreen";
 
 const autoplayLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === "development") {
@@ -561,6 +569,8 @@ export function VideoPlayer({
   }, [playbackRate]);
 
   useEffect(() => {
+    if (isLandscapeSeries) return;
+
     const updateOrientation = () => {
       const mobile = window.matchMedia("(max-width: 768px)").matches;
       setIsLandscapeMobile(mobile && window.innerWidth > window.innerHeight);
@@ -572,40 +582,85 @@ export function VideoPlayer({
       window.removeEventListener("resize", updateOrientation);
       window.removeEventListener("orientationchange", updateOrientation);
     };
-  }, []);
+  }, [isLandscapeSeries]);
 
   useEffect(() => {
-    if (!isLandscapeSeries || !screenfull.isEnabled) return;
+    if (!isLandscapeSeries) return;
 
     const container = containerRef.current;
-    if (!container) return;
+    const video = videoRef.current;
+    if (!container || !video) return;
+
+    let syncTimer: ReturnType<typeof setTimeout> | null = null;
+    let enterInFlight = false;
+    let disposed = false;
+
+    const applyFullscreenState = (active: boolean) => {
+      if (disposed) return;
+      setIsFullscreen(active);
+      document.body.classList.toggle("player-fullscreen", active);
+    };
 
     const syncRotateFullscreen = () => {
-      const mobile = window.matchMedia("(max-width: 768px)").matches;
-      const deviceLandscape = window.innerWidth > window.innerHeight;
+      if (syncTimer) clearTimeout(syncTimer);
+      syncTimer = setTimeout(() => {
+        if (disposed) return;
 
-      if (mobile && deviceLandscape && !screenfull.isFullscreen) {
-        void screenfull.request(container);
-        return;
-      }
+        const mobile = isMobileViewport();
+        const landscape = isDeviceLandscape();
+        const active = isLandscapeRotateFullscreenActive(video, container);
 
-      if (
-        screenfull.isFullscreen &&
-        screenfull.element === container &&
-        (!mobile || !deviceLandscape)
-      ) {
-        void screenfull.exit();
-      }
+        if (mobile && landscape) {
+          if (active || enterInFlight || !canAutoRotateFullscreen(video)) {
+            return;
+          }
+          enterInFlight = true;
+          void enterLandscapeRotateFullscreen(video, container)
+            .then((entered) => {
+              if (!entered && !disposed) {
+                applyFullscreenState(false);
+              }
+            })
+            .finally(() => {
+              enterInFlight = false;
+            });
+          return;
+        }
+
+        if (active) {
+          void exitLandscapeRotateFullscreen(video, container).then(() => {
+            if (!disposed && !isLandscapeRotateFullscreenActive(video, container)) {
+              applyFullscreenState(false);
+            }
+          });
+        } else if (!disposed) {
+          applyFullscreenState(false);
+        }
+      }, 200);
     };
+
+    const onWebkitBeginFullscreen = () => applyFullscreenState(true);
+    const onWebkitEndFullscreen = () => applyFullscreenState(false);
+
+    video.addEventListener("webkitbeginfullscreen", onWebkitBeginFullscreen);
+    video.addEventListener("webkitendfullscreen", onWebkitEndFullscreen);
 
     syncRotateFullscreen();
     window.addEventListener("orientationchange", syncRotateFullscreen);
     window.addEventListener("resize", syncRotateFullscreen);
+
     return () => {
+      disposed = true;
+      if (syncTimer) clearTimeout(syncTimer);
       window.removeEventListener("orientationchange", syncRotateFullscreen);
       window.removeEventListener("resize", syncRotateFullscreen);
+      video.removeEventListener("webkitbeginfullscreen", onWebkitBeginFullscreen);
+      video.removeEventListener("webkitendfullscreen", onWebkitEndFullscreen);
+      void exitLandscapeRotateFullscreen(video, container).finally(() => {
+        document.body.classList.remove("player-fullscreen");
+      });
     };
-  }, [isLandscapeSeries]);
+  }, [isLandscapeSeries, episodeId, src]);
 
   useEffect(() => {
     if (!screenfull.isEnabled) return;
