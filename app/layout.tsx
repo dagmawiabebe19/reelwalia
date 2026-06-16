@@ -18,7 +18,7 @@ const anton = Anton({
 });
 
 const siteUrl = getSiteUrlFromEnv();
-const defaultTitle = "ReelWalia — Vertical drama streaming";
+const defaultTitle = "ReelWalia — Stories That Move You";
 const defaultDescription = BRAND_TAGLINE;
 
 export const viewport: Viewport = {
