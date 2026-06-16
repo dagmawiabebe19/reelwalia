@@ -59,15 +59,15 @@ assert(getNextEpisode(episodes, "ep6") === null, "Ep6 should have no next");
 assert(getEpisodeByNumber(episodes, 1)?.id === "ep1", "getEpisodeByNumber(1)");
 assert(getEpisodeByNumber(episodes, 3)?.id === "ep3", "getEpisodeByNumber(3)");
 
-// --- Paywall gating (REDBIRD: 3 free episodes) ---
-const freeCount = resolveFreeEpisodeCount(3);
-assert(freeCount === 3, "resolveFreeEpisodeCount uses series value");
+// --- Paywall gating (REDBIRD: 1 free episode) ---
+const freeCount = resolveFreeEpisodeCount(1);
+assert(freeCount === 1, "resolveFreeEpisodeCount uses series value");
 assert(
   resolveFreeEpisodeCount(undefined) === DEFAULT_FREE_EPISODE_COUNT,
-  "Default free episode count is 3"
+  "Default free episode count is 1"
 );
 assert(isEpisodeFree(1, freeCount), "Episode 1 is free");
-assert(isEpisodeFree(3, freeCount), "Episode 3 is free");
+assert(!isEpisodeFree(2, freeCount), "Episode 2 is locked");
 assert(!isEpisodeFree(4, freeCount), "Episode 4 is locked");
 assert(
   canWatchEpisode(4, freeCount, { subscription_status: "active" }),
@@ -82,12 +82,12 @@ assert(
   "Logged-out users cannot watch episode 4"
 );
 
-// Binge chain stops at paywall boundary — ep3 next is ep4 (locked for guests)
-const ep3Next = getNextEpisode(episodes, "ep3");
-assert(ep3Next?.id === "ep4", "After ep3 binge targets ep4");
+// Binge chain stops at paywall boundary — ep1 next is ep2 (locked for guests)
+const ep1Next = getNextEpisode(episodes, "ep1");
+assert(ep1Next?.id === "ep2", "After ep1 binge targets ep2");
 assert(
-  !canWatchEpisode(ep3Next!.episode_number, freeCount, null),
-  "Ep4 requires subscription after free tier"
+  !canWatchEpisode(ep1Next!.episode_number, freeCount, null),
+  "Ep2 requires subscription after free tier"
 );
 
 // --- Progress resolution (root-cause fix) ---
@@ -128,6 +128,6 @@ assert(storage.has(WATCH_USER_INITIATED_KEY), "markBingeContinuation sets flag")
 
 console.log("✓ All playback validation checks passed");
 console.log("  Entry: /watch/{id}?autoplay=true");
-console.log("  Chain: ep1 → ep2 → ep3 → [paywall] → ep4+");
+console.log("  Chain: ep1 → [paywall] → ep2+");
 console.log(`  Free tier: episodes 1–${DEFAULT_FREE_EPISODE_COUNT}`);
 console.log("  Binge progress: always starts at 0");

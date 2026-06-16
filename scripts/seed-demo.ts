@@ -89,7 +89,7 @@ async function main() {
           genre: s.genre,
           status: "published",
           total_episodes: 10,
-          free_episode_count: 3,
+          free_episode_count: 1,
           is_featured: s.is_featured,
           featured_order: s.featured_order,
           view_count: Math.floor(Math.random() * 50000) + 1000,
@@ -103,7 +103,7 @@ async function main() {
           ...s,
           status: "published",
           total_episodes: 10,
-          free_episode_count: 3,
+          free_episode_count: 1,
           view_count: Math.floor(Math.random() * 50000) + 1000,
         })
         .select("id")
@@ -135,7 +135,7 @@ async function main() {
         video_url: playbackUrl(videoId),
         thumbnail_url: thumbnailUrl(videoId),
         duration_seconds: 90,
-        is_free: i <= 3,
+        is_free: i <= 1,
         view_count: Math.floor(Math.random() * 10000),
         published_at: new Date().toISOString(),
       };
