@@ -102,14 +102,14 @@ export default async function HomePage() {
           </>
         ) : (
           <>
-            {/* Catalog order: Hero → Coming Soon → Trending Now → New Series */}
+            {/* Catalog order: Hero → Trending Now → Coming Soon → New Series */}
             {featuredWithEpisodes.length > 0 && (
               <HeroCarousel items={featuredWithEpisodes} />
             )}
-            {comingSoon.length > 0 && <ComingSoonRow series={comingSoon} />}
             {trendingSeries.length > 0 && (
               <SeriesRow title="Trending Now" series={trendingSeries} />
             )}
+            {comingSoon.length > 0 && <ComingSoonRow series={comingSoon} />}
             {newSeries.length > 0 && (
               <SeriesRow title="New Series" series={newSeries} />
             )}
