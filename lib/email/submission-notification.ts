@@ -51,6 +51,12 @@ export async function sendSubmissionNotification(
         ${textRow("Production Status", productionLabel(submission.production_status))}
         ${textRow("Episodes", String(submission.episode_count))}
         ${textRow("Avg. Length", submission.average_episode_length)}
+        ${textRow(
+          "Runtime",
+          submission.runtime_minutes != null
+            ? `${submission.runtime_minutes} minutes`
+            : null
+        )}
         ${textRow("Logline", submission.logline)}
         ${textRow("Owns Rights", boolLabel(submission.owns_distribution_rights))}
         ${textRow("Released Elsewhere", boolLabel(submission.released_elsewhere))}

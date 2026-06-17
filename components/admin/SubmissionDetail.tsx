@@ -146,6 +146,12 @@ export function SubmissionDetail({ submission }: { submission: CreatorSubmission
           <DetailRow label="Production" value={productionLabel(submission.production_status)} />
           <DetailRow label="Episodes" value={String(submission.episode_count)} />
           <DetailRow label="Avg. Length" value={submission.average_episode_length} />
+          {submission.runtime_minutes != null && (
+            <DetailRow
+              label="Runtime"
+              value={`${submission.runtime_minutes} minutes`}
+            />
+          )}
           <DetailRow label="Logline" value={submission.logline} />
         </dl>
         <div className="mt-4 border-t border-white/[0.06] pt-4">

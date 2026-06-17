@@ -163,6 +163,7 @@ export interface CreatorSubmission {
   description: string;
   episode_count: number;
   average_episode_length: string;
+  runtime_minutes: number | null;
   production_status: ProductionStatus;
   trailer_link: string | null;
   screener_link: string | null;

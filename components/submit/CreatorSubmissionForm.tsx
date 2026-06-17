@@ -9,6 +9,7 @@ import {
   SUBMISSION_GENRES,
 } from "@/lib/submissions/constants";
 import { UN_COUNTRIES } from "@/lib/submissions/countries";
+import { isFilmProject, isSeriesProject, LOGLINE_MAX_LENGTH } from "@/lib/submissions/project-type";
 import {
   wordCount,
   type CreatorSubmissionInput,
@@ -30,6 +31,7 @@ const initialState: CreatorSubmissionInput = {
   description: "",
   episodeCount: "",
   averageEpisodeLength: "",
+  runtimeMinutes: "",
   productionStatus: "",
   trailerLink: "",
   screenerLink: "",
@@ -124,9 +126,28 @@ export function CreatorSubmissionForm() {
   const [pending, startTransition] = useTransition();
 
   const descriptionWords = useMemo(() => wordCount(form.description), [form.description]);
+  const showSeriesFields = isSeriesProject(form.projectType);
+  const showFilmFields = isFilmProject(form.projectType);
 
   const update = (key: keyof CreatorSubmissionInput, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const updateProjectType = (value: string) => {
+    setForm((prev) => {
+      const next = { ...prev, projectType: value };
+      if (isSeriesProject(value)) {
+        next.runtimeMinutes = "";
+      } else if (isFilmProject(value)) {
+        next.episodeCount = "";
+        next.averageEpisodeLength = "";
+      } else {
+        next.episodeCount = "";
+        next.averageEpisodeLength = "";
+        next.runtimeMinutes = "";
+      }
+      return next;
+    });
   };
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -272,10 +293,33 @@ export function CreatorSubmissionForm() {
           />
         </Field>
 
+        <Field
+          label="Logline"
+          required
+          hint="One sentence that captures the core conflict of your story."
+        >
+          <input
+            type="text"
+            value={form.logline}
+            onChange={(e) => update("logline", e.target.value.slice(0, LOGLINE_MAX_LENGTH))}
+            className="rw-form-input"
+            placeholder="A disgraced rodeo rider must choose between family loyalty and his dream of becoming a champion."
+            maxLength={LOGLINE_MAX_LENGTH}
+            required
+          />
+          <p
+            className={`text-xs ${
+              form.logline.length > LOGLINE_MAX_LENGTH ? "text-zinc-500" : "text-zinc-400"
+            }`}
+          >
+            {form.logline.length} / {LOGLINE_MAX_LENGTH} characters
+          </p>
+        </Field>
+
         <Field label="Project Type" required>
           <select
             value={form.projectType}
-            onChange={(e) => update("projectType", e.target.value)}
+            onChange={(e) => updateProjectType(e.target.value)}
             className="rw-form-select"
             required
           >
@@ -304,17 +348,11 @@ export function CreatorSubmissionForm() {
           </select>
         </Field>
 
-        <Field label="Logline" required hint="1 sentence">
-          <input
-            type="text"
-            value={form.logline}
-            onChange={(e) => update("logline", e.target.value)}
-            className="rw-form-input"
-            required
-          />
-        </Field>
-
-        <Field label="Description" required hint="50–300 words">
+        <Field
+          label="Description"
+          required
+          hint="Tell us about the story, characters, audience, themes, and what makes this project unique."
+        >
           <textarea
             value={form.description}
             onChange={(e) => update("description", e.target.value)}
@@ -329,30 +367,63 @@ export function CreatorSubmissionForm() {
                 : "text-zinc-400"
             }`}
           >
-            {descriptionWords} / 300 words
+            {descriptionWords} / 300 words (50 minimum)
           </p>
         </Field>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Number of Episodes" required>
-            <input
-              type="number"
-              min={1}
-              value={form.episodeCount}
-              onChange={(e) => update("episodeCount", e.target.value)}
-              className="rw-form-input"
-              required
-            />
-          </Field>
-          <Field label="Average Episode Length" required hint="e.g. 2–3 minutes">
-            <input
-              type="text"
-              value={form.averageEpisodeLength}
-              onChange={(e) => update("averageEpisodeLength", e.target.value)}
-              className="rw-form-input"
-              required
-            />
-          </Field>
+        <div
+          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+            showSeriesFields ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+          }`}
+        >
+          <div className="overflow-hidden">
+            {showSeriesFields && (
+              <div className="grid gap-4 sm:grid-cols-2 animate-subscribe-slide-up">
+                <Field label="Number of Episodes" required>
+                  <input
+                    type="number"
+                    min={1}
+                    value={form.episodeCount}
+                    onChange={(e) => update("episodeCount", e.target.value)}
+                    className="rw-form-input"
+                    required
+                  />
+                </Field>
+                <Field label="Average Episode Length" required hint="e.g. 2–3 minutes">
+                  <input
+                    type="text"
+                    value={form.averageEpisodeLength}
+                    onChange={(e) => update("averageEpisodeLength", e.target.value)}
+                    className="rw-form-input"
+                    required
+                  />
+                </Field>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div
+          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+            showFilmFields ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+          }`}
+        >
+          <div className="overflow-hidden">
+            {showFilmFields && (
+              <Field label="Runtime (minutes)" required>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={form.runtimeMinutes}
+                  onChange={(e) => update("runtimeMinutes", e.target.value)}
+                  className="rw-form-input animate-subscribe-slide-up"
+                  placeholder="90"
+                  required
+                />
+              </Field>
+            )}
+          </div>
         </div>
 
         <Field label="Production Status" required>

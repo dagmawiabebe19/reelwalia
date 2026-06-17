@@ -6,6 +6,7 @@ import {
   type ProjectType,
   type SubmissionGenre,
 } from "@/lib/submissions/constants";
+import { isFilmProject, isSeriesProject, LOGLINE_MAX_LENGTH } from "@/lib/submissions/project-type";
 
 export type CreatorSubmissionInput = {
   creatorName: string;
@@ -23,6 +24,7 @@ export type CreatorSubmissionInput = {
   description: string;
   episodeCount: string;
   averageEpisodeLength: string;
+  runtimeMinutes: string;
   productionStatus: string;
   trailerLink: string;
   screenerLink: string;
@@ -80,7 +82,6 @@ export function validateCreatorSubmission(
   const projectType = input.projectType.trim() as ProjectType;
   const logline = input.logline.trim();
   const description = input.description.trim();
-  const averageEpisodeLength = input.averageEpisodeLength.trim();
   const genre = input.genre.trim() as SubmissionGenre;
   const productionStatus = input.productionStatus.trim() as ProductionStatus;
 
@@ -96,6 +97,12 @@ export function validateCreatorSubmission(
     return { ok: false, error: "Please select a genre." };
   }
   if (!logline) return { ok: false, error: "Logline is required." };
+  if (logline.length > LOGLINE_MAX_LENGTH) {
+    return {
+      ok: false,
+      error: `Logline must be ${LOGLINE_MAX_LENGTH} characters or fewer.`,
+    };
+  }
   if (!description) return { ok: false, error: "Description is required." };
 
   const words = wordCount(description);
@@ -106,13 +113,43 @@ export function validateCreatorSubmission(
     return { ok: false, error: "Description must be 300 words or fewer." };
   }
 
-  const episodeCount = Number.parseInt(input.episodeCount, 10);
-  if (!Number.isFinite(episodeCount) || episodeCount < 1) {
-    return { ok: false, error: "Number of episodes must be at least 1." };
+  const episodeCountRaw = input.episodeCount.trim();
+  const averageEpisodeLengthRaw = input.averageEpisodeLength.trim();
+  const runtimeMinutesRaw = input.runtimeMinutes.trim();
+  const seriesProject = isSeriesProject(projectType);
+  const filmProject = isFilmProject(projectType);
+
+  let episodeCount: number;
+  let averageEpisodeLength: string;
+  let runtimeMinutes: number | null;
+
+  if (seriesProject) {
+    episodeCount = Number.parseInt(episodeCountRaw, 10);
+    if (!Number.isFinite(episodeCount) || episodeCount < 1) {
+      return { ok: false, error: "Number of episodes must be at least 1." };
+    }
+    averageEpisodeLength = averageEpisodeLengthRaw;
+    if (!averageEpisodeLength) {
+      return { ok: false, error: "Average episode length is required." };
+    }
+    runtimeMinutes = null;
+  } else if (filmProject) {
+    const parsedRuntime = Number.parseInt(runtimeMinutesRaw, 10);
+    if (
+      !runtimeMinutesRaw ||
+      !/^\d+$/.test(runtimeMinutesRaw) ||
+      !Number.isFinite(parsedRuntime) ||
+      parsedRuntime <= 0
+    ) {
+      return { ok: false, error: "Runtime must be a whole number greater than 0." };
+    }
+    runtimeMinutes = parsedRuntime;
+    episodeCount = 1;
+    averageEpisodeLength = "N/A";
+  } else {
+    return { ok: false, error: "Please select a project type." };
   }
-  if (!averageEpisodeLength) {
-    return { ok: false, error: "Average episode length is required." };
-  }
+
   if (!PRODUCTION_STATUSES.some((s) => s.value === productionStatus)) {
     return { ok: false, error: "Please select a production status." };
   }
@@ -191,6 +228,7 @@ export function validateCreatorSubmission(
       description,
       episode_count: episodeCount,
       average_episode_length: averageEpisodeLength,
+      runtime_minutes: runtimeMinutes,
       production_status: productionStatus,
       trailer_link: trailerLink,
       screener_link: screenerLink,
@@ -225,6 +263,7 @@ export type CreatorSubmissionRecord = {
   description: string;
   episode_count: number;
   average_episode_length: string;
+  runtime_minutes: number | null;
   production_status: ProductionStatus;
   trailer_link: string | null;
   screener_link: string | null;
