@@ -1,5 +1,6 @@
 import type { CreatorSubmissionRecord } from "@/lib/submissions/validation";
 import { SUBMISSION_NOTIFY_EMAIL } from "@/lib/submissions/constants";
+import { getProjectStageLabel } from "@/lib/submissions/project-stage";
 
 function linkLine(label: string, url: string | null): string {
   if (!url) return "";
@@ -47,7 +48,10 @@ export async function sendSubmissionNotification(
         ${textRow("Company", submission.company)}
         ${textRow("Country", submission.country)}
         ${textRow("Project", submission.project_title)}
+        ${textRow("Project Type", submission.project_type)}
         ${textRow("Genre", submission.genre)}
+        ${textRow("Project Stage", getProjectStageLabel(submission.project_stage))}
+        ${textRow("Target Audience", submission.target_audience)}
         ${textRow("Production Status", productionLabel(submission.production_status))}
         ${textRow("Episodes", String(submission.episode_count))}
         ${textRow("Avg. Length", submission.average_episode_length)}
@@ -61,6 +65,7 @@ export async function sendSubmissionNotification(
         ${textRow("Owns Rights", boolLabel(submission.owns_distribution_rights))}
         ${textRow("Released Elsewhere", boolLabel(submission.released_elsewhere))}
         ${textRow("Released Where", submission.released_elsewhere_where)}
+        ${textRow("Trailer Available", boolLabel(submission.trailer_available))}
         ${linkLine("Trailer", submission.trailer_link)}
         ${linkLine("Screener", submission.screener_link)}
         ${linkLine("YouTube", submission.youtube_link)}

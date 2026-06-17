@@ -146,6 +146,13 @@ export type ProductionStatus =
   | "in_production"
   | "development";
 
+export type ProjectStage =
+  | "idea_concept"
+  | "script_complete"
+  | "in_production"
+  | "post_production"
+  | "completed_ready";
+
 export interface CreatorSubmission {
   id: string;
   creator_name: string;
@@ -165,6 +172,13 @@ export interface CreatorSubmission {
   average_episode_length: string;
   runtime_minutes: number | null;
   production_status: ProductionStatus;
+  project_stage: ProjectStage;
+  target_audience: string | null;
+  trailer_available: boolean | null;
+  submission_rights_confirmed: boolean;
+  concept_score: number | null;
+  marketability_score: number | null;
+  production_quality_score: number | null;
   trailer_link: string | null;
   screener_link: string | null;
   youtube_link: string | null;

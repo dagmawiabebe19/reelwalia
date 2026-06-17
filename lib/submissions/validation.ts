@@ -1,8 +1,10 @@
 import {
   PRODUCTION_STATUSES,
+  PROJECT_STAGES,
   PROJECT_TYPES,
   SUBMISSION_GENRES,
   type ProductionStatus,
+  type ProjectStage,
   type ProjectType,
   type SubmissionGenre,
 } from "@/lib/submissions/constants";
@@ -26,6 +28,9 @@ export type CreatorSubmissionInput = {
   averageEpisodeLength: string;
   runtimeMinutes: string;
   productionStatus: string;
+  projectStage: string;
+  targetAudience: string;
+  trailerAvailable: string;
   trailerLink: string;
   screenerLink: string;
   youtubeLink: string;
@@ -38,6 +43,7 @@ export type CreatorSubmissionInput = {
   ownsDistributionRights: string;
   releasedElsewhere: string;
   releasedElsewhereWhere: string;
+  rightsConfirmed: string;
   additionalNotes: string;
 };
 
@@ -84,6 +90,7 @@ export function validateCreatorSubmission(
   const description = input.description.trim();
   const genre = input.genre.trim() as SubmissionGenre;
   const productionStatus = input.productionStatus.trim() as ProductionStatus;
+  const projectStage = input.projectStage.trim() as ProjectStage;
 
   if (!creatorName) return { ok: false, error: "Full name is required." };
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -154,6 +161,32 @@ export function validateCreatorSubmission(
     return { ok: false, error: "Please select a production status." };
   }
 
+  if (!PROJECT_STAGES.some((s) => s.value === projectStage)) {
+    return { ok: false, error: "Please select a project stage." };
+  }
+
+  const trailerAvailable = parseBoolean(input.trailerAvailable, "Trailer availability");
+  if (typeof trailerAvailable === "string") {
+    return { ok: false, error: trailerAvailable };
+  }
+
+  let trailerLink: string | null = null;
+  if (trailerAvailable) {
+    const trailerCheck = optionalUrl(input.trailerLink, "Trailer link");
+    if (trailerCheck.error) return { ok: false, error: trailerCheck.error };
+    if (!trailerCheck.value) {
+      return { ok: false, error: "Trailer link is required when a trailer is available." };
+    }
+    trailerLink = trailerCheck.value;
+  }
+
+  if (input.rightsConfirmed !== "yes") {
+    return {
+      ok: false,
+      error: "You must confirm that you own or control the rights to submit this project.",
+    };
+  }
+
   const ownsDistributionRights = parseBoolean(
     input.ownsDistributionRights,
     "Distribution rights"
@@ -181,7 +214,6 @@ export function validateCreatorSubmission(
   const urlChecks = [
     optionalUrl(input.website, "Website"),
     optionalUrl(input.imdb, "IMDb"),
-    optionalUrl(input.trailerLink, "Trailer link"),
     optionalUrl(input.screenerLink, "Private screener link"),
     optionalUrl(input.youtubeLink, "YouTube link"),
     optionalUrl(input.vimeoLink, "Vimeo link"),
@@ -199,7 +231,6 @@ export function validateCreatorSubmission(
   const [
     website,
     imdb,
-    trailerLink,
     screenerLink,
     youtubeLink,
     vimeoLink,
@@ -230,6 +261,10 @@ export function validateCreatorSubmission(
       average_episode_length: averageEpisodeLength,
       runtime_minutes: runtimeMinutes,
       production_status: productionStatus,
+      project_stage: projectStage,
+      target_audience: optionalText(input.targetAudience),
+      trailer_available: trailerAvailable,
+      submission_rights_confirmed: true,
       trailer_link: trailerLink,
       screener_link: screenerLink,
       youtube_link: youtubeLink,
@@ -265,6 +300,10 @@ export type CreatorSubmissionRecord = {
   average_episode_length: string;
   runtime_minutes: number | null;
   production_status: ProductionStatus;
+  project_stage: ProjectStage;
+  target_audience: string | null;
+  trailer_available: boolean;
+  submission_rights_confirmed: boolean;
   trailer_link: string | null;
   screener_link: string | null;
   youtube_link: string | null;

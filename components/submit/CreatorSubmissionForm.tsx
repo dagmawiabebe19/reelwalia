@@ -5,6 +5,7 @@ import { submitCreatorProject } from "@/app/submit/actions";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
   PRODUCTION_STATUSES,
+  PROJECT_STAGES,
   PROJECT_TYPES,
   SUBMISSION_GENRES,
 } from "@/lib/submissions/constants";
@@ -33,6 +34,9 @@ const initialState: CreatorSubmissionInput = {
   averageEpisodeLength: "",
   runtimeMinutes: "",
   productionStatus: "",
+  projectStage: "",
+  targetAudience: "",
+  trailerAvailable: "",
   trailerLink: "",
   screenerLink: "",
   youtubeLink: "",
@@ -45,6 +49,7 @@ const initialState: CreatorSubmissionInput = {
   ownsDistributionRights: "",
   releasedElsewhere: "",
   releasedElsewhereWhere: "",
+  rightsConfirmed: "",
   additionalNotes: "",
 };
 
@@ -148,6 +153,14 @@ export function CreatorSubmissionForm() {
       }
       return next;
     });
+  };
+
+  const updateTrailerAvailable = (value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      trailerAvailable: value,
+      trailerLink: value === "yes" ? prev.trailerLink : "",
+    }));
   };
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -371,6 +384,19 @@ export function CreatorSubmissionForm() {
           </p>
         </Field>
 
+        <Field
+          label="Target Audience"
+          hint="Who do you believe this project is for?"
+        >
+          <input
+            type="text"
+            value={form.targetAudience}
+            onChange={(e) => update("targetAudience", e.target.value)}
+            className="rw-form-input"
+            placeholder="Fans of Yellowstone, ReelShort, romance dramas, documentaries, westerns, etc."
+          />
+        </Field>
+
         <div
           className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
             showSeriesFields ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
@@ -426,6 +452,26 @@ export function CreatorSubmissionForm() {
           </div>
         </div>
 
+        <Field
+          label="Project Stage"
+          required
+          hint="Tell us where your project currently stands."
+        >
+          <select
+            value={form.projectStage}
+            onChange={(e) => update("projectStage", e.target.value)}
+            className="rw-form-select"
+            required
+          >
+            <option value="">Select project stage</option>
+            {PROJECT_STAGES.map((stage) => (
+              <option key={stage.value} value={stage.value}>
+                {stage.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+
         <Field label="Production Status" required>
           <select
             value={form.productionStatus}
@@ -444,10 +490,34 @@ export function CreatorSubmissionForm() {
       </Section>
 
       <Section title="Media Links">
+        <Field label="Trailer Available?" required>
+          <RadioGroup
+            name="trailerAvailable"
+            value={form.trailerAvailable}
+            onChange={updateTrailerAvailable}
+            options={[
+              { value: "yes", label: "Yes" },
+              { value: "no", label: "No" },
+            ]}
+          />
+        </Field>
+
+        {form.trailerAvailable === "yes" && (
+          <Field label="Trailer Link" required>
+            <input
+              type="url"
+              placeholder="https://"
+              value={form.trailerLink}
+              onChange={(e) => update("trailerLink", e.target.value)}
+              className="rw-form-input"
+              required
+            />
+          </Field>
+        )}
+
         <div className="grid gap-4 sm:grid-cols-2">
           {(
             [
-              ["trailerLink", "Trailer Link"],
               ["screenerLink", "Private Screener Link"],
               ["youtubeLink", "YouTube Link"],
               ["vimeoLink", "Vimeo Link"],
@@ -547,6 +617,20 @@ export function CreatorSubmissionForm() {
         </p>
       )}
 
+      <label className="flex cursor-pointer items-start gap-3 text-sm text-zinc-300">
+        <input
+          type="checkbox"
+          checked={form.rightsConfirmed === "yes"}
+          onChange={(e) => update("rightsConfirmed", e.target.checked ? "yes" : "")}
+          className="mt-0.5 h-4 w-4 shrink-0 accent-obsidian-red"
+          required
+        />
+        <span>
+          I own or control the rights necessary to submit this project to ReelWalia.
+          <span className="text-obsidian-red"> *</span>
+        </span>
+      </label>
+
       <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5 sm:p-6">
         <p className="text-sm leading-relaxed text-zinc-400">
           ReelWalia is a curated platform. Submitting your project does not
@@ -555,7 +639,7 @@ export function CreatorSubmissionForm() {
         </p>
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || form.rightsConfirmed !== "yes"}
           className="rw-btn-primary mt-5 min-h-12 w-full sm:w-auto"
         >
           {pending ? (

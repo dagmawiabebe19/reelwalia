@@ -34,6 +34,41 @@ export const PRODUCTION_STATUSES = [
 
 export type ProductionStatus = (typeof PRODUCTION_STATUSES)[number]["value"];
 
+export const PROJECT_STAGES = [
+  {
+    value: "completed_ready",
+    label: "Completed / Ready to Release",
+    sortOrder: 1,
+    badgeClass: "text-emerald-400",
+  },
+  {
+    value: "post_production",
+    label: "Post Production",
+    sortOrder: 2,
+    badgeClass: "text-sky-400",
+  },
+  {
+    value: "in_production",
+    label: "In Production",
+    sortOrder: 3,
+    badgeClass: "text-orange-400",
+  },
+  {
+    value: "script_complete",
+    label: "Script Complete",
+    sortOrder: 4,
+    badgeClass: "text-purple-400",
+  },
+  {
+    value: "idea_concept",
+    label: "Idea / Concept",
+    sortOrder: 5,
+    badgeClass: "text-zinc-400",
+  },
+] as const;
+
+export type ProjectStage = (typeof PROJECT_STAGES)[number]["value"];
+
 export const SUBMISSION_STATUSES = [
   { value: "new", label: "New" },
   { value: "reviewing", label: "Reviewing" },

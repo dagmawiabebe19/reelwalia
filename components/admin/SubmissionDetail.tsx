@@ -2,14 +2,21 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { updateSubmissionStatus } from "@/app/admin/submissions/actions";
+import { useMemo, useState, useTransition } from "react";
+import {
+  updateSubmissionReviewScores,
+  updateSubmissionStatus,
+} from "@/app/admin/submissions/actions";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
   PRODUCTION_STATUSES,
   SUBMISSION_STATUSES,
   type SubmissionStatus,
 } from "@/lib/submissions/constants";
+import {
+  calculateOverallReviewScore,
+  getProjectStageLabel,
+} from "@/lib/submissions/project-stage";
 import type { CreatorSubmission } from "@/lib/types/database";
 
 function DetailRow({
@@ -63,8 +70,46 @@ function formatDate(value: string): string {
 export function SubmissionDetail({ submission }: { submission: CreatorSubmission }) {
   const router = useRouter();
   const [status, setStatus] = useState<SubmissionStatus>(submission.status);
+  const [conceptScore, setConceptScore] = useState(
+    submission.concept_score?.toString() ?? ""
+  );
+  const [marketabilityScore, setMarketabilityScore] = useState(
+    submission.marketability_score?.toString() ?? ""
+  );
+  const [productionQualityScore, setProductionQualityScore] = useState(
+    submission.production_quality_score?.toString() ?? ""
+  );
   const [error, setError] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [reviewPending, startReviewTransition] = useTransition();
+
+  const overallScore = useMemo(
+    () =>
+      calculateOverallReviewScore(
+        conceptScore.trim() ? Number.parseInt(conceptScore, 10) : null,
+        marketabilityScore.trim() ? Number.parseInt(marketabilityScore, 10) : null,
+        productionQualityScore.trim()
+          ? Number.parseInt(productionQualityScore, 10)
+          : null
+      ),
+    [conceptScore, marketabilityScore, productionQualityScore]
+  );
+
+  const savedReviewScores = useMemo(
+    () =>
+      calculateOverallReviewScore(
+        submission.concept_score,
+        submission.marketability_score,
+        submission.production_quality_score
+      ),
+    [submission]
+  );
+
+  const reviewDirty =
+    conceptScore !== (submission.concept_score?.toString() ?? "") ||
+    marketabilityScore !== (submission.marketability_score?.toString() ?? "") ||
+    productionQualityScore !== (submission.production_quality_score?.toString() ?? "");
 
   const saveStatus = () => {
     setError(null);
@@ -74,6 +119,22 @@ export function SubmissionDetail({ submission }: { submission: CreatorSubmission
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Update failed");
+      }
+    });
+  };
+
+  const saveReviewScores = () => {
+    setReviewError(null);
+    startReviewTransition(async () => {
+      try {
+        await updateSubmissionReviewScores(submission.id, {
+          conceptScore,
+          marketabilityScore,
+          productionQualityScore,
+        });
+        router.refresh();
+      } catch (err) {
+        setReviewError(err instanceof Error ? err.message : "Update failed");
       }
     });
   };
@@ -142,8 +203,14 @@ export function SubmissionDetail({ submission }: { submission: CreatorSubmission
       <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
         <h2 className="font-display text-lg uppercase">Project</h2>
         <dl className="mt-3">
+          <DetailRow label="Project Type" value={submission.project_type} />
           <DetailRow label="Genre" value={submission.genre} />
+          <DetailRow
+            label="Project Stage"
+            value={getProjectStageLabel(submission.project_stage)}
+          />
           <DetailRow label="Production" value={productionLabel(submission.production_status)} />
+          <DetailRow label="Target Audience" value={submission.target_audience} />
           <DetailRow label="Episodes" value={String(submission.episode_count)} />
           <DetailRow label="Avg. Length" value={submission.average_episode_length} />
           {submission.runtime_minutes != null && (
@@ -165,6 +232,16 @@ export function SubmissionDetail({ submission }: { submission: CreatorSubmission
       <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
         <h2 className="font-display text-lg uppercase">Media & Artwork</h2>
         <dl className="mt-3">
+          <DetailRow
+            label="Trailer Available"
+            value={
+              submission.trailer_available == null
+                ? null
+                : submission.trailer_available
+                  ? "Yes"
+                  : "No"
+            }
+          />
           <DetailRow label="Trailer" value={submission.trailer_link} href={submission.trailer_link} />
           <DetailRow label="Screener" value={submission.screener_link} href={submission.screener_link} />
           <DetailRow label="YouTube" value={submission.youtube_link} href={submission.youtube_link} />
@@ -189,7 +266,89 @@ export function SubmissionDetail({ submission }: { submission: CreatorSubmission
             value={submission.released_elsewhere ? "Yes" : "No"}
           />
           <DetailRow label="Released Where" value={submission.released_elsewhere_where} />
+          <DetailRow
+            label="Submission Rights"
+            value={submission.submission_rights_confirmed ? "Confirmed" : "Not confirmed"}
+          />
         </dl>
+      </div>
+
+      <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
+        <h2 className="font-display text-lg uppercase">Internal Review</h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          Admin only. Scores are never visible to creators.
+        </p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <label className="block space-y-1.5">
+            <span className="text-xs uppercase tracking-wide text-zinc-500">
+              Concept Score (1–10)
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              step={1}
+              value={conceptScore}
+              onChange={(e) => setConceptScore(e.target.value)}
+              className="rw-form-input py-2 text-sm"
+              placeholder="—"
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs uppercase tracking-wide text-zinc-500">
+              Marketability Score (1–10)
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              step={1}
+              value={marketabilityScore}
+              onChange={(e) => setMarketabilityScore(e.target.value)}
+              className="rw-form-input py-2 text-sm"
+              placeholder="—"
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-xs uppercase tracking-wide text-zinc-500">
+              Production Quality Score (1–10)
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              step={1}
+              value={productionQualityScore}
+              onChange={(e) => setProductionQualityScore(e.target.value)}
+              className="rw-form-input py-2 text-sm"
+              placeholder="—"
+            />
+          </label>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-4">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-zinc-500">Overall Score</p>
+            <p className="mt-1 text-lg font-medium text-zinc-200">
+              {overallScore != null ? overallScore.toFixed(1) : "—"}
+            </p>
+            {!reviewDirty && savedReviewScores != null && (
+              <p className="text-xs text-zinc-500">Saved</p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={saveReviewScores}
+            disabled={reviewPending || !reviewDirty}
+            className="rw-btn-primary min-h-10 px-4 py-2 text-sm"
+          >
+            {reviewPending ? (
+              <LoadingSpinner className="h-4 w-4" label="Saving scores" />
+            ) : (
+              "Save Scores"
+            )}
+          </button>
+        </div>
+        {reviewError && <p className="mt-2 text-xs text-red-400">{reviewError}</p>}
       </div>
 
       {submission.additional_notes && (
