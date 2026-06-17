@@ -9,6 +9,10 @@ import {
   type SubmissionGenre,
 } from "@/lib/submissions/constants";
 import { isFilmProject, isSeriesProject, LOGLINE_MAX_LENGTH } from "@/lib/submissions/project-type";
+import {
+  CUSTOM_GENRE_MAX_LENGTH,
+  isOtherSubmissionGenre,
+} from "@/lib/submissions/genre";
 
 export type CreatorSubmissionInput = {
   creatorName: string;
@@ -22,6 +26,7 @@ export type CreatorSubmissionInput = {
   projectTitle: string;
   projectType: string;
   genre: string;
+  customGenre: string;
   logline: string;
   description: string;
   episodeCount: string;
@@ -103,6 +108,22 @@ export function validateCreatorSubmission(
   if (!SUBMISSION_GENRES.includes(genre)) {
     return { ok: false, error: "Please select a genre." };
   }
+
+  let customGenre: string | null = null;
+  if (isOtherSubmissionGenre(genre)) {
+    const trimmedCustomGenre = input.customGenre.trim();
+    if (!trimmedCustomGenre) {
+      return { ok: false, error: "Custom genre is required when Other is selected." };
+    }
+    if (trimmedCustomGenre.length > CUSTOM_GENRE_MAX_LENGTH) {
+      return {
+        ok: false,
+        error: `Custom genre must be ${CUSTOM_GENRE_MAX_LENGTH} characters or fewer.`,
+      };
+    }
+    customGenre = trimmedCustomGenre;
+  }
+
   if (!logline) return { ok: false, error: "Logline is required." };
   if (logline.length > LOGLINE_MAX_LENGTH) {
     return {
@@ -255,6 +276,7 @@ export function validateCreatorSubmission(
       project_title: projectTitle,
       project_type: projectType,
       genre,
+      custom_genre: customGenre,
       logline,
       description,
       episode_count: episodeCount,
@@ -294,6 +316,7 @@ export type CreatorSubmissionRecord = {
   project_title: string;
   project_type: ProjectType;
   genre: string;
+  custom_genre: string | null;
   logline: string;
   description: string;
   episode_count: number;

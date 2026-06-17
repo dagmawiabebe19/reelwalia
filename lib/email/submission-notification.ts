@@ -1,5 +1,6 @@
 import type { CreatorSubmissionRecord } from "@/lib/submissions/validation";
 import { SUBMISSION_NOTIFY_EMAIL } from "@/lib/submissions/constants";
+import { formatSubmissionGenreDisplay } from "@/lib/submissions/genre";
 import { getProjectStageLabel } from "@/lib/submissions/project-stage";
 
 function linkLine(label: string, url: string | null): string {
@@ -49,7 +50,10 @@ export async function sendSubmissionNotification(
         ${textRow("Country", submission.country)}
         ${textRow("Project", submission.project_title)}
         ${textRow("Project Type", submission.project_type)}
-        ${textRow("Genre", submission.genre)}
+        ${textRow(
+          "Genre",
+          formatSubmissionGenreDisplay(submission.genre, submission.custom_genre)
+        )}
         ${textRow("Project Stage", getProjectStageLabel(submission.project_stage))}
         ${textRow("Target Audience", submission.target_audience)}
         ${textRow("Production Status", productionLabel(submission.production_status))}

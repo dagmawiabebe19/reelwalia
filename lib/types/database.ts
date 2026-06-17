@@ -153,6 +153,22 @@ export type ProjectStage =
   | "post_production"
   | "completed_ready";
 
+export type AcquisitionSubmissionStatus =
+  | "new_submission"
+  | "under_review"
+  | "interested"
+  | "request_materials"
+  | "negotiating"
+  | "accepted"
+  | "rejected";
+
+export interface SubmissionStatusHistoryEntry {
+  id: string;
+  submission_id: string;
+  status: string;
+  created_at: string;
+}
+
 export interface CreatorSubmission {
   id: string;
   creator_name: string;
@@ -166,6 +182,7 @@ export interface CreatorSubmission {
   project_title: string;
   project_type: string;
   genre: string;
+  custom_genre: string | null;
   logline: string;
   description: string;
   episode_count: number;
@@ -192,6 +209,15 @@ export interface CreatorSubmission {
   released_elsewhere: boolean;
   released_elsewhere_where: string | null;
   additional_notes: string | null;
+  submission_status: AcquisitionSubmissionStatus;
+  acquisition_notes: string | null;
+  distribution_type: string | null;
+  revenue_share: string | null;
+  license_fee: number | null;
+  contract_sent: boolean;
+  contract_signed: boolean;
+  content_delivered: boolean;
+  launch_date: string | null;
   status: SubmissionStatus;
   created_at: string;
   updated_at: string;

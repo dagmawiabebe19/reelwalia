@@ -4,20 +4,33 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import {
+  updateAcquisitionNotes,
+  updateAcquisitionSubmissionStatus,
   updateSubmissionReviewScores,
-  updateSubmissionStatus,
 } from "@/app/admin/submissions/actions";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
+  ACQUISITION_SUBMISSION_STATUSES,
   PRODUCTION_STATUSES,
-  SUBMISSION_STATUSES,
-  type SubmissionStatus,
+  type AcquisitionSubmissionStatus,
 } from "@/lib/submissions/constants";
+import {
+  buildContactCreatorMailto,
+  formatActivityHistoryDate,
+  getAcquisitionStatusBadgeClass,
+  getAcquisitionStatusLabel,
+} from "@/lib/submissions/acquisition-status";
+import { DealTermsPanel } from "@/components/admin/DealTermsPanel";
+import { isDealTrackingStatus } from "@/lib/submissions/deal-terms";
+import { formatSubmissionGenreDisplay } from "@/lib/submissions/genre";
 import {
   calculateOverallReviewScore,
   getProjectStageLabel,
 } from "@/lib/submissions/project-stage";
-import type { CreatorSubmission } from "@/lib/types/database";
+import type {
+  CreatorSubmission,
+  SubmissionStatusHistoryEntry,
+} from "@/lib/types/database";
 
 function DetailRow({
   label,
@@ -67,9 +80,21 @@ function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
-export function SubmissionDetail({ submission }: { submission: CreatorSubmission }) {
+export function SubmissionDetail({
+  submission,
+  statusHistory,
+}: {
+  submission: CreatorSubmission;
+  statusHistory: SubmissionStatusHistoryEntry[];
+}) {
   const router = useRouter();
-  const [status, setStatus] = useState<SubmissionStatus>(submission.status);
+  const [submissionStatus, setSubmissionStatus] = useState<AcquisitionSubmissionStatus>(
+    submission.submission_status ?? "new_submission"
+  );
+  const [activityHistory, setActivityHistory] = useState(statusHistory);
+  const [acquisitionNotes, setAcquisitionNotes] = useState(
+    submission.acquisition_notes ?? ""
+  );
   const [conceptScore, setConceptScore] = useState(
     submission.concept_score?.toString() ?? ""
   );
@@ -79,10 +104,24 @@ export function SubmissionDetail({ submission }: { submission: CreatorSubmission
   const [productionQualityScore, setProductionQualityScore] = useState(
     submission.production_quality_score?.toString() ?? ""
   );
-  const [error, setError] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [notesError, setNotesError] = useState<string | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [notesPending, startNotesTransition] = useTransition();
   const [reviewPending, startReviewTransition] = useTransition();
+
+  const contactMailto = useMemo(
+    () =>
+      buildContactCreatorMailto({
+        email: submission.email,
+        creatorName: submission.creator_name,
+        projectTitle: submission.project_title,
+      }),
+    [submission.creator_name, submission.email, submission.project_title]
+  );
+
+  const showDealTerms = isDealTrackingStatus(submissionStatus);
 
   const overallScore = useMemo(
     () =>
@@ -111,14 +150,44 @@ export function SubmissionDetail({ submission }: { submission: CreatorSubmission
     marketabilityScore !== (submission.marketability_score?.toString() ?? "") ||
     productionQualityScore !== (submission.production_quality_score?.toString() ?? "");
 
-  const saveStatus = () => {
-    setError(null);
-    startTransition(async () => {
+  const notesDirty = acquisitionNotes !== (submission.acquisition_notes ?? "");
+
+  const handleStatusChange = async (value: AcquisitionSubmissionStatus) => {
+    if (value === submissionStatus || statusSaving) return;
+
+    const previousStatus = submissionStatus;
+    setSubmissionStatus(value);
+    setStatusError(null);
+    setStatusSaving(true);
+
+    try {
+      const result = await updateAcquisitionSubmissionStatus(submission.id, value);
+      if (result.historyEntry) {
+        setActivityHistory((prev) => {
+          if (prev.some((entry) => entry.id === result.historyEntry!.id)) {
+            return prev;
+          }
+          return [...prev, result.historyEntry!].sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        });
+      }
+    } catch (err) {
+      setSubmissionStatus(previousStatus);
+      setStatusError(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setStatusSaving(false);
+    }
+  };
+
+  const saveAcquisitionNotes = () => {
+    setNotesError(null);
+    startNotesTransition(async () => {
       try {
-        await updateSubmissionStatus(submission.id, status);
+        await updateAcquisitionNotes(submission.id, acquisitionNotes);
         router.refresh();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Update failed");
+        setNotesError(err instanceof Error ? err.message : "Update failed");
       }
     });
   };
@@ -157,32 +226,113 @@ export function SubmissionDetail({ submission }: { submission: CreatorSubmission
           </p>
         </div>
 
-        <div className="flex min-w-[14rem] flex-col gap-2">
+        <div className="flex min-w-[14rem] flex-col gap-3">
           <label className="text-xs uppercase tracking-wide text-zinc-500">
-            Status
+            Submission Status
           </label>
-          <div className="flex gap-2">
+          <div className="relative">
             <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as SubmissionStatus)}
-              className="rw-form-select flex-1 py-2 text-sm"
+              value={submissionStatus}
+              onChange={(e) =>
+                handleStatusChange(e.target.value as AcquisitionSubmissionStatus)
+              }
+              disabled={statusSaving}
+              className="rw-form-select w-full py-2 text-sm"
             >
-              {SUBMISSION_STATUSES.map((item) => (
+              {ACQUISITION_SUBMISSION_STATUSES.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              onClick={saveStatus}
-              disabled={pending || status === submission.status}
-              className="rw-btn-primary min-h-10 px-4 py-2 text-sm"
-            >
-              {pending ? <LoadingSpinner className="h-4 w-4" label="Saving" /> : "Save"}
-            </button>
+            {statusSaving && (
+              <span className="absolute right-10 top-1/2 -translate-y-1/2">
+                <LoadingSpinner className="h-4 w-4" label="Saving status" />
+              </span>
+            )}
           </div>
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          <span
+            className={`text-xs font-medium uppercase ${getAcquisitionStatusBadgeClass(submissionStatus)}`}
+          >
+            {getAcquisitionStatusLabel(submissionStatus)}
+          </span>
+          {statusError && <p className="text-xs text-red-400">{statusError}</p>}
+          <a
+            href={contactMailto}
+            className="rw-btn-primary inline-flex min-h-10 items-center justify-center px-4 py-2 text-sm"
+          >
+            Contact Creator
+          </a>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
+        <h2 className="font-display text-lg uppercase">Activity History</h2>
+        <p className="mt-1 text-xs text-zinc-500">Admin only. Status changes over time.</p>
+        {activityHistory.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-500">No activity recorded yet.</p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {activityHistory.map((entry) => (
+              <li
+                key={entry.id}
+                className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-white/[0.06] pb-3 last:border-b-0 last:pb-0"
+              >
+                <span className="text-sm text-zinc-400">
+                  {formatActivityHistoryDate(entry.created_at)}
+                </span>
+                <span
+                  className={`text-sm font-medium uppercase ${getAcquisitionStatusBadgeClass(entry.status)}`}
+                >
+                  {getAcquisitionStatusLabel(entry.status)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {showDealTerms && (
+        <DealTermsPanel
+          submissionId={submission.id}
+          initialDealTerms={{
+            distribution_type: submission.distribution_type,
+            revenue_share: submission.revenue_share,
+            license_fee: submission.license_fee,
+            contract_sent: submission.contract_sent ?? false,
+            contract_signed: submission.contract_signed ?? false,
+            content_delivered: submission.content_delivered ?? false,
+            launch_date: submission.launch_date,
+          }}
+        />
+      )}
+
+      <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
+        <h2 className="font-display text-lg uppercase">Acquisition Notes</h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          Admin only. Internal notes for acquisitions review.
+        </p>
+        <textarea
+          value={acquisitionNotes}
+          onChange={(e) => setAcquisitionNotes(e.target.value)}
+          className="rw-form-textarea mt-4"
+          rows={6}
+          placeholder={'Great concept but weak trailer.\nFollow up after festival run.'}
+        />
+        <div className="mt-4 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={saveAcquisitionNotes}
+            disabled={notesPending || !notesDirty}
+            className="rw-btn-primary min-h-10 px-4 py-2 text-sm"
+          >
+            {notesPending ? (
+              <LoadingSpinner className="h-4 w-4" label="Saving notes" />
+            ) : (
+              "Save Notes"
+            )}
+          </button>
+          {notesError && <p className="text-xs text-red-400">{notesError}</p>}
         </div>
       </div>
 
@@ -204,7 +354,10 @@ export function SubmissionDetail({ submission }: { submission: CreatorSubmission
         <h2 className="font-display text-lg uppercase">Project</h2>
         <dl className="mt-3">
           <DetailRow label="Project Type" value={submission.project_type} />
-          <DetailRow label="Genre" value={submission.genre} />
+          <DetailRow
+            label="Genre"
+            value={formatSubmissionGenreDisplay(submission.genre, submission.custom_genre)}
+          />
           <DetailRow
             label="Project Stage"
             value={getProjectStageLabel(submission.project_stage)}

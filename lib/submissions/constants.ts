@@ -69,6 +69,66 @@ export const PROJECT_STAGES = [
 
 export type ProjectStage = (typeof PROJECT_STAGES)[number]["value"];
 
+export const ACQUISITION_SUBMISSION_STATUSES = [
+  {
+    value: "interested",
+    label: "Interested",
+    sortOrder: 1,
+    badgeClass: "text-purple-400",
+  },
+  {
+    value: "negotiating",
+    label: "Negotiating",
+    sortOrder: 2,
+    badgeClass: "text-yellow-400",
+  },
+  {
+    value: "request_materials",
+    label: "Request Materials",
+    sortOrder: 3,
+    badgeClass: "text-orange-400",
+  },
+  {
+    value: "under_review",
+    label: "Under Review",
+    sortOrder: 4,
+    badgeClass: "text-sky-400",
+  },
+  {
+    value: "new_submission",
+    label: "New Submission",
+    sortOrder: 5,
+    badgeClass: "text-zinc-400",
+  },
+  {
+    value: "accepted",
+    label: "Accepted",
+    sortOrder: 6,
+    badgeClass: "text-emerald-400",
+  },
+  {
+    value: "rejected",
+    label: "Rejected",
+    sortOrder: 7,
+    badgeClass: "text-red-400",
+  },
+] as const;
+
+export type AcquisitionSubmissionStatus =
+  (typeof ACQUISITION_SUBMISSION_STATUSES)[number]["value"];
+
+export const DISTRIBUTION_TYPES = [
+  { value: "non_exclusive", label: "Non-Exclusive" },
+  { value: "exclusive", label: "Exclusive" },
+  { value: "reelwalia_original", label: "ReelWalia Original" },
+] as const;
+
+export type DistributionType = (typeof DISTRIBUTION_TYPES)[number]["value"];
+
+export const REVENUE_SHARE_PRESETS = ["60/40", "50/50"] as const;
+
+export type RevenueSharePreset = (typeof REVENUE_SHARE_PRESETS)[number] | "custom";
+
 export const SUBMISSION_STATUSES = [
   { value: "new", label: "New" },
   { value: "reviewing", label: "Reviewing" },

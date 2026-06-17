@@ -19,5 +19,16 @@ export default async function AdminSubmissionDetailPage({
 
   if (!submission) notFound();
 
-  return <SubmissionDetail submission={submission} />;
+  const { data: statusHistory } = await admin
+    .from("submission_status_history")
+    .select("id, submission_id, status, created_at")
+    .eq("submission_id", params.id)
+    .order("created_at", { ascending: true });
+
+  return (
+    <SubmissionDetail
+      submission={submission}
+      statusHistory={statusHistory ?? []}
+    />
+  );
 }

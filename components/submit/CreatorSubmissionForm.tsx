@@ -11,6 +11,7 @@ import {
 } from "@/lib/submissions/constants";
 import { UN_COUNTRIES } from "@/lib/submissions/countries";
 import { isFilmProject, isSeriesProject, LOGLINE_MAX_LENGTH } from "@/lib/submissions/project-type";
+import { CUSTOM_GENRE_MAX_LENGTH } from "@/lib/submissions/genre";
 import {
   wordCount,
   type CreatorSubmissionInput,
@@ -28,6 +29,7 @@ const initialState: CreatorSubmissionInput = {
   projectTitle: "",
   projectType: "",
   genre: "",
+  customGenre: "",
   logline: "",
   description: "",
   episodeCount: "",
@@ -133,6 +135,7 @@ export function CreatorSubmissionForm() {
   const descriptionWords = useMemo(() => wordCount(form.description), [form.description]);
   const showSeriesFields = isSeriesProject(form.projectType);
   const showFilmFields = isFilmProject(form.projectType);
+  const showCustomGenre = form.genre === "Other";
 
   const update = (key: keyof CreatorSubmissionInput, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -153,6 +156,14 @@ export function CreatorSubmissionForm() {
       }
       return next;
     });
+  };
+
+  const updateGenre = (value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      genre: value,
+      customGenre: value === "Other" ? prev.customGenre : "",
+    }));
   };
 
   const updateTrailerAvailable = (value: string) => {
@@ -348,7 +359,7 @@ export function CreatorSubmissionForm() {
         <Field label="Genre" required>
           <select
             value={form.genre}
-            onChange={(e) => update("genre", e.target.value)}
+            onChange={(e) => updateGenre(e.target.value)}
             className="rw-form-select"
             required
           >
@@ -360,6 +371,34 @@ export function CreatorSubmissionForm() {
             ))}
           </select>
         </Field>
+
+        <div
+          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+            showCustomGenre ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+          }`}
+        >
+          <div className="overflow-hidden">
+            {showCustomGenre && (
+              <Field
+                label="Custom Genre"
+                required
+                hint="Tell us how you would categorize your project."
+              >
+                <input
+                  type="text"
+                  value={form.customGenre}
+                  onChange={(e) =>
+                    update("customGenre", e.target.value.slice(0, CUSTOM_GENRE_MAX_LENGTH))
+                  }
+                  className="rw-form-input animate-subscribe-slide-up"
+                  placeholder="Historical Drama, Sports Drama, Political Thriller, Faith-Based, True Crime, Musical"
+                  maxLength={CUSTOM_GENRE_MAX_LENGTH}
+                  required
+                />
+              </Field>
+            )}
+          </div>
+        </div>
 
         <Field
           label="Description"

@@ -12,15 +12,6 @@ export function getProjectStageBadgeClass(stage: string): string {
   return PROJECT_STAGES.find((item) => item.value === stage)?.badgeClass ?? "text-zinc-400";
 }
 
-export function compareSubmissionsByAcquisitionPriority<
-  T extends { project_stage: string; created_at: string }
->(a: T, b: T): number {
-  const stageDiff =
-    getProjectStageSortOrder(a.project_stage) - getProjectStageSortOrder(b.project_stage);
-  if (stageDiff !== 0) return stageDiff;
-  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-}
-
 export function calculateOverallReviewScore(
   concept: number | null | undefined,
   marketability: number | null | undefined,
