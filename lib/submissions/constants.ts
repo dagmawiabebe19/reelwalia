@@ -11,6 +11,19 @@ export const SUBMISSION_GENRES = [
 
 export type SubmissionGenre = (typeof SUBMISSION_GENRES)[number];
 
+export const PROJECT_TYPES = [
+  "Feature Film",
+  "Episodic Series",
+  "Short Film",
+  "AI Episodic Series",
+  "AI Feature Film",
+  "AI Short Film",
+  "AI Vertical Series",
+  "Vertical Drama Series",
+] as const;
+
+export type ProjectType = (typeof PROJECT_TYPES)[number];
+
 export const PRODUCTION_STATUSES = [
   { value: "released", label: "Released" },
   { value: "completed", label: "Completed" },

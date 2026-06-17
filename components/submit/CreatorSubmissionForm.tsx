@@ -5,8 +5,10 @@ import { submitCreatorProject } from "@/app/submit/actions";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
   PRODUCTION_STATUSES,
+  PROJECT_TYPES,
   SUBMISSION_GENRES,
 } from "@/lib/submissions/constants";
+import { UN_COUNTRIES } from "@/lib/submissions/countries";
 import {
   wordCount,
   type CreatorSubmissionInput,
@@ -22,6 +24,7 @@ const initialState: CreatorSubmissionInput = {
   website: "",
   imdb: "",
   projectTitle: "",
+  projectType: "",
   genre: "",
   logline: "",
   description: "",
@@ -215,11 +218,18 @@ export function CreatorSubmissionForm() {
           <Field label="Country">
             <input
               type="text"
+              list="submit-country-options"
               autoComplete="country-name"
               value={form.country}
               onChange={(e) => update("country", e.target.value)}
               className="rw-form-input"
+              placeholder="Type to search countries"
             />
+            <datalist id="submit-country-options">
+              {UN_COUNTRIES.map((country) => (
+                <option key={country} value={country} />
+              ))}
+            </datalist>
           </Field>
           <Field label="Instagram">
             <input
@@ -260,6 +270,22 @@ export function CreatorSubmissionForm() {
             className="rw-form-input"
             required
           />
+        </Field>
+
+        <Field label="Project Type" required>
+          <select
+            value={form.projectType}
+            onChange={(e) => update("projectType", e.target.value)}
+            className="rw-form-select"
+            required
+          >
+            <option value="">Select a project type</option>
+            {PROJECT_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
         </Field>
 
         <Field label="Genre" required>

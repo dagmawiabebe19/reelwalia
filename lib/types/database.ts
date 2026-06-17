@@ -157,6 +157,7 @@ export interface CreatorSubmission {
   website: string | null;
   imdb: string | null;
   project_title: string;
+  project_type: string;
   genre: string;
   logline: string;
   description: string;

@@ -1,7 +1,9 @@
 import {
   PRODUCTION_STATUSES,
+  PROJECT_TYPES,
   SUBMISSION_GENRES,
   type ProductionStatus,
+  type ProjectType,
   type SubmissionGenre,
 } from "@/lib/submissions/constants";
 
@@ -15,6 +17,7 @@ export type CreatorSubmissionInput = {
   website: string;
   imdb: string;
   projectTitle: string;
+  projectType: string;
   genre: string;
   logline: string;
   description: string;
@@ -74,6 +77,7 @@ export function validateCreatorSubmission(
   const creatorName = input.creatorName.trim();
   const email = input.email.trim().toLowerCase();
   const projectTitle = input.projectTitle.trim();
+  const projectType = input.projectType.trim() as ProjectType;
   const logline = input.logline.trim();
   const description = input.description.trim();
   const averageEpisodeLength = input.averageEpisodeLength.trim();
@@ -85,6 +89,9 @@ export function validateCreatorSubmission(
     return { ok: false, error: "A valid email address is required." };
   }
   if (!projectTitle) return { ok: false, error: "Project title is required." };
+  if (!PROJECT_TYPES.includes(projectType)) {
+    return { ok: false, error: "Please select a project type." };
+  }
   if (!SUBMISSION_GENRES.includes(genre)) {
     return { ok: false, error: "Please select a genre." };
   }
@@ -178,6 +185,7 @@ export function validateCreatorSubmission(
       website,
       imdb,
       project_title: projectTitle,
+      project_type: projectType,
       genre,
       logline,
       description,
@@ -211,6 +219,7 @@ export type CreatorSubmissionRecord = {
   website: string | null;
   imdb: string | null;
   project_title: string;
+  project_type: ProjectType;
   genre: string;
   logline: string;
   description: string;
