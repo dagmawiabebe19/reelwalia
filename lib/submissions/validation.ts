@@ -52,6 +52,9 @@ export type CreatorSubmissionInput = {
   additionalNotes: string;
 };
 
+export const DESCRIPTION_MIN_WORDS = 10;
+export const DESCRIPTION_MAX_WORDS = 300;
+
 export function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
@@ -134,11 +137,17 @@ export function validateCreatorSubmission(
   if (!description) return { ok: false, error: "Description is required." };
 
   const words = wordCount(description);
-  if (words < 50) {
-    return { ok: false, error: "Description must be at least 50 words." };
+  if (words < DESCRIPTION_MIN_WORDS) {
+    return {
+      ok: false,
+      error: `Description must be at least ${DESCRIPTION_MIN_WORDS} words.`,
+    };
   }
-  if (words > 300) {
-    return { ok: false, error: "Description must be 300 words or fewer." };
+  if (words > DESCRIPTION_MAX_WORDS) {
+    return {
+      ok: false,
+      error: `Description must be ${DESCRIPTION_MAX_WORDS} words or fewer.`,
+    };
   }
 
   const episodeCountRaw = input.episodeCount.trim();

@@ -13,6 +13,8 @@ import { UN_COUNTRIES } from "@/lib/submissions/countries";
 import { isFilmProject, isSeriesProject, LOGLINE_MAX_LENGTH } from "@/lib/submissions/project-type";
 import { CUSTOM_GENRE_MAX_LENGTH } from "@/lib/submissions/genre";
 import {
+  DESCRIPTION_MAX_WORDS,
+  DESCRIPTION_MIN_WORDS,
   wordCount,
   type CreatorSubmissionInput,
 } from "@/lib/submissions/validation";
@@ -414,12 +416,13 @@ export function CreatorSubmissionForm() {
           />
           <p
             className={`text-xs ${
-              descriptionWords < 50 || descriptionWords > 300
+              descriptionWords < DESCRIPTION_MIN_WORDS ||
+              descriptionWords > DESCRIPTION_MAX_WORDS
                 ? "text-zinc-500"
                 : "text-zinc-400"
             }`}
           >
-            {descriptionWords} / 300 words (50 minimum)
+            {descriptionWords} / {DESCRIPTION_MAX_WORDS} words ({DESCRIPTION_MIN_WORDS} minimum)
           </p>
         </Field>
 
