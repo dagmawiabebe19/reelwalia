@@ -24,6 +24,11 @@ import { DealTermsPanel } from "@/components/admin/DealTermsPanel";
 import { isDealTrackingStatus } from "@/lib/submissions/deal-terms";
 import { formatSubmissionGenreDisplay } from "@/lib/submissions/genre";
 import {
+  formatSafeDateTime,
+  normalizeDealTermsFields,
+  scoreToInputValue,
+} from "@/lib/submissions/normalize-submission";
+import {
   calculateOverallReviewScore,
   getProjectStageLabel,
 } from "@/lib/submissions/project-stage";
@@ -70,14 +75,14 @@ function productionLabel(status: string): string {
   );
 }
 
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("en-US", {
+function formatDate(value: string | null | undefined): string {
+  return formatSafeDateTime(value, {
     month: "long",
     day: "numeric",
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
-  }).format(new Date(value));
+  });
 }
 
 export function SubmissionDetail({
@@ -95,14 +100,14 @@ export function SubmissionDetail({
   const [acquisitionNotes, setAcquisitionNotes] = useState(
     submission.acquisition_notes ?? ""
   );
-  const [conceptScore, setConceptScore] = useState(
-    submission.concept_score?.toString() ?? ""
+  const [conceptScore, setConceptScore] = useState(() =>
+    scoreToInputValue(submission.concept_score)
   );
-  const [marketabilityScore, setMarketabilityScore] = useState(
-    submission.marketability_score?.toString() ?? ""
+  const [marketabilityScore, setMarketabilityScore] = useState(() =>
+    scoreToInputValue(submission.marketability_score)
   );
-  const [productionQualityScore, setProductionQualityScore] = useState(
-    submission.production_quality_score?.toString() ?? ""
+  const [productionQualityScore, setProductionQualityScore] = useState(() =>
+    scoreToInputValue(submission.production_quality_score)
   );
   const [statusError, setStatusError] = useState<string | null>(null);
   const [notesError, setNotesError] = useState<string | null>(null);
@@ -146,9 +151,9 @@ export function SubmissionDetail({
   );
 
   const reviewDirty =
-    conceptScore !== (submission.concept_score?.toString() ?? "") ||
-    marketabilityScore !== (submission.marketability_score?.toString() ?? "") ||
-    productionQualityScore !== (submission.production_quality_score?.toString() ?? "");
+    conceptScore !== scoreToInputValue(submission.concept_score) ||
+    marketabilityScore !== scoreToInputValue(submission.marketability_score) ||
+    productionQualityScore !== scoreToInputValue(submission.production_quality_score);
 
   const notesDirty = acquisitionNotes !== (submission.acquisition_notes ?? "");
 
@@ -295,15 +300,15 @@ export function SubmissionDetail({
       {showDealTerms && (
         <DealTermsPanel
           submissionId={submission.id}
-          initialDealTerms={{
+          initialDealTerms={normalizeDealTermsFields({
             distribution_type: submission.distribution_type,
             revenue_share: submission.revenue_share,
             license_fee: submission.license_fee,
-            contract_sent: submission.contract_sent ?? false,
-            contract_signed: submission.contract_signed ?? false,
-            content_delivered: submission.content_delivered ?? false,
+            contract_sent: submission.contract_sent,
+            contract_signed: submission.contract_signed,
+            content_delivered: submission.content_delivered,
             launch_date: submission.launch_date,
-          }}
+          })}
         />
       )}
 

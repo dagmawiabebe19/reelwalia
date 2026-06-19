@@ -63,9 +63,11 @@ ReelWalia Acquisitions`;
   return `mailto:${input.email}?${params.toString()}`;
 }
 
-export function formatActivityHistoryDate(value: string): string {
-  return new Intl.DateTimeFormat("en-US", {
+import { formatSafeDateTime } from "@/lib/submissions/normalize-submission";
+
+export function formatActivityHistoryDate(value: string | null | undefined): string {
+  return formatSafeDateTime(value, {
     month: "long",
     day: "numeric",
-  }).format(new Date(value));
+  });
 }

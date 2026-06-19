@@ -1,5 +1,9 @@
 import type { AcquisitionSubmissionStatus } from "@/lib/submissions/constants";
 import { REVENUE_SHARE_PRESETS } from "@/lib/submissions/constants";
+import {
+  normalizeDealTermsFields,
+  parseNullableNumber,
+} from "@/lib/submissions/normalize-submission";
 
 export type DealTermsFields = {
   distribution_type: string | null;
@@ -46,13 +50,14 @@ export function resolveRevenueShareForSave(
   return trimmedPreset;
 }
 
-export function formatLicenseFee(value: number | null | undefined): string | null {
-  if (value == null || !Number.isFinite(value)) return null;
+export function formatLicenseFee(value: number | string | null | undefined): string | null {
+  const parsed = parseNullableNumber(value);
+  if (parsed == null) return null;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(parsed);
 }
 
 export function parseLicenseFeeInput(value: string): number | null {
@@ -83,20 +88,19 @@ export type DealTermsInput = {
 export function dealTermsFromSubmission(
   submission: DealTermsFields & { submission_status?: AcquisitionSubmissionStatus }
 ): DealTermsInput {
-  const { preset, custom } = parseRevenueShareFromDb(submission.revenue_share);
+  const normalized = normalizeDealTermsFields(submission);
+  const { preset, custom } = parseRevenueShareFromDb(normalized.revenue_share);
 
   return {
-    distributionType: submission.distribution_type ?? "",
+    distributionType: normalized.distribution_type ?? "",
     revenueSharePreset: preset,
     revenueShareCustom: custom,
     licenseFee:
-      submission.license_fee != null && Number.isFinite(submission.license_fee)
-        ? String(submission.license_fee)
-        : "",
-    contractSent: submission.contract_sent,
-    contractSigned: submission.contract_signed,
-    contentDelivered: submission.content_delivered,
-    launchDate: formatLaunchDateForInput(submission.launch_date),
+      normalized.license_fee != null ? String(normalized.license_fee) : "",
+    contractSent: normalized.contract_sent,
+    contractSigned: normalized.contract_signed,
+    contentDelivered: normalized.content_delivered,
+    launchDate: formatLaunchDateForInput(normalized.launch_date),
   };
 }
 

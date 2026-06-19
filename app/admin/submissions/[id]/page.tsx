@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import { SubmissionDetail } from "@/components/admin/SubmissionDetail";
 import { requireAdmin } from "@/lib/admin";
+import {
+  normalizeCreatorSubmissionForAdmin,
+  normalizeStatusHistory,
+} from "@/lib/submissions/normalize-submission";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function AdminSubmissionDetailPage({
@@ -27,8 +31,8 @@ export default async function AdminSubmissionDetailPage({
 
   return (
     <SubmissionDetail
-      submission={submission}
-      statusHistory={statusHistory ?? []}
+      submission={normalizeCreatorSubmissionForAdmin(submission)}
+      statusHistory={normalizeStatusHistory(statusHistory)}
     />
   );
 }

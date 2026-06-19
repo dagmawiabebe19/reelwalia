@@ -13,13 +13,21 @@ export function getProjectStageBadgeClass(stage: string): string {
 }
 
 export function calculateOverallReviewScore(
-  concept: number | null | undefined,
-  marketability: number | null | undefined,
-  productionQuality: number | null | undefined
+  concept: number | string | null | undefined,
+  marketability: number | string | null | undefined,
+  productionQuality: number | string | null | undefined
 ): number | null {
-  const scores = [concept, marketability, productionQuality].filter(
-    (score): score is number => typeof score === "number" && Number.isFinite(score)
-  );
+  const toScore = (value: number | string | null | undefined): number | null => {
+    if (value == null || value === "") return null;
+    const parsed =
+      typeof value === "number" ? value : Number.parseInt(String(value), 10);
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 10) return null;
+    return parsed;
+  };
+
+  const scores = [concept, marketability, productionQuality]
+    .map(toScore)
+    .filter((score): score is number => score != null);
   if (scores.length === 0) return null;
   const total = scores.reduce((sum, score) => sum + score, 0);
   return Math.round((total / scores.length) * 10) / 10;
