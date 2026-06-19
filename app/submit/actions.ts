@@ -13,12 +13,11 @@ export async function submitCreatorProject(input: CreatorSubmissionInput) {
     return { ok: false as const, error: validated.error };
   }
 
+  const submissionId = crypto.randomUUID();
   const supabase = createClient();
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("creator_submissions")
-    .insert(validated.data)
-    .select("id")
-    .single();
+    .insert({ ...validated.data, id: submissionId });
 
   if (error) {
     console.error("[submit] database error:", error.message);
@@ -28,7 +27,7 @@ export async function submitCreatorProject(input: CreatorSubmissionInput) {
     };
   }
 
-  await sendSubmissionNotification({ ...validated.data, id: data.id });
+  await sendSubmissionNotification({ ...validated.data, id: submissionId });
 
   return { ok: true as const };
 }
