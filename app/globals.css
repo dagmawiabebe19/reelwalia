@@ -238,4 +238,136 @@ body.player-fullscreen [data-subscribe-banner="below-player"] {
     @apply rw-form-input appearance-none bg-[length:1rem] bg-[right_0.75rem_center] bg-no-repeat pr-10;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23a1a1aa'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
   }
+
+  .rw-admin-shell {
+    @apply flex min-h-screen bg-black;
+  }
+
+  .rw-admin-sidebar {
+    @apply flex w-64 shrink-0 flex-col border-r border-white/[0.08] bg-[#050505];
+  }
+
+  .rw-admin-sidebar-brand {
+    @apply border-b border-white/[0.08] px-5 py-5;
+  }
+
+  .rw-admin-nav-section {
+    @apply px-3 py-4;
+  }
+
+  .rw-admin-nav-label {
+    @apply mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-600;
+  }
+
+  .rw-admin-nav-link {
+    @apply flex items-center gap-2.5 rounded-md px-3 py-2.5 text-sm text-zinc-400 transition duration-150 hover:bg-white/[0.04] hover:text-white;
+  }
+
+  .rw-admin-nav-link-active {
+    @apply bg-obsidian-red/10 text-white ring-1 ring-obsidian-red/25;
+  }
+
+  .rw-admin-main {
+    @apply flex min-h-screen min-w-0 flex-1 flex-col;
+  }
+
+  .rw-admin-topbar {
+    @apply flex h-14 shrink-0 items-center justify-between border-b border-white/[0.08] bg-black/80 px-4 backdrop-blur-md lg:hidden;
+  }
+
+  .rw-admin-content {
+    @apply flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8;
+  }
+
+  .rw-admin-page-header {
+    @apply mb-8 flex flex-wrap items-start justify-between gap-4;
+  }
+
+  .rw-admin-page-title {
+    @apply font-display text-2xl uppercase tracking-wide text-white sm:text-3xl;
+  }
+
+  .rw-admin-page-subtitle {
+    @apply mt-1 text-sm text-zinc-500;
+  }
+
+  .rw-admin-stat-grid {
+    @apply grid gap-4 sm:grid-cols-2 xl:grid-cols-4;
+  }
+
+  .rw-admin-stat-card {
+    @apply rounded-xl border border-white/[0.08] bg-white/[0.02] p-5;
+  }
+
+  .rw-admin-stat-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500;
+  }
+
+  .rw-admin-stat-value {
+    @apply mt-2 font-display text-3xl uppercase tracking-wide text-white;
+  }
+
+  .rw-admin-stat-meta {
+    @apply mt-1 text-xs text-zinc-500;
+  }
+
+  .rw-admin-table-wrap {
+    @apply overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.01];
+  }
+
+  .rw-admin-table {
+    @apply w-full text-left text-sm;
+  }
+
+  .rw-admin-table thead {
+    @apply border-b border-white/[0.08] bg-white/[0.02] text-[11px] uppercase tracking-[0.14em] text-zinc-500;
+  }
+
+  .rw-admin-table th {
+    @apply px-4 py-3 font-medium;
+  }
+
+  .rw-admin-table tbody tr {
+    @apply border-b border-white/[0.06] transition hover:bg-white/[0.03] last:border-b-0;
+  }
+
+  .rw-admin-table td {
+    @apply px-4 py-3 align-middle;
+  }
+
+  .rw-admin-pill {
+    @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide;
+  }
+
+  .rw-admin-pill-green {
+    @apply rw-admin-pill border-emerald-500/30 bg-emerald-500/10 text-emerald-400;
+  }
+
+  .rw-admin-pill-amber {
+    @apply rw-admin-pill border-amber-500/30 bg-amber-500/10 text-amber-400;
+  }
+
+  .rw-admin-pill-red {
+    @apply rw-admin-pill border-obsidian-red/35 bg-obsidian-red/10 text-obsidian-red;
+  }
+
+  .rw-admin-pill-zinc {
+    @apply rw-admin-pill border-white/[0.12] bg-white/[0.04] text-zinc-400;
+  }
+
+  .rw-admin-pill-sky {
+    @apply rw-admin-pill border-sky-500/30 bg-sky-500/10 text-sky-400;
+  }
+
+  .rw-admin-pill-purple {
+    @apply rw-admin-pill border-purple-500/30 bg-purple-500/10 text-purple-400;
+  }
+
+  .rw-admin-account-chip {
+    @apply flex items-center gap-3 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2.5;
+  }
+
+  .rw-admin-panel {
+    @apply rounded-xl border border-white/[0.08] bg-white/[0.02] p-5 sm:p-6;
+  }
 }
