@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateDealTerms } from "@/app/admin/submissions/actions";
+import { AdminPanelHeading } from "@/components/admin/admin-ui";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
   DISTRIBUTION_TYPES,
@@ -79,11 +80,11 @@ export function DealTermsPanel({
   };
 
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
-      <h2 className="font-display text-lg uppercase">Deal Terms</h2>
-      <p className="mt-1 text-xs text-zinc-500">
-        Admin only. Track licensing terms from negotiation through launch.
-      </p>
+    <div className="rw-admin-panel">
+      <AdminPanelHeading
+        title="Deal Terms"
+        subtitle="Admin only. Track licensing terms from negotiation through launch."
+      />
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <label className="block space-y-1.5">

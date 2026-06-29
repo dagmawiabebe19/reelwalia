@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { saveSeries, type SeriesFormData } from "@/app/admin/actions";
+import { AdminPageHeader } from "@/components/admin/admin-ui";
 import { PosterUpload } from "@/components/admin/PosterUpload";
 import { DEFAULT_FREE_EPISODE_COUNT } from "@/lib/access";
 import { DEFAULT_SERIES_ORIENTATION } from "@/lib/series-orientation";
@@ -72,64 +72,63 @@ export function SeriesForm({ initial }: SeriesFormProps) {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl uppercase">
-          {initial?.id ? "Edit Series" : "Add Series"}
-        </h1>
-        <Link href="/admin/series" className="text-sm text-gray-400 hover:text-white">
-          Back
-        </Link>
+      <AdminPageHeader
+        title={initial?.id ? "Edit Series" : "Add Series"}
+        backHref="/admin/series"
+        backLabel="Back to catalog"
+      />
+
+      <div className="rw-form-section space-y-4">
+        <label className="block space-y-1.5">
+          <span className="rw-form-label">Title</span>
+          <input
+            value={title}
+            onChange={(e) => handleTitleChange(e.target.value)}
+            className="rw-form-input"
+          />
+        </label>
+
+        <label className="block space-y-1.5">
+          <span className="rw-form-label">Slug</span>
+          <input
+            value={slug}
+            onChange={(e) => {
+              setSlugManual(true);
+              setSlug(e.target.value);
+            }}
+            className="rw-form-input font-mono text-sm"
+          />
+        </label>
+
+        <label className="block space-y-1.5">
+          <span className="rw-form-label">Synopsis</span>
+          <textarea
+            value={synopsis}
+            onChange={(e) => setSynopsis(e.target.value)}
+            rows={4}
+            className="rw-form-textarea"
+          />
+        </label>
+
+        <label className="block space-y-1.5">
+          <span className="rw-form-label">Genre</span>
+          <select
+            value={genre}
+            onChange={(e) => setGenre(e.target.value as (typeof SERIES_GENRES)[number])}
+            className="rw-form-select"
+          >
+            {SERIES_GENRES.map((g) => (
+              <option key={g} value={g}>
+                {g}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
-      <label className="block space-y-1 text-sm">
-        <span className="text-gray-400">Title</span>
-        <input
-          value={title}
-          onChange={(e) => handleTitleChange(e.target.value)}
-          className="w-full rounded-md border border-white/[0.08] bg-black px-3 py-2"
-        />
-      </label>
-
-      <label className="block space-y-1 text-sm">
-        <span className="text-gray-400">Slug</span>
-        <input
-          value={slug}
-          onChange={(e) => {
-            setSlugManual(true);
-            setSlug(e.target.value);
-          }}
-          className="w-full rounded-md border border-white/[0.08] bg-black px-3 py-2 font-mono text-sm"
-        />
-      </label>
-
-      <label className="block space-y-1 text-sm">
-        <span className="text-gray-400">Synopsis</span>
-        <textarea
-          value={synopsis}
-          onChange={(e) => setSynopsis(e.target.value)}
-          rows={4}
-          className="w-full rounded-md border border-white/[0.08] bg-black px-3 py-2"
-        />
-      </label>
-
-      <label className="block space-y-1 text-sm">
-        <span className="text-gray-400">Genre</span>
-        <select
-          value={genre}
-          onChange={(e) => setGenre(e.target.value as (typeof SERIES_GENRES)[number])}
-          className="w-full rounded-md border border-white/[0.08] bg-black px-3 py-2"
-        >
-          {SERIES_GENRES.map((g) => (
-            <option key={g} value={g}>
-              {g}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <fieldset className="space-y-2 text-sm">
-        <legend className="text-gray-400">Orientation</legend>
-        <div className="flex flex-wrap gap-4">
+      <div className="rw-form-section">
+        <h2 className="rw-form-section-title">Orientation</h2>
+        <div className="mt-4 flex flex-wrap gap-4 text-sm text-zinc-300">
           <label className="flex cursor-pointer items-center gap-2">
             <input
               type="radio"
@@ -137,6 +136,7 @@ export function SeriesForm({ initial }: SeriesFormProps) {
               value="vertical"
               checked={orientation === "vertical"}
               onChange={() => setOrientation("vertical")}
+              className="accent-obsidian-red"
             />
             Vertical (9:16)
           </label>
@@ -147,61 +147,73 @@ export function SeriesForm({ initial }: SeriesFormProps) {
               value="landscape"
               checked={orientation === "landscape"}
               onChange={() => setOrientation("landscape")}
+              className="accent-obsidian-red"
             />
             Landscape (16:9)
           </label>
         </div>
-      </fieldset>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block space-y-1 text-sm">
-          <span className="text-gray-400">Total episodes</span>
-          <input
-            type="number"
-            min={1}
-            value={totalEpisodes}
-            onChange={(e) => setTotalEpisodes(Number(e.target.value))}
-            className="w-full rounded-md border border-white/[0.08] bg-black px-3 py-2"
-          />
-        </label>
-        <label className="block space-y-1 text-sm">
-          <span className="text-gray-400">Free episode count</span>
-          <input
-            type="number"
-            min={0}
-            value={freeEpisodeCount}
-            onChange={(e) => setFreeEpisodeCount(Number(e.target.value))}
-            className="w-full rounded-md border border-white/[0.08] bg-black px-3 py-2"
-          />
-        </label>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <PosterUpload label="Poster" value={posterUrl} onChange={setPosterUrl} />
-        <PosterUpload
-          label="Hero banner"
-          value={heroBannerUrl}
-          onChange={setHeroBannerUrl}
-        />
+      <div className="rw-form-section">
+        <h2 className="rw-form-section-title">Episodes & Access</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <label className="block space-y-1.5">
+            <span className="rw-form-label">Total episodes</span>
+            <input
+              type="number"
+              min={1}
+              value={totalEpisodes}
+              onChange={(e) => setTotalEpisodes(Number(e.target.value))}
+              className="rw-form-input"
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="rw-form-label">Free episode count</span>
+            <input
+              type="number"
+              min={0}
+              value={freeEpisodeCount}
+              onChange={(e) => setFreeEpisodeCount(Number(e.target.value))}
+              className="rw-form-input"
+            />
+          </label>
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-6">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={isFeatured}
-            onChange={(e) => setIsFeatured(e.target.checked)}
+      <div className="rw-form-section">
+        <h2 className="rw-form-section-title">Artwork</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <PosterUpload label="Poster" value={posterUrl} onChange={setPosterUrl} />
+          <PosterUpload
+            label="Hero banner"
+            value={heroBannerUrl}
+            onChange={setHeroBannerUrl}
           />
-          Featured
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={isPublished}
-            onChange={(e) => setIsPublished(e.target.checked)}
-          />
-          Published
-        </label>
+        </div>
+      </div>
+
+      <div className="rw-form-section">
+        <h2 className="rw-form-section-title">Visibility</h2>
+        <div className="mt-4 flex flex-wrap gap-6 text-sm text-zinc-300">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={isFeatured}
+              onChange={(e) => setIsFeatured(e.target.checked)}
+              className="h-4 w-4 accent-obsidian-red"
+            />
+            Featured
+          </label>
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={isPublished}
+              onChange={(e) => setIsPublished(e.target.checked)}
+              className="h-4 w-4 accent-obsidian-red"
+            />
+            Published
+          </label>
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
@@ -210,7 +222,7 @@ export function SeriesForm({ initial }: SeriesFormProps) {
         type="button"
         disabled={pending || !title.trim()}
         onClick={submit}
-        className="rw-btn-primary"
+        className="rw-btn-primary min-h-11 px-6"
       >
         {pending ? "Saving…" : "Save Series"}
       </button>

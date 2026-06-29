@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
+import { AdminPageHeader } from "@/components/admin/admin-ui";
 import {
   finalizeNewEpisode,
   initBunnyUpload,
@@ -83,67 +83,68 @@ export function EpisodeUploadForm({
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl uppercase">Upload Episode</h1>
-        <Link
-          href={`/admin/series/${seriesId}`}
-          className="text-sm text-gray-400 hover:text-white"
+      <AdminPageHeader
+        title="Upload Episode"
+        subtitle={seriesTitle}
+        backHref={`/admin/series/${seriesId}`}
+        backLabel="Back to series"
+      />
+
+      <div className="rw-admin-panel">
+        <div
+          className="flex min-h-[160px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-white/[0.12] bg-black/40 p-6 transition hover:border-obsidian-red/40 hover:bg-white/[0.02]"
+          onClick={() => fileRef.current?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={onDrop}
         >
-          Back
-        </Link>
+          {file ? (
+            <p className="text-sm text-white">{file.name}</p>
+          ) : (
+            <p className="text-sm text-zinc-500">
+              Drag & drop video file, or click to browse
+            </p>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+        </div>
       </div>
 
-      <p className="text-sm text-gray-400">{seriesTitle}</p>
+      <div className="rw-form-section space-y-4">
+        <label className="block space-y-1.5">
+          <span className="rw-form-label">Title</span>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="rw-form-input"
+          />
+        </label>
 
-      <div
-        className="flex min-h-[160px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-white/[0.08] bg-zinc-950 p-6"
-        onClick={() => fileRef.current?.click()}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={onDrop}
-      >
-        {file ? (
-          <p className="text-sm">{file.name}</p>
-        ) : (
-          <p className="text-sm text-gray-500">Drag & drop video file, or click to browse</p>
-        )}
-        <input
-          ref={fileRef}
-          type="file"
-          accept="video/*"
-          className="hidden"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        />
+        <label className="block space-y-1.5">
+          <span className="rw-form-label">Episode number</span>
+          <input
+            type="number"
+            min={1}
+            value={episodeNumber}
+            onChange={(e) => setEpisodeNumber(Number(e.target.value))}
+            className="rw-form-input"
+          />
+        </label>
       </div>
-
-      <label className="block space-y-1 text-sm">
-        <span className="text-gray-400">Title</span>
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="w-full rounded-md border border-white/[0.08] bg-black px-3 py-2"
-        />
-      </label>
-
-      <label className="block space-y-1 text-sm">
-        <span className="text-gray-400">Episode number</span>
-        <input
-          type="number"
-          min={1}
-          value={episodeNumber}
-          onChange={(e) => setEpisodeNumber(Number(e.target.value))}
-          className="w-full rounded-md border border-white/[0.08] bg-black px-3 py-2"
-        />
-      </label>
 
       {uploading && (
-        <div className="space-y-2">
+        <div className="rw-admin-panel space-y-2">
           <div className="h-2 overflow-hidden rounded-full bg-white/10">
             <div
               className="h-full bg-obsidian-red transition-all"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <p className="text-xs text-gray-400">{status}</p>
+          <p className="text-xs text-zinc-500">{status}</p>
         </div>
       )}
 
@@ -153,7 +154,7 @@ export function EpisodeUploadForm({
         type="button"
         disabled={uploading || !file}
         onClick={() => void upload()}
-        className="rw-btn-primary"
+        className="rw-btn-primary min-h-11 px-6"
       >
         {uploading ? "Uploading…" : "Upload Episode"}
       </button>

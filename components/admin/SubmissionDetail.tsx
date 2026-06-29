@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import {
@@ -9,6 +8,7 @@ import {
   updateSubmissionReviewScores,
 } from "@/app/admin/submissions/actions";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { AdminPageHeader, AdminPanelHeading } from "@/components/admin/admin-ui";
 import {
   ACQUISITION_SUBMISSION_STATUSES,
   PRODUCTION_STATUSES,
@@ -215,65 +215,58 @@ export function SubmissionDetail({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <Link
-            href="/admin/submissions"
-            className="text-sm text-gray-400 hover:text-white"
-          >
-            ← Back to submissions
-          </Link>
-          <h1 className="mt-2 font-display text-2xl uppercase">
-            {submission.project_title}
-          </h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Submitted {formatDate(submission.created_at)}
-          </p>
-        </div>
-
-        <div className="flex min-w-[14rem] flex-col gap-3">
-          <label className="text-xs uppercase tracking-wide text-zinc-500">
-            Submission Status
-          </label>
-          <div className="relative">
-            <select
-              value={submissionStatus}
-              onChange={(e) =>
-                handleStatusChange(e.target.value as AcquisitionSubmissionStatus)
-              }
-              disabled={statusSaving}
-              className="rw-form-select w-full py-2 text-sm"
+      <AdminPageHeader
+        title={submission.project_title}
+        subtitle={`Submitted ${formatDate(submission.created_at)}`}
+        backHref="/admin/submissions"
+        backLabel="Back to submissions"
+        action={
+          <div className="rw-admin-panel flex min-w-[14rem] flex-col gap-3">
+            <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+              Submission Status
+            </label>
+            <div className="relative">
+              <select
+                value={submissionStatus}
+                onChange={(e) =>
+                  handleStatusChange(e.target.value as AcquisitionSubmissionStatus)
+                }
+                disabled={statusSaving}
+                className="rw-form-select w-full py-2 text-sm"
+              >
+                {ACQUISITION_SUBMISSION_STATUSES.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+              {statusSaving && (
+                <span className="absolute right-10 top-1/2 -translate-y-1/2">
+                  <LoadingSpinner className="h-4 w-4" label="Saving status" />
+                </span>
+              )}
+            </div>
+            <span
+              className={`text-xs font-medium uppercase ${getAcquisitionStatusBadgeClass(submissionStatus)}`}
             >
-              {ACQUISITION_SUBMISSION_STATUSES.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-            {statusSaving && (
-              <span className="absolute right-10 top-1/2 -translate-y-1/2">
-                <LoadingSpinner className="h-4 w-4" label="Saving status" />
-              </span>
-            )}
+              {getAcquisitionStatusLabel(submissionStatus)}
+            </span>
+            {statusError && <p className="text-xs text-red-400">{statusError}</p>}
+            <a
+              href={contactMailto}
+              className="rw-btn-primary inline-flex min-h-10 items-center justify-center px-4 py-2 text-sm"
+            >
+              Contact Creator
+            </a>
           </div>
-          <span
-            className={`text-xs font-medium uppercase ${getAcquisitionStatusBadgeClass(submissionStatus)}`}
-          >
-            {getAcquisitionStatusLabel(submissionStatus)}
-          </span>
-          {statusError && <p className="text-xs text-red-400">{statusError}</p>}
-          <a
-            href={contactMailto}
-            className="rw-btn-primary inline-flex min-h-10 items-center justify-center px-4 py-2 text-sm"
-          >
-            Contact Creator
-          </a>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
-        <h2 className="font-display text-lg uppercase">Activity History</h2>
-        <p className="mt-1 text-xs text-zinc-500">Admin only. Status changes over time.</p>
+      <div className="rw-admin-panel">
+        <AdminPanelHeading
+          title="Activity History"
+          subtitle="Admin only. Status changes over time."
+        />
         {activityHistory.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">No activity recorded yet.</p>
         ) : (
@@ -312,11 +305,11 @@ export function SubmissionDetail({
         />
       )}
 
-      <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
-        <h2 className="font-display text-lg uppercase">Acquisition Notes</h2>
-        <p className="mt-1 text-xs text-zinc-500">
-          Admin only. Internal notes for acquisitions review.
-        </p>
+      <div className="rw-admin-panel">
+        <AdminPanelHeading
+          title="Acquisition Notes"
+          subtitle="Admin only. Internal notes for acquisitions review."
+        />
         <textarea
           value={acquisitionNotes}
           onChange={(e) => setAcquisitionNotes(e.target.value)}
@@ -341,8 +334,8 @@ export function SubmissionDetail({
         </div>
       </div>
 
-      <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
-        <h2 className="font-display text-lg uppercase">Contact</h2>
+      <div className="rw-admin-panel">
+        <AdminPanelHeading title="Contact" />
         <dl className="mt-3">
           <DetailRow label="Creator" value={submission.creator_name} />
           <DetailRow label="Email" value={submission.email} href={`mailto:${submission.email}`} />
@@ -355,8 +348,8 @@ export function SubmissionDetail({
         </dl>
       </div>
 
-      <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
-        <h2 className="font-display text-lg uppercase">Project</h2>
+      <div className="rw-admin-panel">
+        <AdminPanelHeading title="Project" />
         <dl className="mt-3">
           <DetailRow label="Project Type" value={submission.project_type} />
           <DetailRow
@@ -387,8 +380,8 @@ export function SubmissionDetail({
         </div>
       </div>
 
-      <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
-        <h2 className="font-display text-lg uppercase">Media & Artwork</h2>
+      <div className="rw-admin-panel">
+        <AdminPanelHeading title="Media & Artwork" />
         <dl className="mt-3">
           <DetailRow
             label="Trailer Available"
@@ -412,8 +405,8 @@ export function SubmissionDetail({
         </dl>
       </div>
 
-      <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
-        <h2 className="font-display text-lg uppercase">Rights</h2>
+      <div className="rw-admin-panel">
+        <AdminPanelHeading title="Rights" />
         <dl className="mt-3">
           <DetailRow
             label="Owns Rights"
@@ -431,11 +424,11 @@ export function SubmissionDetail({
         </dl>
       </div>
 
-      <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
-        <h2 className="font-display text-lg uppercase">Internal Review</h2>
-        <p className="mt-1 text-xs text-zinc-500">
-          Admin only. Scores are never visible to creators.
-        </p>
+      <div className="rw-admin-panel">
+        <AdminPanelHeading
+          title="Internal Review"
+          subtitle="Admin only. Scores are never visible to creators."
+        />
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <label className="block space-y-1.5">
             <span className="text-xs uppercase tracking-wide text-zinc-500">
@@ -510,8 +503,8 @@ export function SubmissionDetail({
       </div>
 
       {submission.additional_notes && (
-        <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
-          <h2 className="font-display text-lg uppercase">Additional Notes</h2>
+        <div className="rw-admin-panel">
+          <AdminPanelHeading title="Additional Notes" />
           <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">
             {submission.additional_notes}
           </p>

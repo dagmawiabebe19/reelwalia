@@ -100,9 +100,12 @@ export function SubmissionsDashboard({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <label className="block space-y-1.5">
-          <span className="text-xs uppercase tracking-wide text-zinc-500">Status</span>
+      <div className="rw-admin-panel space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <label className="block space-y-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+              Status
+            </span>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -117,7 +120,9 @@ export function SubmissionsDashboard({
           </select>
         </label>
         <label className="block space-y-1.5">
-          <span className="text-xs uppercase tracking-wide text-zinc-500">Project Stage</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+            Project Stage
+          </span>
           <select
             value={stageFilter}
             onChange={(e) => setStageFilter(e.target.value)}
@@ -132,7 +137,9 @@ export function SubmissionsDashboard({
           </select>
         </label>
         <label className="block space-y-1.5">
-          <span className="text-xs uppercase tracking-wide text-zinc-500">Project Type</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+            Project Type
+          </span>
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
@@ -147,7 +154,9 @@ export function SubmissionsDashboard({
           </select>
         </label>
         <label className="block space-y-1.5">
-          <span className="text-xs uppercase tracking-wide text-zinc-500">Genre</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+            Genre
+          </span>
           <select
             value={genreFilter}
             onChange={(e) => setGenreFilter(e.target.value)}
@@ -162,7 +171,9 @@ export function SubmissionsDashboard({
           </select>
         </label>
         <label className="block space-y-1.5">
-          <span className="text-xs uppercase tracking-wide text-zinc-500">Creator Name</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+            Creator Name
+          </span>
           <input
             type="text"
             value={creatorFilter}
@@ -171,59 +182,64 @@ export function SubmissionsDashboard({
             placeholder="Filter by creator"
           />
         </label>
+        </div>
+
+        <label className="block space-y-1.5">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+            Search
+          </span>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="rw-form-input py-2 text-sm"
+            placeholder="Search by title, creator, or logline"
+          />
+        </label>
+
+        <p className="text-xs text-zinc-500">
+          Showing {filteredSubmissions.length} of {submissions.length} submissions
+        </p>
       </div>
 
-      <label className="block space-y-1.5">
-        <span className="text-xs uppercase tracking-wide text-zinc-500">Search</span>
-        <input
-          type="search"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="rw-form-input py-2 text-sm"
-          placeholder="Search by title, creator, or logline"
-        />
-      </label>
-
-      <p className="text-xs text-zinc-500">
-        Showing {filteredSubmissions.length} of {submissions.length} submissions
-      </p>
-
       {!filteredSubmissions.length ? (
-        <p className="text-sm text-gray-400">No submissions match your filters.</p>
+        <div className="rw-admin-panel">
+          <p className="text-sm text-zinc-400">No submissions match your filters.</p>
+        </div>
       ) : (
         <>
-          <div className="hidden overflow-hidden rounded-lg border border-white/[0.08] md:block">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-white/[0.08] bg-white/[0.02] text-xs uppercase tracking-wide text-zinc-500">
+          <div className="rw-admin-table-wrap hidden md:block">
+            <table className="rw-admin-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 font-medium">Title</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Deal Progress</th>
-                  <th className="px-4 py-3 font-medium">Project Type</th>
-                  <th className="px-4 py-3 font-medium">Project Stage</th>
-                  <th className="px-4 py-3 font-medium">Creator Name</th>
-                  <th className="px-4 py-3 font-medium">Submission Date</th>
+                  <th>Title</th>
+                  <th>Status</th>
+                  <th>Deal Progress</th>
+                  <th>Project Type</th>
+                  <th>Project Stage</th>
+                  <th>Creator Name</th>
+                  <th>Submission Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.08]">
+              <tbody>
                 {filteredSubmissions.map((item) => (
-                  <tr key={item.id} className="transition hover:bg-white/[0.03]">
-                    <td className="px-4 py-3">
+                  <tr key={item.id}>
+                    <td>
                       <Link
                         href={`/admin/submissions/${item.id}`}
-                        className="font-medium hover:text-obsidian-red"
+                        className="font-medium text-white transition hover:text-obsidian-red"
                       >
                         {item.project_title}
                       </Link>
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       <span
                         className={`text-xs font-medium uppercase ${getAcquisitionStatusBadgeClass(item.submission_status)}`}
                       >
                         {getAcquisitionStatusLabel(item.submission_status)}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       <DealProgressIndicators
                         submissionStatus={item.submission_status}
                         deal={{
@@ -234,25 +250,23 @@ export function SubmissionsDashboard({
                         }}
                       />
                     </td>
-                    <td className="px-4 py-3 text-zinc-400">{item.project_type}</td>
-                    <td className="px-4 py-3">
+                    <td className="text-zinc-400">{item.project_type}</td>
+                    <td>
                       <span
                         className={`text-xs font-medium uppercase ${getProjectStageBadgeClass(item.project_stage)}`}
                       >
                         {getProjectStageLabel(item.project_stage)}
                       </span>
                     </td>
-                    <td className="px-4 py-3">{item.creator_name}</td>
-                    <td className="px-4 py-3 text-zinc-400">
-                      {formatDate(item.created_at)}
-                    </td>
+                    <td>{item.creator_name}</td>
+                    <td className="text-zinc-400">{formatDate(item.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <ul className="divide-y divide-white/[0.08] rounded-lg border border-white/[0.08] md:hidden">
+          <ul className="rw-admin-table-wrap divide-y divide-white/[0.06] md:hidden">
             {filteredSubmissions.map((item) => (
               <li key={item.id}>
                 <Link
