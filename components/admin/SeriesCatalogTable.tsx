@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import { SeriesCoverThumb } from "@/components/admin/SeriesCoverThumb";
 import { SeriesStatusPill } from "@/components/admin/admin-ui";
 import type { SeriesStatus } from "@/lib/types/database";
 
@@ -10,31 +10,10 @@ export type SeriesCatalogRow = {
   status: SeriesStatus;
   total_episodes: number;
   poster_url: string | null;
+  genre: string[];
   is_featured: boolean;
   featured_order: number | null;
 };
-
-function SeriesCover({ posterUrl, title }: { posterUrl: string | null; title: string }) {
-  if (posterUrl) {
-    return (
-      <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-md border border-white/[0.08] bg-zinc-900">
-        <Image
-          src={posterUrl}
-          alt={title}
-          fill
-          className="object-cover"
-          sizes="40px"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-14 w-10 shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.04] text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
-      RW
-    </div>
-  );
-}
 
 export function SeriesCatalogTable({ rows }: { rows: SeriesCatalogRow[] }) {
   return (
@@ -55,7 +34,11 @@ export function SeriesCatalogTable({ rows }: { rows: SeriesCatalogRow[] }) {
             <tr key={row.id}>
               <td>
                 <Link href={`/admin/series/${row.id}`} className="block">
-                  <SeriesCover title={row.title} posterUrl={row.poster_url} />
+                  <SeriesCoverThumb
+                    title={row.title}
+                    posterUrl={row.poster_url}
+                    genres={row.genre}
+                  />
                 </Link>
               </td>
               <td>
@@ -97,7 +80,11 @@ export function SeriesCatalogMobileList({ rows }: { rows: SeriesCatalogRow[] }) 
             href={`/admin/series/${row.id}`}
             className="flex items-center gap-3 px-4 py-4 transition hover:bg-white/[0.03]"
           >
-            <SeriesCover title={row.title} posterUrl={row.poster_url} />
+            <SeriesCoverThumb
+              title={row.title}
+              posterUrl={row.poster_url}
+              genres={row.genre}
+            />
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{row.title}</p>
               <p className="text-xs text-zinc-500">

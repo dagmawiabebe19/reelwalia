@@ -15,7 +15,7 @@ export default async function AdminSeriesListPage() {
   const { data: series } = await admin
     .from("series")
     .select(
-      "id, title, slug, status, total_episodes, poster_url, is_featured, featured_order, created_at"
+      "id, title, slug, status, total_episodes, poster_url, genre, is_featured, featured_order, created_at"
     )
     .order("featured_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });
@@ -28,6 +28,7 @@ export default async function AdminSeriesListPage() {
       status: item.status as SeriesStatus,
       total_episodes: item.total_episodes,
       poster_url: item.poster_url,
+      genre: item.genre ?? [],
       is_featured: item.is_featured,
       featured_order: item.featured_order,
     })) ?? [];
