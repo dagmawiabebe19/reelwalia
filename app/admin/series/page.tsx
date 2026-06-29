@@ -1,6 +1,12 @@
 import Link from "next/link";
+import { AdminPageHeader } from "@/components/admin/admin-ui";
+import {
+  SeriesCatalogMobileList,
+  SeriesCatalogTable,
+} from "@/components/admin/SeriesCatalogTable";
 import { requireAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { SeriesStatus } from "@/lib/types/database";
 
 export default async function AdminSeriesListPage() {
   await requireAdmin();
@@ -8,41 +14,45 @@ export default async function AdminSeriesListPage() {
 
   const { data: series } = await admin
     .from("series")
-    .select("id, title, slug, status, total_episodes, is_featured, created_at")
+    .select(
+      "id, title, slug, status, total_episodes, poster_url, is_featured, featured_order, created_at"
+    )
+    .order("featured_order", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });
+
+  const rows =
+    series?.map((item) => ({
+      id: item.id,
+      title: item.title,
+      slug: item.slug,
+      status: item.status as SeriesStatus,
+      total_episodes: item.total_episodes,
+      poster_url: item.poster_url,
+      is_featured: item.is_featured,
+      featured_order: item.featured_order,
+    })) ?? [];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl uppercase">Series</h1>
-        <Link href="/admin/series/new" className="rw-btn-primary">
-          Add Series
-        </Link>
-      </div>
+      <AdminPageHeader
+        title="Series"
+        subtitle="Catalog overview — thumbnails, status, and featured placement."
+        action={
+          <Link href="/admin/series/new" className="rw-btn-primary">
+            Add Series
+          </Link>
+        }
+      />
 
-      {!series?.length ? (
-        <p className="text-sm text-gray-400">No series yet. Create your first one.</p>
+      {!rows.length ? (
+        <div className="rw-admin-panel">
+          <p className="text-sm text-zinc-400">No series yet. Create your first one.</p>
+        </div>
       ) : (
-        <ul className="divide-y divide-white/[0.08] rounded-lg border border-white/[0.08]">
-          {series.map((s) => (
-            <li key={s.id}>
-              <Link
-                href={`/admin/series/${s.id}`}
-                className="flex items-center justify-between px-4 py-3 transition hover:bg-white/[0.03]"
-              >
-                <div>
-                  <p className="font-medium">{s.title}</p>
-                  <p className="text-xs text-gray-400">
-                    /{s.slug} · {s.total_episodes} eps · {s.status}
-                  </p>
-                </div>
-                {s.is_featured && (
-                  <span className="text-xs uppercase text-obsidian-red">Featured</span>
-                )}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <>
+          <SeriesCatalogTable rows={rows} />
+          <SeriesCatalogMobileList rows={rows} />
+        </>
       )}
     </div>
   );
