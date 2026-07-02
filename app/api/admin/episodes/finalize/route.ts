@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireAdminApi } from "@/lib/admin";
+import { syncEpisodeBunnyMetadata } from "@/lib/admin/sync-episode-bunny-metadata";
 import {
   getPlaybackUrl,
   getThumbnailUrl,
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
 
     const { data: series } = await admin
       .from("series")
-      .select("free_episode_count")
+      .select("free_episode_count, slug")
       .eq("id", seriesId)
       .single();
 
@@ -77,6 +79,16 @@ export async function POST(request: Request) {
       .update({ total_episodes: episodeNumber })
       .eq("id", seriesId)
       .lt("total_episodes", episodeNumber);
+
+    if (episode) {
+      await syncEpisodeBunnyMetadata(admin, [episode]);
+    }
+
+    if (series?.slug) {
+      revalidatePath("/");
+      revalidatePath(`/series/${series.slug}`);
+      revalidatePath(`/admin/series/${seriesId}`);
+    }
 
     return NextResponse.json({ episode, transcodeStatus: status.status });
   } catch (err) {

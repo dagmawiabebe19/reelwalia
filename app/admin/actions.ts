@@ -61,6 +61,8 @@ export async function saveSeries(data: SeriesFormData) {
 
   if (error) throw new Error(error.message);
   revalidatePath("/admin/series");
+  revalidatePath("/");
+  revalidatePath(`/series/${payload.slug}`);
   redirect(`/admin/series/${created.id}`);
 }
 

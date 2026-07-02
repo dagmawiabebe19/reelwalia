@@ -30,6 +30,35 @@ function formatDuration(seconds: number | null): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+function EpisodeThumb({
+  thumbnailUrl,
+  episodeNumber,
+}: {
+  thumbnailUrl: string | null;
+  episodeNumber: number;
+}) {
+  const [failed, setFailed] = useState(false);
+  const showImage = Boolean(thumbnailUrl) && !failed;
+
+  return (
+    <div className="h-16 w-11 shrink-0 overflow-hidden rounded border border-white/[0.08] bg-zinc-900">
+      {showImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={thumbnailUrl!}
+          alt=""
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <div className="flex h-full items-center justify-center text-xs text-gray-500">
+          {episodeNumber}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Modal({
   open,
   title,
@@ -386,20 +415,10 @@ export function EpisodeManager({
           {episodes.map((ep) => (
             <li key={ep.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
               <div className="flex min-w-0 flex-1 items-center gap-3">
-                <div className="h-16 w-11 shrink-0 overflow-hidden rounded border border-white/[0.08] bg-zinc-900">
-                  {ep.thumbnail_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={ep.thumbnail_url}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-gray-500">
-                      {ep.episode_number}
-                    </div>
-                  )}
-                </div>
+                <EpisodeThumb
+                  thumbnailUrl={ep.thumbnail_url}
+                  episodeNumber={ep.episode_number}
+                />
                 <div className="min-w-0">
                   <p className="text-sm font-medium">
                     <span className="text-gray-400">#{ep.episode_number}</span>{" "}

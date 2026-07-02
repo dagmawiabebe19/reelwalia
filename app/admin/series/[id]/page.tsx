@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { EpisodeManager } from "@/components/admin/EpisodeManager";
 import { SeriesForm } from "@/components/admin/SeriesForm";
 import { requireAdmin } from "@/lib/admin";
+import { syncEpisodeBunnyMetadata } from "@/lib/admin/sync-episode-bunny-metadata";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 interface AdminSeriesEditPageProps {
@@ -19,6 +20,19 @@ export default async function AdminSeriesEditPage({ params }: AdminSeriesEditPag
     .maybeSingle();
 
   if (!series) notFound();
+
+  const { data: episodesRaw } = await admin
+    .from("episodes")
+    .select(
+      "id, episode_number, title, bunny_video_id, video_url, thumbnail_url, duration_seconds, display_view_count"
+    )
+    .eq("series_id", params.id)
+    .order("episode_number", { ascending: true });
+
+  const episodesList = episodesRaw ?? [];
+  if (episodesList.length > 0) {
+    await syncEpisodeBunnyMetadata(admin, episodesList);
+  }
 
   const { data: episodes } = await admin
     .from("episodes")

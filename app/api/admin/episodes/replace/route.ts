@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireAdminApi } from "@/lib/admin";
+import { syncEpisodeBunnyMetadata } from "@/lib/admin/sync-episode-bunny-metadata";
 import {
   deleteVideo,
   getPlaybackUrl,
@@ -72,6 +74,22 @@ export async function POST(request: Request) {
 
     if (oldBunnyId && oldBunnyId !== videoId) {
       await safeDeleteBunnyVideo(oldBunnyId);
+    }
+
+    if (updated) {
+      await syncEpisodeBunnyMetadata(admin, [updated]);
+    }
+
+    const { data: series } = await admin
+      .from("series")
+      .select("slug")
+      .eq("id", episode.series_id)
+      .maybeSingle();
+
+    if (series?.slug) {
+      revalidatePath("/");
+      revalidatePath(`/series/${series.slug}`);
+      revalidatePath(`/admin/series/${episode.series_id}`);
     }
 
     return NextResponse.json({ episode: updated, transcodeStatus: status.status });
