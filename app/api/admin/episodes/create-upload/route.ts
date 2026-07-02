@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/admin";
-import { createBunnyTusUploadCredentials } from "@/lib/bunny-tus";
 import { createVideo } from "@/lib/bunny";
 
 export async function POST(request: Request) {
@@ -15,10 +14,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "title is required" }, { status: 400 });
     }
 
-    const { videoId } = await createVideo(body.title.trim());
-    const credentials = createBunnyTusUploadCredentials(videoId);
+    const { videoId, uploadUrl } = await createVideo(body.title.trim());
 
-    return NextResponse.json(credentials);
+    return NextResponse.json({
+      videoId,
+      uploadUrl,
+      apiKey: process.env.BUNNY_STREAM_API_KEY,
+    });
   } catch (err) {
     console.error("create-upload error:", err);
     return NextResponse.json(

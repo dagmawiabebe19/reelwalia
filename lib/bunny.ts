@@ -30,6 +30,7 @@ export interface BunnyVideoStatus {
   encodeProgress: number;
   length: number;
   storageSize: number;
+  originalHash: string | null;
   title: string;
 }
 
@@ -38,9 +39,12 @@ export function isVideoReady(status: number): boolean {
   return status === 4;
 }
 
-/** True when Bunny has received source bytes (upload succeeded). */
+/**
+ * True when Bunny has the source file (originalHash is set after ingest).
+ * storageSize alone is unreliable until encoding completes; hasOriginal is true even for empty PUTs.
+ */
 export function bunnyVideoHasSource(status: BunnyVideoStatus): boolean {
-  return status.storageSize > 0;
+  return Boolean(status.originalHash?.trim()) || status.storageSize > 0;
 }
 
 export function bunnyVideoPlaybackIssue(status: BunnyVideoStatus): string | null {
@@ -48,7 +52,7 @@ export function bunnyVideoPlaybackIssue(status: BunnyVideoStatus): string | null
     return "Bunny reported an encoding error — re-upload this episode.";
   }
   if (!bunnyVideoHasSource(status)) {
-    return "No video file on Bunny for this GUID — use Replace Video to re-upload.";
+    return "No source file on Bunny for this GUID — re-upload the episode video.";
   }
   if (!isVideoReady(status.status)) {
     return "Video is still transcoding on Bunny — playback works when encoding finishes.";
@@ -96,6 +100,7 @@ export async function getVideoStatus(videoId: string): Promise<BunnyVideoStatus>
     encodeProgress: number;
     length: number;
     storageSize: number;
+    originalHash: string | null;
     title: string;
   };
 
@@ -105,17 +110,18 @@ export async function getVideoStatus(videoId: string): Promise<BunnyVideoStatus>
     encodeProgress: data.encodeProgress,
     length: data.length,
     storageSize: data.storageSize ?? 0,
+    originalHash: data.originalHash ?? null,
     title: data.title,
   };
 }
 
-/** Poll Bunny until storageSize reflects a real upload (TUS can lag briefly). */
+/** Poll Bunny until the source file hash appears (upload landed) or storageSize is non-zero. */
 export async function waitForBunnyVideoSource(
   videoId: string,
   options?: { maxAttempts?: number; delayMs?: number }
 ): Promise<BunnyVideoStatus> {
-  const maxAttempts = options?.maxAttempts ?? 15;
-  const delayMs = options?.delayMs ?? 2000;
+  const maxAttempts = options?.maxAttempts ?? 45;
+  const delayMs = options?.delayMs ?? 4000;
   let last: BunnyVideoStatus | null = null;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -127,7 +133,7 @@ export async function waitForBunnyVideoSource(
   }
 
   throw new Error(
-    `Bunny reports 0 bytes stored for video ${videoId} (storageSize=${last?.storageSize ?? 0}). Upload did not land.`
+    `Bunny never stored the source file for video ${videoId} (originalHash missing, storageSize=${last?.storageSize ?? 0}). Check Bunny Stream library encoding settings or contact Bunny support.`
   );
 }
 

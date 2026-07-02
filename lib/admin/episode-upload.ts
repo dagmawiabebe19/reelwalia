@@ -1,102 +1,87 @@
 /** Client-side Bunny video upload helpers for admin episode management. */
 
-import * as tus from "tus-js-client";
-
-export interface BunnyTusUploadCredentials {
+export interface BunnyUploadInit {
   videoId: string;
-  libraryId: string;
-  expirationTime: number;
-  signature: string;
+  uploadUrl: string;
+  apiKey: string;
 }
-
-const BUNNY_TUS_ENDPOINT = "https://video.bunnycdn.com/tusupload";
 
 function assertUploadFile(file: File): void {
   if (!file.size) {
-    throw new Error("Selected file is empty (0 bytes). Choose a valid video file.");
+    throw new Error(
+      "Selected file is empty (0 bytes). If the file is in iCloud/Drive, download it locally first."
+    );
   }
 }
 
-export async function initBunnyUpload(title: string): Promise<BunnyTusUploadCredentials> {
+export async function initBunnyUpload(title: string): Promise<BunnyUploadInit> {
   const res = await fetch("/api/admin/episodes/create-upload", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title }),
   });
-  const data = (await res.json()) as BunnyTusUploadCredentials & { error?: string };
+  const data = (await res.json()) as BunnyUploadInit & { error?: string };
 
-  if (
-    !res.ok ||
-    !data.videoId ||
-    !data.libraryId ||
-    !data.signature ||
-    !data.expirationTime
-  ) {
+  if (!res.ok || !data.videoId || !data.uploadUrl || !data.apiKey) {
     throw new Error(data.error ?? "Failed to init upload");
   }
 
   return {
     videoId: data.videoId,
-    libraryId: data.libraryId,
-    expirationTime: data.expirationTime,
-    signature: data.signature,
+    uploadUrl: data.uploadUrl,
+    apiKey: data.apiKey,
   };
 }
 
-/** Direct browser → Bunny TUS upload (bytes never pass through Vercel). */
-export function uploadVideoToBunnyTus(
+/**
+ * Direct browser → Bunny PUT (the path that uploaded REDBIRD and other legacy episodes).
+ * Bytes never pass through Vercel.
+ */
+export function putVideoToBunny(
   file: File,
-  credentials: BunnyTusUploadCredentials,
+  uploadUrl: string,
+  apiKey: string,
   onProgress?: (percent: number) => void
 ): Promise<void> {
   assertUploadFile(file);
 
   return new Promise((resolve, reject) => {
-    let bytesUploaded = 0;
-    let bytesTotal = file.size;
+    let bytesSent = 0;
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", uploadUrl);
+    xhr.setRequestHeader("AccessKey", apiKey);
+    xhr.setRequestHeader("Accept", "application/json");
+    xhr.setRequestHeader("Content-Type", "application/octet-stream");
 
-    const upload = new tus.Upload(file, {
-      endpoint: BUNNY_TUS_ENDPOINT,
-      retryDelays: [0, 3000, 5000, 10_000, 20_000, 60_000],
-      headers: {
-        AuthorizationSignature: credentials.signature,
-        AuthorizationExpire: String(credentials.expirationTime),
-        VideoId: credentials.videoId,
-        LibraryId: credentials.libraryId,
-      },
-      metadata: {
-        filetype: file.type || "video/mp4",
-        title: file.name,
-      },
-      onError(error) {
-        reject(error instanceof Error ? error : new Error("Bunny TUS upload failed"));
-      },
-      onProgress(uploaded, total) {
-        bytesUploaded = uploaded;
-        bytesTotal = total;
-        if (onProgress && total > 0) {
-          onProgress(Math.round((uploaded / total) * 100));
-        }
-      },
-      onSuccess() {
-        if (bytesUploaded <= 0 || bytesUploaded < bytesTotal) {
-          reject(
-            new Error(
-              `Upload finished but only ${bytesUploaded.toLocaleString()} of ${bytesTotal.toLocaleString()} bytes were sent.`
-            )
-          );
-          return;
-        }
-        resolve();
-      },
-    });
-
-    void upload.findPreviousUploads().then((previousUploads) => {
-      if (previousUploads.length > 0) {
-        upload.resumeFromPreviousUpload(previousUploads[0]);
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      bytesSent = event.loaded;
+      if (onProgress) {
+        onProgress(Math.round((event.loaded / event.total) * 100));
       }
-      upload.start();
-    });
+    };
+
+    xhr.onload = () => {
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(`Bunny upload failed: HTTP ${xhr.status}`));
+        return;
+      }
+
+      if (bytesSent <= 0 || bytesSent < file.size) {
+        reject(
+          new Error(
+            `Bunny accepted the request but only ${bytesSent.toLocaleString()} of ${file.size.toLocaleString()} bytes were sent.`
+          )
+        );
+        return;
+      }
+
+      resolve();
+    };
+
+    xhr.onerror = () => reject(new Error("Bunny upload network error"));
+    xhr.onabort = () => reject(new Error("Bunny upload aborted"));
+    xhr.send(file);
   });
 }
 
@@ -138,14 +123,16 @@ export async function uploadAndReplaceEpisode(params: {
   const { file, seriesTitle, episodeTitle, episodeId, onProgress } = params;
 
   onProgress?.(0, "Creating upload…");
-  const credentials = await initBunnyUpload(`${seriesTitle} — ${episodeTitle}`);
+  const { videoId, uploadUrl, apiKey } = await initBunnyUpload(
+    `${seriesTitle} — ${episodeTitle}`
+  );
 
   onProgress?.(10, "Uploading to Bunny…");
-  await uploadVideoToBunnyTus(file, credentials, (pct) => {
+  await putVideoToBunny(file, uploadUrl, apiKey, (pct) => {
     onProgress?.(10 + Math.round(pct * 0.7), "Uploading to Bunny…");
   });
 
-  onProgress?.(85, "Saving…");
-  await replaceEpisodeVideo({ episodeId, videoId: credentials.videoId });
+  onProgress?.(85, "Verifying upload…");
+  await replaceEpisodeVideo({ episodeId, videoId });
   onProgress?.(100, "Done");
 }
