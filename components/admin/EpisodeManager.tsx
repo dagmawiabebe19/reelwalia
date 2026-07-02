@@ -21,6 +21,7 @@ interface EpisodeManagerProps {
   seriesTitle: string;
   episodes: AdminEpisode[];
   nextEpisodeNumber: number;
+  bunnyHealthFlags?: Record<string, string>;
 }
 
 function formatDuration(seconds: number | null): string {
@@ -97,6 +98,7 @@ export function EpisodeManager({
   seriesTitle,
   episodes: initialEpisodes,
   nextEpisodeNumber,
+  bunnyHealthFlags = {},
 }: EpisodeManagerProps) {
   const router = useRouter();
   const [episodes, setEpisodes] = useState(initialEpisodes);
@@ -430,6 +432,11 @@ export function EpisodeManager({
                       ? ` · ${ep.bunny_video_id.startsWith("demo-") ? "Demo" : "Bunny"}`
                       : " · No video"}
                   </p>
+                  {bunnyHealthFlags[ep.id] && (
+                    <p className="mt-1 text-xs text-amber-400" role="status">
+                      {bunnyHealthFlags[ep.id]}
+                    </p>
+                  )}
                   <label className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                     <span className="text-gray-400">Display View Count</span>
                     <input

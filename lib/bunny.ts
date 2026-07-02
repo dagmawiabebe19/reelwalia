@@ -29,12 +29,31 @@ export interface BunnyVideoStatus {
   status: number;
   encodeProgress: number;
   length: number;
+  storageSize: number;
   title: string;
 }
 
 /** Bunny status codes: 0=created, 1=uploaded, 2=processing, 3=transcoding, 4=finished, 5=error */
 export function isVideoReady(status: number): boolean {
   return status === 4;
+}
+
+/** True when Bunny has received source bytes (upload succeeded). */
+export function bunnyVideoHasSource(status: BunnyVideoStatus): boolean {
+  return status.storageSize > 0;
+}
+
+export function bunnyVideoPlaybackIssue(status: BunnyVideoStatus): string | null {
+  if (status.status === 5) {
+    return "Bunny reported an encoding error — re-upload this episode.";
+  }
+  if (!bunnyVideoHasSource(status)) {
+    return "No video file on Bunny for this GUID — use Replace Video to re-upload.";
+  }
+  if (!isVideoReady(status.status)) {
+    return "Video is still transcoding on Bunny — playback works when encoding finishes.";
+  }
+  return null;
 }
 
 export async function createVideo(title: string): Promise<BunnyCreateVideoResult> {
@@ -76,6 +95,7 @@ export async function getVideoStatus(videoId: string): Promise<BunnyVideoStatus>
     status: number;
     encodeProgress: number;
     length: number;
+    storageSize: number;
     title: string;
   };
 
@@ -84,6 +104,7 @@ export async function getVideoStatus(videoId: string): Promise<BunnyVideoStatus>
     status: data.status,
     encodeProgress: data.encodeProgress,
     length: data.length,
+    storageSize: data.storageSize ?? 0,
     title: data.title,
   };
 }

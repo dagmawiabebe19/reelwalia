@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { EpisodeManager } from "@/components/admin/EpisodeManager";
 import { SeriesForm } from "@/components/admin/SeriesForm";
 import { requireAdmin } from "@/lib/admin";
+import { getEpisodeBunnyHealthFlags } from "@/lib/admin/bunny-episode-health";
 import { syncEpisodeBunnyMetadata } from "@/lib/admin/sync-episode-bunny-metadata";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -42,6 +43,8 @@ export default async function AdminSeriesEditPage({ params }: AdminSeriesEditPag
     .eq("series_id", params.id)
     .order("episode_number", { ascending: true });
 
+  const bunnyHealthFlags = await getEpisodeBunnyHealthFlags(episodes ?? []);
+
   const nextEpisodeNumber =
     episodes && episodes.length > 0
       ? Math.max(...episodes.map((e) => e.episode_number)) + 1
@@ -56,6 +59,7 @@ export default async function AdminSeriesEditPage({ params }: AdminSeriesEditPag
         seriesTitle={series.title}
         episodes={episodes ?? []}
         nextEpisodeNumber={nextEpisodeNumber}
+        bunnyHealthFlags={bunnyHealthFlags}
       />
     </div>
   );

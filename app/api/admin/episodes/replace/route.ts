@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdminApi } from "@/lib/admin";
 import { syncEpisodeBunnyMetadata } from "@/lib/admin/sync-episode-bunny-metadata";
 import {
+  bunnyVideoHasSource,
   deleteVideo,
   getPlaybackUrl,
   getThumbnailUrl,
@@ -54,6 +55,15 @@ export async function POST(request: Request) {
     }
 
     const status = await getVideoStatus(videoId);
+    if (!bunnyVideoHasSource(status)) {
+      return NextResponse.json(
+        {
+          error:
+            "Bunny has no video file for this upload (0 bytes stored). The PUT upload may have failed — try again.",
+        },
+        { status: 400 }
+      );
+    }
     const oldBunnyId = episode.bunny_video_id;
 
     const { data: updated, error } = await admin
