@@ -3,11 +3,10 @@ import { revalidatePath } from "next/cache";
 import { requireAdminApi } from "@/lib/admin";
 import { syncEpisodeBunnyMetadata } from "@/lib/admin/sync-episode-bunny-metadata";
 import {
-  bunnyVideoHasSource,
   deleteVideo,
   getPlaybackUrl,
   getThumbnailUrl,
-  getVideoStatus,
+  waitForBunnyVideoSource,
 } from "@/lib/bunny";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -54,16 +53,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Episode not found" }, { status: 404 });
     }
 
-    const status = await getVideoStatus(videoId);
-    if (!bunnyVideoHasSource(status)) {
-      return NextResponse.json(
-        {
-          error:
-            "Bunny has no video file for this upload (0 bytes stored). The PUT upload may have failed — try again.",
-        },
-        { status: 400 }
-      );
-    }
+    const status = await waitForBunnyVideoSource(videoId);
     const oldBunnyId = episode.bunny_video_id;
 
     const { data: updated, error } = await admin
@@ -105,9 +95,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ episode: updated, transcodeStatus: status.status });
   } catch (err) {
     console.error("replace error:", err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Replace failed" },
-      { status: 500 }
-    );
+    const message = err instanceof Error ? err.message : "Replace failed";
+    const status = message.includes("0 bytes") ? 400 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

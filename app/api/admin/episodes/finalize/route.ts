@@ -3,11 +3,10 @@ import { revalidatePath } from "next/cache";
 import { requireAdminApi } from "@/lib/admin";
 import { syncEpisodeBunnyMetadata } from "@/lib/admin/sync-episode-bunny-metadata";
 import {
-  bunnyVideoHasSource,
   getPlaybackUrl,
   getThumbnailUrl,
-  getVideoStatus,
   isVideoReady,
+  waitForBunnyVideoSource,
 } from "@/lib/bunny";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveFreeEpisodeCount } from "@/lib/access";
@@ -33,16 +32,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const status = await getVideoStatus(videoId);
-    if (!bunnyVideoHasSource(status)) {
-      return NextResponse.json(
-        {
-          error:
-            "Bunny has no video file for this upload (0 bytes stored). The PUT upload may have failed — try again.",
-        },
-        { status: 400 }
-      );
-    }
+    const status = await waitForBunnyVideoSource(videoId);
     if (!isVideoReady(status.status) && status.status !== 1 && status.status !== 2 && status.status !== 3) {
       // Allow save after upload even if still transcoding — URL will work when ready
     }
@@ -103,9 +93,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ episode, transcodeStatus: status.status });
   } catch (err) {
     console.error("finalize error:", err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Finalize failed" },
-      { status: 500 }
-    );
+    const message = err instanceof Error ? err.message : "Finalize failed";
+    const status = message.includes("0 bytes") ? 400 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

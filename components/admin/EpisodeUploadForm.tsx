@@ -6,7 +6,7 @@ import { AdminPageHeader } from "@/components/admin/admin-ui";
 import {
   finalizeNewEpisode,
   initBunnyUpload,
-  putVideoToBunny,
+  uploadVideoToBunnyTus,
 } from "@/lib/admin/episode-upload";
 
 interface EpisodeUploadFormProps {
@@ -48,14 +48,14 @@ export function EpisodeUploadForm({
     setStatus("Creating upload…");
 
     try {
-      const { videoId, uploadUrl, apiKey } = await initBunnyUpload(
+      const credentials = await initBunnyUpload(
         `${seriesTitle} — ${title.trim()}`
       );
 
       setStatus("Uploading to Bunny…");
       setProgress(10);
 
-      await putVideoToBunny(file, uploadUrl, apiKey, (pct) => {
+      await uploadVideoToBunnyTus(file, credentials, (pct) => {
         setProgress(10 + Math.round(pct * 0.7));
       });
 
@@ -64,7 +64,7 @@ export function EpisodeUploadForm({
 
       await finalizeNewEpisode({
         seriesId,
-        videoId,
+        videoId: credentials.videoId,
         title: title.trim(),
         episodeNumber,
       });
@@ -98,7 +98,13 @@ export function EpisodeUploadForm({
           onDrop={onDrop}
         >
           {file ? (
-            <p className="text-sm text-white">{file.name}</p>
+            <p className="text-sm text-white">
+              {file.name}
+              <span className="mt-1 block text-xs text-zinc-500">
+                {(file.size / (1024 * 1024)).toFixed(1)} MB
+                {file.size === 0 ? " — file not loaded locally; download from iCloud/Drive first" : ""}
+              </span>
+            </p>
           ) : (
             <p className="text-sm text-zinc-500">
               Drag & drop video file, or click to browse

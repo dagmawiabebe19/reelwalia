@@ -109,6 +109,28 @@ export async function getVideoStatus(videoId: string): Promise<BunnyVideoStatus>
   };
 }
 
+/** Poll Bunny until storageSize reflects a real upload (TUS can lag briefly). */
+export async function waitForBunnyVideoSource(
+  videoId: string,
+  options?: { maxAttempts?: number; delayMs?: number }
+): Promise<BunnyVideoStatus> {
+  const maxAttempts = options?.maxAttempts ?? 15;
+  const delayMs = options?.delayMs ?? 2000;
+  let last: BunnyVideoStatus | null = null;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    last = await getVideoStatus(videoId);
+    if (bunnyVideoHasSource(last)) return last;
+    if (attempt < maxAttempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  throw new Error(
+    `Bunny reports 0 bytes stored for video ${videoId} (storageSize=${last?.storageSize ?? 0}). Upload did not land.`
+  );
+}
+
 export function getPlaybackUrl(videoId: string): string {
   const { cdnHostname } = getConfig();
   return `https://${cdnHostname}/${videoId}/playlist.m3u8`;
