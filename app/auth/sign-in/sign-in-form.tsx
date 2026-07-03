@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { sendMagicLinkAction } from "@/app/auth/sign-in/actions";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
 
@@ -64,16 +65,10 @@ function SignInForm() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: buildCallbackUrl(),
-        shouldCreateUser: true,
-      },
-    });
+    const result = await sendMagicLinkAction(email.trim(), redirectTo);
     setLoading(false);
-    if (error) {
-      setMessage(error.message);
+    if ("error" in result) {
+      setMessage(result.error);
       return;
     }
     setSentTo(email.trim());

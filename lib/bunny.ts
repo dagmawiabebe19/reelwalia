@@ -1,3 +1,5 @@
+import "server-only";
+
 const BUNNY_API_BASE = "https://video.bunnycdn.com";
 
 function getConfig() {

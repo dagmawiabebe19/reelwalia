@@ -6,7 +6,7 @@ import { AdminPageHeader } from "@/components/admin/admin-ui";
 import {
   finalizeNewEpisode,
   initBunnyUpload,
-  putVideoToBunny,
+  uploadVideoToBunny,
 } from "@/lib/admin/episode-upload";
 
 interface EpisodeUploadFormProps {
@@ -48,14 +48,12 @@ export function EpisodeUploadForm({
     setStatus("Creating upload…");
 
     try {
-      const { videoId, uploadUrl, apiKey } = await initBunnyUpload(
-        `${seriesTitle} — ${title.trim()}`
-      );
+      const credentials = await initBunnyUpload(`${seriesTitle} — ${title.trim()}`);
 
       setStatus("Uploading to Bunny…");
       setProgress(10);
 
-      await putVideoToBunny(file, uploadUrl, apiKey, (pct) => {
+      await uploadVideoToBunny(file, credentials, (pct) => {
         setProgress(10 + Math.round(pct * 0.7));
       });
 
@@ -64,7 +62,7 @@ export function EpisodeUploadForm({
 
       await finalizeNewEpisode({
         seriesId,
-        videoId,
+        videoId: credentials.videoId,
         title: title.trim(),
         episodeNumber,
       });
