@@ -6,6 +6,7 @@ import screenfull from "screenfull";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type MouseEvent,
@@ -62,10 +63,18 @@ type OtherSeriesData = Pick<
   "id" | "title" | "slug" | "tagline" | "poster_url" | "genre"
 >;
 
+export interface CaptionTrack {
+  languageCode: string;
+  languageLabel: string;
+  src: string;
+}
+
 interface VideoPlayerProps {
   src: string;
   poster?: string | null;
+  /** @deprecated Use captionTracks */
   subtitleUrl?: string | null;
+  captionTracks?: CaptionTrack[];
   episodeId: string;
   episodeNumber: number;
   seriesId: string;
@@ -82,6 +91,56 @@ interface VideoPlayerProps {
 }
 
 const SPEEDS = [0.5, 1, 1.25, 1.5, 2] as const;
+const CAPTION_LANG_STORAGE_KEY = "rw-caption-lang";
+
+function buildCaptionTracks(
+  captionTracks: CaptionTrack[] | undefined,
+  subtitleUrl: string | null | undefined
+): CaptionTrack[] {
+  if (captionTracks?.length) return captionTracks;
+  if (subtitleUrl) {
+    return [
+      {
+        languageCode: "en",
+        languageLabel: "English",
+        src: subtitleUrl,
+      },
+    ];
+  }
+  return [];
+}
+
+function readStoredCaptionLang(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = sessionStorage.getItem(CAPTION_LANG_STORAGE_KEY);
+    return value === "off" || !value ? null : value;
+  } catch {
+    return null;
+  }
+}
+
+function persistCaptionLang(languageCode: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (languageCode) {
+      sessionStorage.setItem(CAPTION_LANG_STORAGE_KEY, languageCode);
+    } else {
+      sessionStorage.setItem(CAPTION_LANG_STORAGE_KEY, "off");
+    }
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function applyCaptionSelection(video: HTMLVideoElement, languageCode: string | null) {
+  for (let i = 0; i < video.textTracks.length; i++) {
+    const track = video.textTracks[i];
+    if (!track.language) continue;
+    track.mode =
+      languageCode && track.language === languageCode ? "showing" : "hidden";
+  }
+}
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds)) return "0:00";
@@ -119,6 +178,7 @@ export function VideoPlayer({
   src,
   poster,
   subtitleUrl,
+  captionTracks,
   episodeId,
   episodeNumber,
   seriesId,
@@ -134,6 +194,10 @@ export function VideoPlayer({
   seriesOrientation = "vertical",
 }: VideoPlayerProps) {
   const isLandscapeSeries = seriesOrientation === "landscape";
+  const tracks = useMemo(
+    () => buildCaptionTracks(captionTracks, subtitleUrl),
+    [captionTracks, subtitleUrl]
+  );
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -154,7 +218,8 @@ export function VideoPlayer({
   const [volume, setVolume] = useState(1);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [subtitlesOn, setSubtitlesOn] = useState(true);
+  const [selectedCaptionLang, setSelectedCaptionLang] = useState<string | null>(null);
+  const [showCaptionMenu, setShowCaptionMenu] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
@@ -255,6 +320,38 @@ export function VideoPlayer({
     },
     [loadError, playing]
   );
+
+  const selectCaptionLang = useCallback((languageCode: string | null) => {
+    setSelectedCaptionLang(languageCode);
+    persistCaptionLang(languageCode);
+    const video = videoRef.current;
+    if (video) applyCaptionSelection(video, languageCode);
+    setShowCaptionMenu(false);
+    bumpControls();
+  }, [bumpControls]);
+
+  useEffect(() => {
+    if (!tracks.length) {
+      setSelectedCaptionLang(null);
+      return;
+    }
+
+    const stored = readStoredCaptionLang();
+    const initial =
+      stored && tracks.some((t) => t.languageCode === stored) ? stored : null;
+    setSelectedCaptionLang(initial);
+  }, [episodeId, tracks]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !tracks.length) return;
+
+    const syncTracks = () => applyCaptionSelection(video, selectedCaptionLang);
+
+    syncTracks();
+    video.textTracks.addEventListener("addtrack", syncTracks);
+    return () => video.textTracks.removeEventListener("addtrack", syncTracks);
+  }, [tracks, selectedCaptionLang, src]);
 
   const skip = useCallback(
     (delta: number) => {
@@ -1001,15 +1098,15 @@ export function VideoPlayer({
             onPause={() => setPlaying(false)}
             onEnded={handleEnded}
           >
-            {subtitleUrl && (
+            {tracks.map((track) => (
               <track
+                key={track.languageCode}
                 kind="subtitles"
-                src={subtitleUrl}
-                srcLang="en"
-                label="English"
-                default={subtitlesOn}
+                src={track.src}
+                srcLang={track.languageCode}
+                label={track.languageLabel}
               />
-            )}
+            ))}
           </video>
 
           {(isInitialLoad || isBuffering) && (
@@ -1195,21 +1292,46 @@ export function VideoPlayer({
                     )}
                   </div>
 
-                  {subtitleUrl && (
-                    <ControlButton
-                      label={subtitlesOn ? "Turn off subtitles" : "Turn on subtitles"}
-                      onClick={() => {
-                        setSubtitlesOn((v) => !v);
-                        const video = videoRef.current;
-                        if (!video) return;
-                        for (let i = 0; i < video.textTracks.length; i++) {
-                          video.textTracks[i].mode = subtitlesOn ? "hidden" : "showing";
-                        }
-                      }}
-                      active={subtitlesOn}
-                    >
-                      <span className="text-xs font-bold">CC</span>
-                    </ControlButton>
+                  {tracks.length > 0 && (
+                    <div className="relative">
+                      <ControlButton
+                        label="Subtitles"
+                        onClick={() => {
+                          setShowCaptionMenu((v) => !v);
+                          setShowSpeedMenu(false);
+                        }}
+                        active={!!selectedCaptionLang}
+                      >
+                        <span className="text-xs font-bold">CC</span>
+                      </ControlButton>
+                      {showCaptionMenu && (
+                        <div className="absolute bottom-12 right-0 min-w-[9rem] rounded-lg border border-white/10 bg-black/95 py-1 shadow-lg">
+                          <button
+                            type="button"
+                            onClick={() => selectCaptionLang(null)}
+                            className={`block w-full px-4 py-2 text-left text-sm hover:bg-white/10 ${
+                              !selectedCaptionLang ? "text-obsidian-red" : "text-white"
+                            }`}
+                          >
+                            Off
+                          </button>
+                          {tracks.map((track) => (
+                            <button
+                              key={track.languageCode}
+                              type="button"
+                              onClick={() => selectCaptionLang(track.languageCode)}
+                              className={`block w-full px-4 py-2 text-left text-sm hover:bg-white/10 ${
+                                selectedCaptionLang === track.languageCode
+                                  ? "text-obsidian-red"
+                                  : "text-white"
+                              }`}
+                            >
+                              {track.languageLabel}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   <ControlButton label="Fullscreen" onClick={() => void toggleFullscreen()}>

@@ -4,6 +4,7 @@ import { SeriesForm } from "@/components/admin/SeriesForm";
 import { requireAdmin } from "@/lib/admin";
 import { getEpisodeBunnyHealthFlags } from "@/lib/admin/bunny-episode-health";
 import { syncEpisodeBunnyMetadata } from "@/lib/admin/sync-episode-bunny-metadata";
+import { getEpisodeCaptionsBySeries } from "@/lib/captions/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 interface AdminSeriesEditPageProps {
@@ -45,6 +46,8 @@ export default async function AdminSeriesEditPage({ params }: AdminSeriesEditPag
 
   const bunnyHealthFlags = await getEpisodeBunnyHealthFlags(episodes ?? []);
 
+  const captionsByEpisode = await getEpisodeCaptionsBySeries(params.id);
+
   const nextEpisodeNumber =
     episodes && episodes.length > 0
       ? Math.max(...episodes.map((e) => e.episode_number)) + 1
@@ -60,6 +63,7 @@ export default async function AdminSeriesEditPage({ params }: AdminSeriesEditPag
         episodes={episodes ?? []}
         nextEpisodeNumber={nextEpisodeNumber}
         bunnyHealthFlags={bunnyHealthFlags}
+        captionsByEpisode={captionsByEpisode}
       />
     </div>
   );

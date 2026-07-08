@@ -9,6 +9,7 @@ import { WatchSeriesInfo } from "@/components/watch/WatchSeriesInfo";
 import { PaywallOpenProvider } from "@/components/watch/PaywallOpenContext";
 import { SubscribeBanner } from "@/components/watch/SubscribeBanner";
 import { canWatchEpisode, hasActiveSubscription, isEpisodeFree, resolveFreeEpisodeCount } from "@/lib/access";
+import { getSignedCaptionTracksForEpisode } from "@/lib/captions/server";
 import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
 import { getNextEpisode } from "@/lib/episodes";
 import { normalizeSeriesOrientation } from "@/lib/series-orientation";
@@ -129,6 +130,9 @@ async function getWatchData(
     0
   );
 
+  const captionTracks =
+    unlocked ? await getSignedCaptionTracksForEpisode(episodeId) : [];
+
   return {
     episode,
     series,
@@ -144,6 +148,7 @@ async function getWatchData(
     pickerEpisodes,
     otherSeries: otherSeries ?? [],
     initialProgress,
+    captionTracks,
   };
 }
 
@@ -168,6 +173,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
     pickerEpisodes,
     otherSeries,
     initialProgress,
+    captionTracks,
   } = data;
 
   const seriesOrientation = normalizeSeriesOrientation(series.orientation);
@@ -239,7 +245,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
                     <VideoPlayer
                       src={episode.video_url}
                       poster={episode.thumbnail_url}
-                      subtitleUrl={episode.subtitle_url}
+                      captionTracks={captionTracks}
                       episodeId={episode.id}
                       episodeNumber={episode.episode_number}
                       seriesId={series.id}
@@ -314,7 +320,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
                 <VideoPlayer
                   src={episode.video_url}
                   poster={episode.thumbnail_url}
-                  subtitleUrl={episode.subtitle_url}
+                  captionTracks={captionTracks}
                   episodeId={episode.id}
                   episodeNumber={episode.episode_number}
                   seriesId={series.id}

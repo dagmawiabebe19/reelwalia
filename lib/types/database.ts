@@ -70,6 +70,15 @@ export interface Episode {
   updated_at: string;
 }
 
+export interface EpisodeCaption {
+  id: string;
+  episode_id: string;
+  language_code: string;
+  language_label: string;
+  storage_path: string;
+  created_at: string;
+}
+
 export interface Profile {
   id: string;
   display_name: string | null;

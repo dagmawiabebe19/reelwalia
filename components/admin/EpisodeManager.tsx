@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
+import { EpisodeCaptionsPanel } from "@/components/admin/EpisodeCaptionsPanel";
 import { uploadAndReplaceEpisode } from "@/lib/admin/episode-upload";
+import type { EpisodeCaption } from "@/lib/types/database";
 
 export interface AdminEpisode {
   id: string;
@@ -22,6 +24,7 @@ interface EpisodeManagerProps {
   episodes: AdminEpisode[];
   nextEpisodeNumber: number;
   bunnyHealthFlags?: Record<string, string>;
+  captionsByEpisode?: Record<string, EpisodeCaption[]>;
 }
 
 function formatDuration(seconds: number | null): string {
@@ -99,11 +102,13 @@ export function EpisodeManager({
   episodes: initialEpisodes,
   nextEpisodeNumber,
   bunnyHealthFlags = {},
+  captionsByEpisode = {},
 }: EpisodeManagerProps) {
   const router = useRouter();
   const [episodes, setEpisodes] = useState(initialEpisodes);
 
   const [replaceTarget, setReplaceTarget] = useState<AdminEpisode | null>(null);
+  const [captionsTarget, setCaptionsTarget] = useState<AdminEpisode | null>(null);
   const [editTarget, setEditTarget] = useState<AdminEpisode | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<AdminEpisode | null>(null);
@@ -437,6 +442,14 @@ export function EpisodeManager({
                       {bunnyHealthFlags[ep.id]}
                     </p>
                   )}
+                  {(captionsByEpisode[ep.id]?.length ?? 0) > 0 && (
+                    <p className="mt-1 text-xs text-gray-400">
+                      Captions:{" "}
+                      {captionsByEpisode[ep.id]
+                        .map((c) => c.language_label)
+                        .join(", ")}
+                    </p>
+                  )}
                   <label className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                     <span className="text-gray-400">Display View Count</span>
                     <input
@@ -487,6 +500,16 @@ export function EpisodeManager({
                 </button>
                 <button
                   type="button"
+                  onClick={() => {
+                    setCaptionsTarget(ep);
+                    setActionError(null);
+                  }}
+                  className="rounded-md border border-white/[0.08] px-3 py-1.5 text-xs hover:border-white/20"
+                >
+                  Captions
+                </button>
+                <button
+                  type="button"
                   onClick={() => openEdit(ep)}
                   className="rounded-md border border-white/[0.08] px-3 py-1.5 text-xs hover:border-white/20"
                 >
@@ -509,6 +532,26 @@ export function EpisodeManager({
       )}
 
       <p className="text-xs text-gray-500">Next episode number: {nextEpisodeNumber}</p>
+
+      {/* Captions Modal */}
+      <Modal
+        open={!!captionsTarget}
+        title={`Captions / Subtitles — Ep ${captionsTarget?.episode_number ?? ""}`}
+        onClose={() => setCaptionsTarget(null)}
+      >
+        {captionsTarget && (
+          <EpisodeCaptionsPanel
+            episodeId={captionsTarget.id}
+            episodeNumber={captionsTarget.episode_number}
+            episodeTitle={captionsTarget.title}
+            initialCaptions={captionsByEpisode[captionsTarget.id] ?? []}
+            onClose={() => {
+              setCaptionsTarget(null);
+              refresh();
+            }}
+          />
+        )}
+      </Modal>
 
       {/* Replace Video Modal */}
       <Modal
