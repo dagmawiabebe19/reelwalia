@@ -40,7 +40,10 @@ async function getCatalog() {
         .order("created_at", { ascending: false }),
     ]);
 
-  const featuredItems = filterPublishedCatalogRows(featured ?? []);
+  // Featured query is already constrained to published + is_featured.
+  // Avoid applying the coming-soon slug fallback filter here, which can
+  // incorrectly hide valid published featured series (e.g. crown-of-ashes).
+  const featuredItems = featured ?? [];
   const newSeries = filterPublishedCatalogRows(recent ?? []);
   const trendingSeries = filterPublishedCatalogRows(trending ?? []);
   const isEmpty =
