@@ -4,6 +4,7 @@ import { ComingSoon } from "@/components/home/ComingSoon";
 import { ComingSoonRow } from "@/components/home/ComingSoonRow";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { SeriesRow } from "@/components/home/SeriesRow";
+import { SubtitlesPromoStrip } from "@/components/home/SubtitlesPromoStrip";
 import { filterPublishedCatalogRows } from "@/lib/coming-soon";
 import { createClient } from "@/lib/supabase/server";
 
@@ -109,6 +110,7 @@ export default async function HomePage() {
             {featuredWithEpisodes.length > 0 && (
               <HeroCarousel items={featuredWithEpisodes} />
             )}
+            <SubtitlesPromoStrip />
             {trendingSeries.length > 0 && (
               <SeriesRow title="Trending Now" series={trendingSeries} />
             )}
