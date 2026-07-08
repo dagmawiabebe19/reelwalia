@@ -236,7 +236,7 @@ body.player-fullscreen [data-subscribe-banner="below-player"] {
     }
 
     .rw-video-element::-webkit-media-text-track-display {
-      transform: translateY(calc(-32vh - env(safe-area-inset-bottom)));
+      transform: translateY(calc(-38vh - env(safe-area-inset-bottom)));
     }
   }
 
