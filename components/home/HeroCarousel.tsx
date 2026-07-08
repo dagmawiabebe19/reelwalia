@@ -55,13 +55,13 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
 
   return (
     <section className="relative overflow-hidden rounded-xl border border-white/[0.08] shadow-hero-vignette">
-      <div className="relative aspect-[9/14] min-h-[430px] w-full bg-zinc-950 sm:aspect-[2/1] sm:min-h-[360px] lg:aspect-[21/9] lg:min-h-[400px]">
+      <div className="relative aspect-[16/10] min-h-[280px] w-full bg-zinc-950 sm:aspect-[2/1] sm:min-h-[360px] lg:aspect-[21/9] lg:min-h-[400px]">
         {imageSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={imageSrc}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover object-[74%_14%] transition-opacity duration-700 sm:object-[66%_18%] lg:object-[58%_20%]"
+            className="absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-700 sm:object-cover sm:object-[66%_18%] lg:object-[58%_20%]"
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 to-black" />
