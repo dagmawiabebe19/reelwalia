@@ -450,8 +450,8 @@ export function VideoPlayer({
       const renderedH = vh * scale;
       const top = (ch - renderedH) / 2;
 
-      // Lower-middle of rendered image (not viewport / letterbox bars).
-      setMobileCaptionTopPx(top + renderedH * 0.48);
+      // Lower-third of rendered image (not viewport / letterbox bars).
+      setMobileCaptionTopPx(top + renderedH * 0.64);
     };
 
     computeCaptionPosition();
