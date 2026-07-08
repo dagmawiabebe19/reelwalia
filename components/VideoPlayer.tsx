@@ -136,7 +136,8 @@ function persistCaptionLang(languageCode: string | null) {
 function applyCaptionSelection(
   video: HTMLVideoElement,
   languageCode: string | null,
-  tracks: CaptionTrack[]
+  tracks: CaptionTrack[],
+  useMobileOverlay: boolean
 ) {
   for (let i = 0; i < video.textTracks.length; i++) {
     const track = video.textTracks[i];
@@ -146,8 +147,52 @@ function applyCaptionSelection(
       (track.language === languageCode ||
         expectedCode === languageCode ||
         track.label === tracks.find((t) => t.languageCode === languageCode)?.languageLabel);
-    track.mode = matches ? "showing" : "hidden";
+    // Mobile overlay mode renders cue text ourselves for deterministic placement.
+    track.mode = matches ? (useMobileOverlay ? "hidden" : "showing") : "hidden";
   }
+}
+
+function extractActiveCueText(track: TextTrack | null, currentTime: number): string {
+  if (!track) return "";
+
+  const active = track.activeCues;
+  if (active && active.length > 0) {
+    const cue = active[0] as (TextTrackCue & { text?: string }) | undefined;
+    if (cue?.text) return cue.text;
+  }
+
+  const cues = track.cues;
+  if (!cues || cues.length === 0) return "";
+  for (let i = 0; i < cues.length; i++) {
+    const cue = cues[i] as (TextTrackCue & { text?: string }) | undefined;
+    if (!cue) continue;
+    if (cue.startTime <= currentTime && currentTime < cue.endTime) {
+      return cue.text ?? "";
+    }
+  }
+  return "";
+}
+
+function findSelectedTextTrack(
+  video: HTMLVideoElement,
+  languageCode: string | null,
+  tracks: CaptionTrack[]
+): TextTrack | null {
+  if (!languageCode) return null;
+  const selectedLabel = tracks.find((t) => t.languageCode === languageCode)?.languageLabel;
+
+  for (let i = 0; i < video.textTracks.length; i++) {
+    const track = video.textTracks[i];
+    const expectedCode = tracks[i]?.languageCode ?? null;
+    if (
+      track.language === languageCode ||
+      expectedCode === languageCode ||
+      (selectedLabel && track.label === selectedLabel)
+    ) {
+      return track;
+    }
+  }
+  return null;
 }
 
 function formatTime(seconds: number): string {
@@ -243,6 +288,9 @@ export function VideoPlayer({
   const [showEndOfSeries, setShowEndOfSeries] = useState(false);
   const [showEndPaywall, setShowEndPaywall] = useState(false);
   const [showTapForSound, setShowTapForSound] = useState(false);
+  const [mobileCaptionMode, setMobileCaptionMode] = useState(false);
+  const [mobileCaptionText, setMobileCaptionText] = useState("");
+  const [mobileCaptionTopPx, setMobileCaptionTopPx] = useState<number | null>(null);
 
   const attemptAutoPlay = useCallback(async () => {
     const video = videoRef.current;
@@ -333,10 +381,11 @@ export function VideoPlayer({
     setSelectedCaptionLang(languageCode);
     persistCaptionLang(languageCode);
     const video = videoRef.current;
-    if (video) applyCaptionSelection(video, languageCode, tracks);
+    if (video) applyCaptionSelection(video, languageCode, tracks, mobileCaptionMode);
+    if (!languageCode) setMobileCaptionText("");
     setShowCaptionMenu(false);
     bumpControls();
-  }, [bumpControls, tracks]);
+  }, [bumpControls, tracks, mobileCaptionMode]);
 
   useEffect(() => {
     if (!tracks.length) {
@@ -354,12 +403,69 @@ export function VideoPlayer({
     const video = videoRef.current;
     if (!video || !tracks.length) return;
 
-    const syncTracks = () => applyCaptionSelection(video, selectedCaptionLang, tracks);
+    const syncTracks = () =>
+      applyCaptionSelection(video, selectedCaptionLang, tracks, mobileCaptionMode);
 
     syncTracks();
     video.textTracks.addEventListener("addtrack", syncTracks);
     return () => video.textTracks.removeEventListener("addtrack", syncTracks);
-  }, [tracks, selectedCaptionLang, src]);
+  }, [tracks, selectedCaptionLang, src, mobileCaptionMode]);
+
+  useEffect(() => {
+    const updateMobileMode = () => {
+      setMobileCaptionMode(window.matchMedia("(max-width: 768px)").matches);
+    };
+    updateMobileMode();
+    window.addEventListener("resize", updateMobileMode);
+    window.addEventListener("orientationchange", updateMobileMode);
+    return () => {
+      window.removeEventListener("resize", updateMobileMode);
+      window.removeEventListener("orientationchange", updateMobileMode);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!mobileCaptionMode) {
+      setMobileCaptionText("");
+      setMobileCaptionTopPx(null);
+      return;
+    }
+
+    const video = videoRef.current;
+    const container = containerRef.current;
+    if (!video || !container) return;
+
+    const computeCaptionPosition = () => {
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+      const vw = video.videoWidth || cw;
+      const vh = video.videoHeight || ch;
+      if (!cw || !ch || !vw || !vh) return;
+
+      const objectFit = window.getComputedStyle(video).objectFit || "contain";
+      const scale =
+        objectFit === "cover"
+          ? Math.max(cw / vw, ch / vh)
+          : Math.min(cw / vw, ch / vh);
+      const renderedH = vh * scale;
+      const top = (ch - renderedH) / 2;
+
+      // Lower-middle of rendered image (not viewport / letterbox bars).
+      setMobileCaptionTopPx(top + renderedH * 0.48);
+    };
+
+    computeCaptionPosition();
+    const observer = new ResizeObserver(() => computeCaptionPosition());
+    observer.observe(container);
+    observer.observe(video);
+    window.addEventListener("resize", computeCaptionPosition);
+    window.addEventListener("orientationchange", computeCaptionPosition);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", computeCaptionPosition);
+      window.removeEventListener("orientationchange", computeCaptionPosition);
+    };
+  }, [mobileCaptionMode, src, episodeId, fitToScreen, isFullscreen]);
 
   const skip = useCallback(
     (delta: number) => {
@@ -911,6 +1017,16 @@ export function VideoPlayer({
   const handleTimeUpdate = (time: number, total: number) => {
     setCurrentTime(time);
 
+    if (mobileCaptionMode) {
+      const video = videoRef.current;
+      if (video && selectedCaptionLang) {
+        const track = findSelectedTextTrack(video, selectedCaptionLang, tracks);
+        setMobileCaptionText(extractActiveCueText(track, time));
+      } else {
+        setMobileCaptionText("");
+      }
+    }
+
     if (
       !episodeCompletedTrackedRef.current &&
       Number.isFinite(total) &&
@@ -1167,6 +1283,24 @@ export function VideoPlayer({
               seriesSlug={seriesSlug}
               otherSeries={otherSeries}
             />
+          )}
+
+          {mobileCaptionMode && selectedCaptionLang && mobileCaptionText && mobileCaptionTopPx != null && (
+            <div
+              className="pointer-events-none absolute left-1/2 z-30 w-[86%] max-w-[26rem] -translate-x-1/2 px-3 text-center"
+              style={{ top: `${mobileCaptionTopPx}px` }}
+              aria-live="polite"
+            >
+              <p
+                className="text-[clamp(15px,3.9vh,21px)] font-bold leading-[1.34] text-white"
+                style={{
+                  textShadow:
+                    "0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.75), 0 0 2px rgba(0,0,0,0.95)",
+                }}
+              >
+                {mobileCaptionText}
+              </p>
+            </div>
           )}
 
           <div
