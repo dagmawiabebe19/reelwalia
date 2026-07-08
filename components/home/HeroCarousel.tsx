@@ -21,13 +21,13 @@ interface HeroCarouselProps {
   items: HeroItem[];
 }
 
-/** Soft left scrim — text zone only; right side stays clear for characters. */
+/** Keep left scrim subtle so faces stay visible. */
 const HERO_SCRIM_LEFT =
-  "linear-gradient(to right, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.24) 34%, rgba(0,0,0,0.05) 56%, transparent 74%)";
+  "linear-gradient(to right, rgba(0,0,0,0.26) 0%, rgba(0,0,0,0.12) 34%, rgba(0,0,0,0.03) 56%, transparent 74%)";
 
-/** Soft bottom scrim — anchors CTAs without crushing mid-frame art. */
+/** Stronger bottom scrim to anchor copy cleanly in lower third. */
 const HERO_SCRIM_BOTTOM =
-  "linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.16) 28%, transparent 52%)";
+  "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.68) 24%, rgba(0,0,0,0.32) 42%, rgba(0,0,0,0.06) 66%, transparent 84%)";
 
 export function HeroCarousel({ items }: HeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -74,30 +74,34 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
           aria-hidden
         />
 
-        <div className="relative z-10 flex h-full flex-col justify-end p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-8 sm:pb-10 lg:p-10">
-          <div className="rw-hero-copy-panel max-w-[90%] sm:max-w-md lg:max-w-lg">
+        <div className="relative z-10 flex h-full flex-col justify-end p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-7 sm:pb-8 lg:p-8">
+          <div className="rw-hero-copy-panel max-w-[92%] sm:max-w-[30rem] lg:max-w-[34rem]">
             <div className="rw-hero-copy-inner">
               {active.genre?.length > 0 && (
-                <p className="rw-genre-label rw-hero-genre mb-3 sm:mb-3.5">
+                <p className="rw-genre-label rw-hero-genre mb-2 text-[10px] sm:mb-2.5 sm:text-[11px]">
                   {active.genre.slice(0, 2).join(" · ")}
                 </p>
               )}
-              <h1 className="rw-hero-title">{active.title}</h1>
+              <h1 className="font-display text-[2rem] uppercase leading-[0.92] tracking-[0.015em] text-white sm:text-[2.7rem] lg:text-[3.1rem]">
+                {active.title}
+              </h1>
               {synopsis && (
-                <p className="rw-hero-description">{synopsis}</p>
+                <p className="mt-2 line-clamp-2 max-w-[26rem] text-xs leading-relaxed text-zinc-200/92 sm:text-sm">
+                  {synopsis}
+                </p>
               )}
-              <div className="mt-7 flex flex-wrap gap-3 sm:mt-8 sm:gap-4">
+              <div className="mt-4 flex flex-wrap gap-2.5 sm:mt-5 sm:gap-3">
                 {active.firstEpisodeId ? (
                   <WatchEpisodeLink
                     episodeId={active.firstEpisodeId}
-                    className="rw-btn-primary min-h-12 min-w-[148px] flex-1 sm:flex-none"
+                    className="rw-btn-primary min-h-10 min-w-[128px] px-4 py-2 text-sm sm:min-h-11 sm:min-w-[138px]"
                   >
                     Watch Now
                   </WatchEpisodeLink>
                 ) : (
                   <Button
                     href={`/series/${active.slug}`}
-                    className="min-h-12 min-w-[148px] flex-1 sm:flex-none"
+                    className="min-h-10 min-w-[128px] px-4 py-2 text-sm sm:min-h-11 sm:min-w-[138px]"
                   >
                     Watch Now
                   </Button>
@@ -105,7 +109,7 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
                 <Button
                   href={`/series/${active.slug}`}
                   variant="secondary"
-                  className="min-h-12 min-w-[128px] flex-1 sm:flex-none"
+                  className="min-h-10 min-w-[118px] px-4 py-2 text-sm sm:min-h-11 sm:min-w-[128px]"
                 >
                   More Info
                 </Button>
