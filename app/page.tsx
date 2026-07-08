@@ -98,7 +98,7 @@ export default async function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
       <TopNav />
-      <main className="mx-auto w-full max-w-7xl flex-1 space-y-11 px-4 py-6 sm:space-y-14 sm:px-6 sm:py-10">
+      <main className="mx-auto w-full max-w-7xl flex-1 space-y-7 px-4 py-5 sm:space-y-10 sm:px-6 sm:py-8">
         {isEmpty ? (
           <>
             <ComingSoon />
@@ -107,10 +107,12 @@ export default async function HomePage() {
         ) : (
           <>
             {/* Catalog order: Hero → Trending Now → Coming Soon → New Series */}
-            {featuredWithEpisodes.length > 0 && (
-              <HeroCarousel items={featuredWithEpisodes} />
-            )}
-            <SubtitlesPromoStrip />
+            <div className="space-y-3 sm:space-y-4">
+              {featuredWithEpisodes.length > 0 && (
+                <HeroCarousel items={featuredWithEpisodes} />
+              )}
+              <SubtitlesPromoStrip />
+            </div>
             {trendingSeries.length > 0 && (
               <SeriesRow title="Trending Now" series={trendingSeries} />
             )}

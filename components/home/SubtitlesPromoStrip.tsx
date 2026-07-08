@@ -2,19 +2,15 @@ import { SUBTITLES_PROMO } from "@/lib/marketing/subtitles-promo";
 
 export function SubtitlesPromoStrip() {
   return (
-    <section className="rounded-xl border border-white/[0.1] bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 p-4 sm:p-5">
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-obsidian-red/45 bg-obsidian-red/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-obsidian-red">
+    <section className="rounded-lg border border-white/[0.08] bg-zinc-950/65 px-3 py-2.5 sm:px-4 sm:py-3">
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5 shrink-0 rounded-full border border-obsidian-red/45 bg-obsidian-red/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.15em] text-obsidian-red sm:text-[10px]">
           {SUBTITLES_PROMO.badge}
         </span>
-        <h2 className="text-base font-semibold text-white sm:text-lg">
-          {SUBTITLES_PROMO.headline}
-        </h2>
+        <p className="line-clamp-2 text-xs leading-relaxed text-zinc-300 sm:text-sm">
+          {SUBTITLES_PROMO.languages.join(" · ")}
+        </p>
       </div>
-      <p className="mb-3 text-sm text-zinc-300">{SUBTITLES_PROMO.subheadline}</p>
-      <p className="text-sm leading-relaxed text-zinc-200 sm:text-[15px]">
-        {SUBTITLES_PROMO.languages.join(" · ")}
-      </p>
     </section>
   );
 }
