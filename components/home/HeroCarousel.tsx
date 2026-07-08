@@ -27,7 +27,7 @@ const HERO_SCRIM_LEFT =
 
 /** Stronger bottom scrim to anchor copy cleanly in lower third. */
 const HERO_SCRIM_BOTTOM =
-  "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.68) 24%, rgba(0,0,0,0.32) 42%, rgba(0,0,0,0.06) 66%, transparent 84%)";
+  "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.72) 18%, rgba(0,0,0,0.36) 32%, rgba(0,0,0,0.08) 45%, transparent 58%)";
 
 export function HeroCarousel({ items }: HeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -74,7 +74,7 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
           aria-hidden
         />
 
-        <div className="relative z-10 flex h-full flex-col justify-end p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-7 sm:pb-8 lg:p-8">
+        <div className="relative z-10 flex h-full flex-col justify-end p-4 pb-[max(1.1rem,env(safe-area-inset-bottom))] sm:p-6 sm:pb-7 lg:p-7 lg:pb-8">
           <div className="rw-hero-copy-panel max-w-[92%] sm:max-w-[30rem] lg:max-w-[34rem]">
             <div className="rw-hero-copy-inner">
               {active.genre?.length > 0 && (
@@ -90,7 +90,7 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
                   {synopsis}
                 </p>
               )}
-              <div className="mt-4 flex flex-wrap gap-2.5 sm:mt-5 sm:gap-3">
+              <div className="mt-3.5 flex flex-wrap gap-2.5 sm:mt-4 sm:gap-3">
                 {active.firstEpisodeId ? (
                   <WatchEpisodeLink
                     episodeId={active.firstEpisodeId}
