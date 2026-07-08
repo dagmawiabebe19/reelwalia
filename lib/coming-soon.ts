@@ -18,6 +18,7 @@ export function isComingSoonSeries(series: {
   slug: string;
   status?: string | null;
 }): boolean {
+  if (series.status === "published") return false;
   return (
     series.status === "coming_soon" ||
     series.status === "in_development" ||
@@ -29,10 +30,14 @@ export function isComingSoonSeries(series: {
 export function filterPublishedCatalogRows<
   T extends { slug: string; status?: string | null },
 >(rows: T[]): T[] {
-  return rows.filter(
-    (row) =>
+  return rows.filter((row) => {
+    // Explicitly published content should always remain visible in catalog rows.
+    if (row.status === "published") return true;
+
+    return (
       row.status !== "coming_soon" &&
       row.status !== "in_development" &&
       !isComingSoonSlug(row.slug)
-  );
+    );
+  });
 }
