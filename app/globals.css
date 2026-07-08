@@ -224,14 +224,19 @@ body.player-fullscreen [data-subscribe-banner="below-player"] {
       0 0 2px rgba(0, 0, 0, 0.95);
   }
 
-  /* Nudge native subtitle rendering into lower-third above custom controls */
+  /* Keep captions in lower-third and safely above custom controls. */
   .rw-video-element::-webkit-media-text-track-display {
-    transform: translateY(-16vh);
+    transform: translateY(calc(-17vh - env(safe-area-inset-bottom)));
   }
 
   @media (max-width: 768px) {
+    .rw-video-element::cue {
+      font-size: clamp(15px, 3.9vh, 21px);
+      line-height: 1.34;
+    }
+
     .rw-video-element::-webkit-media-text-track-display {
-      transform: translateY(-18vh);
+      transform: translateY(calc(-24vh - env(safe-area-inset-bottom)));
     }
   }
 
