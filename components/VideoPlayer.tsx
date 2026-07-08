@@ -1077,7 +1077,7 @@ export function VideoPlayer({
 
           <video
             ref={videoRef}
-            className={`relative z-0 h-full w-full ${objectFitClass}`}
+            className={`rw-video-element relative z-0 h-full w-full ${objectFitClass}`}
             poster={poster ?? undefined}
             crossOrigin="anonymous"
             playsInline

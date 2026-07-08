@@ -210,6 +210,31 @@ body.player-fullscreen [data-subscribe-banner="below-player"] {
     @apply h-1.5;
   }
 
+  /* Watch-page subtitle styling (HTML5 <track>) */
+  .rw-video-element::cue {
+    color: #ffffff;
+    background: transparent;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-weight: 700;
+    font-size: clamp(16px, 4.4vh, 24px);
+    line-height: 1.28;
+    text-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.9),
+      0 0 8px rgba(0, 0, 0, 0.75),
+      0 0 2px rgba(0, 0, 0, 0.95);
+  }
+
+  /* Nudge native subtitle rendering into lower-third above custom controls */
+  .rw-video-element::-webkit-media-text-track-display {
+    transform: translateY(-16vh);
+  }
+
+  @media (max-width: 768px) {
+    .rw-video-element::-webkit-media-text-track-display {
+      transform: translateY(-18vh);
+    }
+  }
+
   .rw-form-section {
     @apply space-y-5 rounded-xl border border-white/[0.08] bg-white/[0.02] p-5 sm:p-6;
   }
