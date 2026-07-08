@@ -451,7 +451,7 @@ export function VideoPlayer({
       const top = (ch - renderedH) / 2;
 
       // Lower-third of rendered image (not viewport / letterbox bars).
-      setMobileCaptionTopPx(top + renderedH * 0.64);
+      setMobileCaptionTopPx(top + renderedH * 0.69);
     };
 
     computeCaptionPosition();
@@ -900,6 +900,17 @@ export function VideoPlayer({
 
     if (screenfull.isEnabled) {
       await screenfull.toggle(container);
+      return;
+    }
+
+    // Mobile Safari native video fullscreen does not render custom HTML overlays.
+    // Use container-based "custom fullscreen" so caption overlay stays visible.
+    if (isMobileViewport()) {
+      setIsFullscreen((v) => {
+        const next = !v;
+        document.body.classList.toggle("player-fullscreen", next);
+        return next;
+      });
       return;
     }
 
