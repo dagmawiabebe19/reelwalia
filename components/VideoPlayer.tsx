@@ -133,12 +133,20 @@ function persistCaptionLang(languageCode: string | null) {
   }
 }
 
-function applyCaptionSelection(video: HTMLVideoElement, languageCode: string | null) {
+function applyCaptionSelection(
+  video: HTMLVideoElement,
+  languageCode: string | null,
+  tracks: CaptionTrack[]
+) {
   for (let i = 0; i < video.textTracks.length; i++) {
     const track = video.textTracks[i];
-    if (!track.language) continue;
-    track.mode =
-      languageCode && track.language === languageCode ? "showing" : "hidden";
+    const expectedCode = tracks[i]?.languageCode ?? null;
+    const matches =
+      Boolean(languageCode) &&
+      (track.language === languageCode ||
+        expectedCode === languageCode ||
+        track.label === tracks.find((t) => t.languageCode === languageCode)?.languageLabel);
+    track.mode = matches ? "showing" : "hidden";
   }
 }
 
@@ -325,10 +333,10 @@ export function VideoPlayer({
     setSelectedCaptionLang(languageCode);
     persistCaptionLang(languageCode);
     const video = videoRef.current;
-    if (video) applyCaptionSelection(video, languageCode);
+    if (video) applyCaptionSelection(video, languageCode, tracks);
     setShowCaptionMenu(false);
     bumpControls();
-  }, [bumpControls]);
+  }, [bumpControls, tracks]);
 
   useEffect(() => {
     if (!tracks.length) {
@@ -346,7 +354,7 @@ export function VideoPlayer({
     const video = videoRef.current;
     if (!video || !tracks.length) return;
 
-    const syncTracks = () => applyCaptionSelection(video, selectedCaptionLang);
+    const syncTracks = () => applyCaptionSelection(video, selectedCaptionLang, tracks);
 
     syncTracks();
     video.textTracks.addEventListener("addtrack", syncTracks);
@@ -1071,6 +1079,7 @@ export function VideoPlayer({
             ref={videoRef}
             className={`relative z-0 h-full w-full ${objectFitClass}`}
             poster={poster ?? undefined}
+            crossOrigin="anonymous"
             playsInline
             preload="metadata"
             onTimeUpdate={(e) =>
