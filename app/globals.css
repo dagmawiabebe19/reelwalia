@@ -226,7 +226,7 @@ body.player-fullscreen [data-subscribe-banner="below-player"] {
 
   /* Keep captions in lower-third and safely above custom controls. */
   .rw-video-element::-webkit-media-text-track-display {
-    transform: translateY(calc(-20vh - env(safe-area-inset-bottom)));
+    transform: translateY(calc(-22vh - env(safe-area-inset-bottom)));
   }
 
   @media (max-width: 768px) {
@@ -236,7 +236,7 @@ body.player-fullscreen [data-subscribe-banner="below-player"] {
     }
 
     .rw-video-element::-webkit-media-text-track-display {
-      transform: translateY(calc(-31vh - env(safe-area-inset-bottom)));
+      transform: translateY(calc(-32vh - env(safe-area-inset-bottom)));
     }
   }
 
