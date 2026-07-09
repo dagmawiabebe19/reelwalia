@@ -41,11 +41,18 @@ export async function userOwnsSeries(
   userId: string,
   seriesId: string
 ): Promise<boolean> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("series_purchases")
     .select("id")
     .eq("user_id", userId)
     .eq("series_id", seriesId)
     .maybeSingle();
+  if (error) {
+    // Table not migrated yet — treat as no purchase until 020 is applied.
+    if (error.code === "42P01" || error.message.includes("series_purchases")) {
+      return false;
+    }
+    throw new Error(`userOwnsSeries failed: ${error.message}`);
+  }
   return !!data;
 }

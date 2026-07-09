@@ -32,9 +32,7 @@ async function getWatchData(
 
   const { data: episode } = await supabase
     .from("episodes")
-    .select(
-      "id, episode_number, title, description, video_url, thumbnail_url, subtitle_url, view_count, display_view_count, series_id, cliffhanger_hook"
-    )
+    .select("*")
     .eq("id", episodeId)
     .maybeSingle();
 
@@ -42,9 +40,7 @@ async function getWatchData(
 
   const { data: series } = await supabase
     .from("series")
-    .select(
-      "id, title, slug, description, genre, view_count, free_episode_count, cliffhanger_hook, total_episodes, status, poster_url, orientation"
-    )
+    .select("*")
     .eq("id", episode.series_id)
     .maybeSingle();
 
