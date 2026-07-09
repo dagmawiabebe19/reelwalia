@@ -55,12 +55,3 @@ export function trackSubscriptionCheckoutStarted(props: {
 }) {
   track("subscription_checkout_started", props);
 }
-
-export function trackSeriesUnlockCheckoutStarted(props: {
-  series_id: string;
-  price_amount: number;
-  currency: string;
-  episode_id: string | undefined;
-}) {
-  track("series_unlock_checkout_started", props);
-}

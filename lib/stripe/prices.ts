@@ -1,16 +1,23 @@
 import type { StripePlanKey } from "@/lib/stripe/plans";
 
-/**
- * Env var name per subscription plan — keep in sync with `.env.example`.
- * Each maps to a recurring Stripe price used for checkout + renewals.
- */
-export const PLAN_PRICE_ENV_KEYS: Record<StripePlanKey, string> = {
-  "1week": "STRIPE_PRICE_WEEKLY",
-  "1month": "STRIPE_PRICE_MONTHLY",
+/** Env var names per plan — keep in sync with `.env.example`. */
+export const PLAN_PRICE_ENV_KEYS: Record<
+  StripePlanKey,
+  { intro: string; standard: string }
+> = {
+  "1week": {
+    intro: "STRIPE_PRICE_1WEEK_INTRO",
+    standard: "STRIPE_PRICE_1WEEK_STANDARD",
+  },
+  "2week": {
+    intro: "STRIPE_PRICE_2WEEK_INTRO",
+    standard: "STRIPE_PRICE_2WEEK_STANDARD",
+  },
+  "1month": {
+    intro: "STRIPE_PRICE_1MONTH_INTRO",
+    standard: "STRIPE_PRICE_1MONTH_STANDARD",
+  },
 };
-
-/** Env var for the one-time "unlock all episodes of a series" price. */
-export const SERIES_UNLOCK_PRICE_ENV_KEY = "STRIPE_PRICE_SERIES_UNLOCK";
 
 export function getStripePriceEnvKeys(): string[] {
   return Object.keys(process.env)
@@ -18,29 +25,31 @@ export function getStripePriceEnvKeys(): string[] {
     .sort();
 }
 
-function readPriceId(envKey: string, context: string): string {
-  const priceId = process.env[envKey]?.trim() ?? "";
-  if (!priceId) {
+/** Recurring price ID for checkout and renewals (former intro price). */
+export function getPlanPriceIds(plan: StripePlanKey): {
+  introPriceId: string;
+  /** Legacy standard price — unused; renewals bill introPriceId only. */
+  standardPriceId?: string;
+} {
+  const keys = PLAN_PRICE_ENV_KEYS[plan];
+  const introPriceId = process.env[keys.intro]?.trim() ?? "";
+  const standardPriceId = process.env[keys.standard]?.trim() ?? "";
+
+  if (!introPriceId) {
     const available = getStripePriceEnvKeys();
     console.error(
-      `[stripe/prices] ${context} missing:`,
-      envKey,
+      `[stripe/prices] plan="${plan}" missing:`,
+      keys.intro,
       "| Available STRIPE_PRICE keys:",
-      available.length > 0
-        ? available.join(", ")
-        : "(none — restart dev server after editing .env.local)"
+      available.length > 0 ? available.join(", ") : "(none — restart dev server after editing .env.local)"
     );
-    throw new Error(`Missing Stripe price env var: ${envKey}`);
+    throw new Error(
+      `Missing Stripe price env vars for plan: ${plan} (${keys.intro})`
+    );
   }
-  return priceId;
-}
 
-/** Recurring price ID for a subscription plan (checkout + renewals). */
-export function getSubscriptionPriceId(plan: StripePlanKey): string {
-  return readPriceId(PLAN_PRICE_ENV_KEYS[plan], `plan="${plan}"`);
-}
-
-/** One-time price ID that unlocks all episodes of a series for the buyer. */
-export function getSeriesUnlockPriceId(): string {
-  return readPriceId(SERIES_UNLOCK_PRICE_ENV_KEY, "series_unlock");
+  return {
+    introPriceId,
+    ...(standardPriceId ? { standardPriceId } : {}),
+  };
 }

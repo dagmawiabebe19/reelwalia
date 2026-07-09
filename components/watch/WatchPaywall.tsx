@@ -2,36 +2,26 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { PaywallModal, type LockedEpisodePreview } from "@/components/PaywallModal";
+import { PaywallModal } from "@/components/PaywallModal";
 import type { PaywallTrigger } from "@/lib/analytics/funnel";
 import { useSyncPaywallOpen } from "@/components/watch/PaywallOpenContext";
 
 interface WatchPaywallProps {
   episodeId: string;
-  seriesId: string;
   seriesSlug: string;
   posterUrl: string | null;
   seriesTitle: string;
   episodeNumber: number;
-  totalEpisodes: number;
-  freeEpisodeCount: number;
-  lockedEpisodes: LockedEpisodePreview[];
-  cliffhangerHook: string | null;
   showPaywall: boolean;
   isAuthenticated: boolean;
 }
 
 function WatchPaywallInner({
   episodeId,
-  seriesId,
   seriesSlug,
   posterUrl,
   seriesTitle,
   episodeNumber,
-  totalEpisodes,
-  freeEpisodeCount,
-  lockedEpisodes,
-  cliffhangerHook,
   showPaywall,
   isAuthenticated,
 }: WatchPaywallProps) {
@@ -88,14 +78,7 @@ function WatchPaywallInner({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         episodeId={episodeId}
-        seriesId={seriesId}
         seriesSlug={seriesSlug}
-        seriesTitle={seriesTitle}
-        episodeNumber={episodeNumber}
-        totalEpisodes={totalEpisodes}
-        freeEpisodeCount={freeEpisodeCount}
-        lockedEpisodes={lockedEpisodes}
-        cliffhangerHook={cliffhangerHook}
         trigger={paywallTrigger}
         isAuthenticated={isAuthenticated}
       />

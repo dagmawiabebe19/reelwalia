@@ -13,7 +13,6 @@ import {
   findUserIdByCustomerId,
   syncSubscriptionToDatabase,
 } from "@/lib/stripe/sync";
-import { grantSeriesPurchase } from "@/lib/stripe/purchases";
 import { ensureUserFromEmail } from "@/lib/stripe/guest-auth";
 
 export async function POST(request: Request) {
@@ -49,60 +48,6 @@ export async function POST(request: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-
-        // One-time "unlock all episodes of a series" purchase.
-        if (
-          session.mode === "payment" &&
-          session.metadata?.kind === "series_unlock"
-        ) {
-          if (session.payment_status !== "paid") break;
-
-          const seriesId = session.metadata?.series_id;
-          if (!seriesId) {
-            console.error("series_unlock: missing series_id", session.id);
-            break;
-          }
-
-          const customerId =
-            typeof session.customer === "string"
-              ? session.customer
-              : session.customer?.id ?? null;
-
-          let userId: string | null = session.metadata?.user_id ?? null;
-          if (!userId && customerId) {
-            userId = await findUserIdByCustomerId(customerId);
-          }
-          if (!userId) {
-            const email = session.customer_details?.email;
-            if (!email) {
-              console.error("series_unlock: no user_id or email", session.id);
-              break;
-            }
-            userId = await ensureUserFromEmail(email);
-          }
-
-          const paymentIntentId =
-            typeof session.payment_intent === "string"
-              ? session.payment_intent
-              : session.payment_intent?.id ?? null;
-
-          await grantSeriesPurchase({
-            userId,
-            seriesId,
-            customerId,
-            sessionId: session.id,
-            paymentIntentId,
-            amountTotal: session.amount_total ?? null,
-            currency: session.currency ?? null,
-          });
-
-          console.info("[webhook] series_unlock granted", {
-            series_id: seriesId,
-            session_id: session.id,
-          });
-          break;
-        }
-
         if (session.mode !== "subscription" || !session.subscription) break;
 
         const subscriptionId =
@@ -262,7 +207,9 @@ export async function POST(request: Request) {
 
         const planKey = subscription.metadata.plan as StripePlanKey | undefined;
         const plan: StripePlanKey =
-          planKey === "1week" || planKey === "1month" ? planKey : "1month";
+          planKey === "1week" || planKey === "2week" || planKey === "1month"
+            ? planKey
+            : "1month";
 
         await trackSubscriptionCompleted({
           plan,

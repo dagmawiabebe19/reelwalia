@@ -86,7 +86,7 @@ function CheckoutSuccessInner() {
         <ReelWaliaLogo variant="stacked" scale="auth" className="mx-auto" />
 
         {loading && (
-          <p className="mt-6 text-sm text-gray-400">Confirming your purchase…</p>
+          <p className="mt-6 text-sm text-gray-400">Confirming your subscription…</p>
         )}
 
         {!loading && error && (
@@ -104,7 +104,7 @@ function CheckoutSuccessInner() {
             <p className="mt-3 text-sm text-gray-400">
               {otpSent
                 ? `We sent a sign-in link to ${email}. Check your inbox to access your account anytime.`
-                : `Your access is active for ${email}.`}
+                : `Your subscription is active for ${email}.`}
             </p>
             {episodeId && sessionId && (
               <Link

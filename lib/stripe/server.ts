@@ -1,11 +1,11 @@
 import Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { StripePlanKey } from "@/lib/stripe/plans";
+import { getPlanPriceIds } from "@/lib/stripe/prices";
 import {
-  getSeriesUnlockPriceId,
-  getSubscriptionPriceId,
-} from "@/lib/stripe/prices";
-import { unwrapStripeResponse } from "@/lib/stripe/helpers";
+  getSubscriptionPeriod,
+  unwrapStripeResponse,
+} from "@/lib/stripe/helpers";
 
 let stripeSingleton: Stripe | null = null;
 
@@ -60,7 +60,7 @@ export async function createCheckoutSession(params: {
   episodeId?: string;
 }): Promise<Stripe.Checkout.Session> {
   const stripe = getStripe();
-  const priceId = getSubscriptionPriceId(params.plan);
+  const { introPriceId } = getPlanPriceIds(params.plan);
   const customerId = await getOrCreateCustomer(params.userId, params.email);
 
   const successUrl = params.episodeId
@@ -73,7 +73,7 @@ export async function createCheckoutSession(params: {
   return stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
-    line_items: [{ price: priceId, quantity: 1 }],
+    line_items: [{ price: introPriceId, quantity: 1 }],
     subscription_data: {
       metadata: {
         app: "reelwalia",
@@ -99,7 +99,7 @@ export async function createGuestCheckoutSession(params: {
   episodeId?: string;
 }): Promise<Stripe.Checkout.Session> {
   const stripe = getStripe();
-  const priceId = getSubscriptionPriceId(params.plan);
+  const { introPriceId } = getPlanPriceIds(params.plan);
 
   const episodeQuery = params.episodeId
     ? `&episodeId=${encodeURIComponent(params.episodeId)}`
@@ -111,7 +111,7 @@ export async function createGuestCheckoutSession(params: {
 
   return stripe.checkout.sessions.create({
     mode: "subscription",
-    line_items: [{ price: priceId, quantity: 1 }],
+    line_items: [{ price: introPriceId, quantity: 1 }],
     subscription_data: {
       metadata: {
         app: "reelwalia",
@@ -129,89 +129,10 @@ export async function createGuestCheckoutSession(params: {
   });
 }
 
-/** One-time "unlock all episodes of a series" purchase (signed-in buyer). */
-export async function createSeriesUnlockCheckoutSession(params: {
-  userId: string;
-  email: string;
-  seriesId: string;
-  baseUrl: string;
-  episodeId?: string;
-}): Promise<Stripe.Checkout.Session> {
-  const stripe = getStripe();
-  const priceId = getSeriesUnlockPriceId();
-  const customerId = await getOrCreateCustomer(params.userId, params.email);
-
-  const successUrl = params.episodeId
-    ? `${params.baseUrl}/watch/${params.episodeId}?session_id={CHECKOUT_SESSION_ID}`
-    : `${params.baseUrl}/account?unlocked=true`;
-  const cancelUrl = params.episodeId
-    ? `${params.baseUrl}/watch/${params.episodeId}`
-    : `${params.baseUrl}/`;
-
-  const metadata = {
-    app: "reelwalia",
-    kind: "series_unlock",
-    user_id: params.userId,
-    series_id: params.seriesId,
-    ...(params.episodeId ? { episode_id: params.episodeId } : {}),
-  };
-
-  return stripe.checkout.sessions.create({
-    mode: "payment",
-    customer: customerId,
-    line_items: [{ price: priceId, quantity: 1 }],
-    payment_intent_data: { metadata },
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    allow_promotion_codes: true,
-    metadata,
-  });
-}
-
-/** One-time series unlock for guests — account created via webhook by email. */
-export async function createGuestSeriesUnlockCheckoutSession(params: {
-  seriesId: string;
-  baseUrl: string;
-  episodeId?: string;
-}): Promise<Stripe.Checkout.Session> {
-  const stripe = getStripe();
-  const priceId = getSeriesUnlockPriceId();
-
-  const episodeQuery = params.episodeId
-    ? `&episodeId=${encodeURIComponent(params.episodeId)}`
-    : "";
-  const successUrl = `${params.baseUrl}/auth/checkout-success?session_id={CHECKOUT_SESSION_ID}${episodeQuery}`;
-  const cancelUrl = params.episodeId
-    ? `${params.baseUrl}/watch/${params.episodeId}`
-    : `${params.baseUrl}/`;
-
-  const metadata = {
-    app: "reelwalia",
-    kind: "series_unlock",
-    series_id: params.seriesId,
-    ...(params.episodeId ? { episode_id: params.episodeId } : {}),
-  };
-
-  return stripe.checkout.sessions.create({
-    mode: "payment",
-    line_items: [{ price: priceId, quantity: 1 }],
-    payment_intent_data: { metadata },
-    customer_creation: "always",
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    allow_promotion_codes: true,
-    metadata,
-  });
-}
-
-export type CheckoutKind = "subscription" | "series_unlock";
-
 export interface VerifiedCheckoutSession {
   active: boolean;
-  kind: CheckoutKind;
   email: string | null;
   episodeId: string | null;
-  seriesId: string | null;
   customerId: string | null;
 }
 
@@ -231,38 +152,28 @@ export async function verifyCheckoutSession(
       return null;
     }
 
+    const subscription =
+      typeof session.subscription === "string"
+        ? unwrapStripeResponse(
+            await stripe.subscriptions.retrieve(session.subscription)
+          )
+        : session.subscription
+          ? unwrapStripeResponse(session.subscription)
+          : null;
+
+    const active =
+      subscription != null &&
+      (subscription.status === "active" || subscription.status === "trialing");
+
     const customerId =
       typeof session.customer === "string"
         ? session.customer
         : session.customer?.id ?? null;
 
-    const kind: CheckoutKind =
-      session.mode === "payment" ? "series_unlock" : "subscription";
-
-    let active = false;
-    if (kind === "series_unlock") {
-      active = session.payment_status === "paid";
-    } else {
-      const subscription =
-        typeof session.subscription === "string"
-          ? unwrapStripeResponse(
-              await stripe.subscriptions.retrieve(session.subscription)
-            )
-          : session.subscription
-            ? unwrapStripeResponse(session.subscription)
-            : null;
-      active =
-        subscription != null &&
-        (subscription.status === "active" ||
-          subscription.status === "trialing");
-    }
-
     return {
       active,
-      kind,
       email: session.customer_details?.email ?? null,
       episodeId: session.metadata?.episode_id ?? null,
-      seriesId: session.metadata?.series_id ?? null,
       customerId,
     };
   } catch (err) {
@@ -279,6 +190,38 @@ export async function createPortalSession(params: {
   return stripe.billingPortal.sessions.create({
     customer: params.customerId,
     return_url: params.returnUrl,
+  });
+}
+
+/** After intro checkout, schedule transition to standard price after one billing period. */
+export async function scheduleIntroToStandardTransition(
+  subscriptionId: string,
+  plan: StripePlanKey
+): Promise<void> {
+  const stripe = getStripe();
+  const { introPriceId, standardPriceId } = getPlanPriceIds(plan);
+
+  const subscription = unwrapStripeResponse(
+    await stripe.subscriptions.retrieve(subscriptionId)
+  );
+  const period = getSubscriptionPeriod(subscription);
+
+  const schedule = await stripe.subscriptionSchedules.create({
+    from_subscription: subscriptionId,
+  });
+
+  await stripe.subscriptionSchedules.update(schedule.id, {
+    end_behavior: "release",
+    phases: [
+      {
+        items: [{ price: introPriceId, quantity: 1 }],
+        start_date: period.current_period_start,
+        end_date: period.current_period_end,
+      },
+      {
+        items: [{ price: standardPriceId, quantity: 1 }],
+      },
+    ],
   });
 }
 

@@ -23,23 +23,10 @@ export function hasActiveSubscription(profile: Pick<Profile, "subscription_statu
   );
 }
 
-/**
- * Whether a viewer can watch a given episode.
- *
- * Access is granted by any of:
- *  - the episode being within the free window, or
- *  - an active "all shows" subscription, or
- *  - a one-time purchase that unlocks this series (`hasSeriesPurchase`).
- */
 export function canWatchEpisode(
   episodeNumber: number,
   freeEpisodeCount: number,
-  profile: Pick<Profile, "subscription_status"> | null,
-  hasSeriesPurchase = false
+  profile: Pick<Profile, "subscription_status"> | null
 ): boolean {
-  return (
-    isEpisodeFree(episodeNumber, freeEpisodeCount) ||
-    hasActiveSubscription(profile) ||
-    hasSeriesPurchase
-  );
+  return isEpisodeFree(episodeNumber, freeEpisodeCount) || hasActiveSubscription(profile);
 }
