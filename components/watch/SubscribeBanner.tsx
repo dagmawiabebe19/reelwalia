@@ -1,23 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import { PaywallModal } from "@/components/PaywallModal";
-import { formatUsd, getPlanDisplay } from "@/lib/stripe/plans";
+import { PaywallModal, type LockedEpisodePreview } from "@/components/PaywallModal";
+import { formatSeriesUnlockPrice } from "@/lib/paywall-config";
 import { usePaywallOpen, useSyncPaywallOpen } from "@/components/watch/PaywallOpenContext";
 
 interface SubscribeBannerProps {
   episodeId: string;
+  seriesId: string;
   seriesSlug: string;
+  seriesTitle: string;
+  totalEpisodes: number;
+  freeEpisodeCount: number;
+  lockedEpisodes: LockedEpisodePreview[];
+  cliffhangerHook: string | null;
   isAuthenticated: boolean;
   placement?: "viewport" | "below-player";
 }
 
-const weekPlan = getPlanDisplay("1week");
-const fromPriceLabel = `From ${formatUsd(weekPlan.amount)}${weekPlan.priceSuffix}`;
+const fromPriceLabel = `From ${formatSeriesUnlockPrice()} one-time`;
 
 export function SubscribeBanner({
   episodeId,
+  seriesId,
   seriesSlug,
+  seriesTitle,
+  totalEpisodes,
+  freeEpisodeCount,
+  lockedEpisodes,
+  cliffhangerHook,
   isAuthenticated,
   placement = "viewport",
 }: SubscribeBannerProps) {
@@ -116,7 +127,13 @@ export function SubscribeBanner({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         episodeId={episodeId}
+        seriesId={seriesId}
         seriesSlug={seriesSlug}
+        seriesTitle={seriesTitle}
+        totalEpisodes={totalEpisodes}
+        freeEpisodeCount={freeEpisodeCount}
+        lockedEpisodes={lockedEpisodes}
+        cliffhangerHook={cliffhangerHook}
         trigger="persistent_cta"
         isAuthenticated={isAuthenticated}
       />

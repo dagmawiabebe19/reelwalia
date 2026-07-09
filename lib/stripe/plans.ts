@@ -1,4 +1,4 @@
-export type StripePlanKey = "1week" | "2week" | "1month";
+export type StripePlanKey = "1week" | "1month";
 
 export interface PlanDisplay {
   key: StripePlanKey;
@@ -7,36 +7,31 @@ export interface PlanDisplay {
   amount: number;
   /** Billing period length in days (for per-day math). */
   days: number;
-  /** e.g. "/week", "/2 weeks", "/month" */
+  /** e.g. "/week", "/month" */
   priceSuffix: string;
   renewalLabel: string;
   periodLabel: string;
   mostPopular?: boolean;
 }
 
+/**
+ * "All shows" subscription tiers (secondary offer / upsell).
+ * The primary offer is the one-time per-series unlock — see lib/paywall-config.ts.
+ */
 export const STRIPE_PLANS: PlanDisplay[] = [
   {
     key: "1week",
-    label: "1-WEEK",
-    amount: 3.99,
+    label: "Weekly",
+    amount: 2.99,
     days: 7,
     priceSuffix: "/week",
     renewalLabel: "Renews weekly",
     periodLabel: "week",
   },
   {
-    key: "2week",
-    label: "2-WEEK",
-    amount: 4.24,
-    days: 14,
-    priceSuffix: "/2 weeks",
-    renewalLabel: "Renews every 2 weeks",
-    periodLabel: "2 weeks",
-  },
-  {
     key: "1month",
-    label: "1-MONTH",
-    amount: 7.49,
+    label: "Monthly",
+    amount: 5.99,
     days: 30,
     priceSuffix: "/month",
     renewalLabel: "Renews monthly",
@@ -46,6 +41,10 @@ export const STRIPE_PLANS: PlanDisplay[] = [
 ];
 
 const BASELINE_PLAN_KEY: StripePlanKey = "1week";
+
+export function isStripePlanKey(value: unknown): value is StripePlanKey {
+  return value === "1week" || value === "1month";
+}
 
 export function getPlanDisplay(key: StripePlanKey): PlanDisplay {
   const plan = STRIPE_PLANS.find((p) => p.key === key);
@@ -65,12 +64,12 @@ export function dailyRate(amount: number, days: number): number {
   return amount / days;
 }
 
-/** e.g. "Only $0.57/day" */
+/** e.g. "Only $0.20/day" */
 export function formatDailyPrice(plan: PlanDisplay): string {
   return `Only $${dailyRate(plan.amount, plan.days).toFixed(2)}/day`;
 }
 
-/** Daily-cost savings vs the 1-week plan — honest comparison, not a fake list price. */
+/** Daily-cost savings vs the weekly plan — honest comparison, not a fake list price. */
 export function savingsBadge(plan: PlanDisplay): string | null {
   if (plan.key === BASELINE_PLAN_KEY) return null;
 

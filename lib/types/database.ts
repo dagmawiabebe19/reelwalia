@@ -44,6 +44,7 @@ export interface Series {
   orientation: SeriesOrientation;
   total_episodes: number;
   free_episode_count: number;
+  cliffhanger_hook: string | null;
   is_featured: boolean;
   featured_order: number | null;
   view_count: number;
@@ -63,6 +64,7 @@ export interface Episode {
   subtitle_url: string | null;
   duration_seconds: number | null;
   is_free: boolean;
+  cliffhanger_hook: string | null;
   view_count: number;
   display_view_count: number | null;
   published_at: string | null;
@@ -122,6 +124,18 @@ export interface Subscription {
   cancel_at_period_end: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface SeriesPurchase {
+  id: string;
+  user_id: string;
+  series_id: string;
+  stripe_customer_id: string | null;
+  stripe_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+  amount_total: number | null;
+  currency: string | null;
+  created_at: string;
 }
 
 export type SeriesCard = Pick<

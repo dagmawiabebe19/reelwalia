@@ -240,7 +240,18 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
       {firstEpisode && !isSubscribed && (
         <SubscribeBanner
           episodeId={firstEpisode.id}
+          seriesId={series.id}
           seriesSlug={series.slug}
+          seriesTitle={series.title}
+          totalEpisodes={Math.max(episodes.length, series.total_episodes ?? 0)}
+          freeEpisodeCount={resolveFreeEpisodeCount(series.free_episode_count)}
+          lockedEpisodes={episodes
+            .filter((ep) => !ep.is_free)
+            .map((ep) => ({
+              episodeNumber: ep.episode_number,
+              thumbnailUrl: ep.thumbnail_url,
+            }))}
+          cliffhangerHook={series.cliffhanger_hook ?? null}
           isAuthenticated={isAuthenticated}
         />
       )}

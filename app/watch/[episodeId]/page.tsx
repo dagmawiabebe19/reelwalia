@@ -16,6 +16,7 @@ import { normalizeSeriesOrientation } from "@/lib/series-orientation";
 import { resolveInitialProgress } from "@/lib/watch-progress";
 import { shouldAutoStartWatch } from "@/lib/watch-playback";
 import { verifyCheckoutSession } from "@/lib/stripe/server";
+import { userOwnsSeries } from "@/lib/stripe/purchases";
 import { createClient } from "@/lib/supabase/server";
 
 interface WatchPageProps {
@@ -32,7 +33,7 @@ async function getWatchData(
   const { data: episode } = await supabase
     .from("episodes")
     .select(
-      "id, episode_number, title, description, video_url, thumbnail_url, subtitle_url, view_count, display_view_count, series_id"
+      "id, episode_number, title, description, video_url, thumbnail_url, subtitle_url, view_count, display_view_count, series_id, cliffhanger_hook"
     )
     .eq("id", episodeId)
     .maybeSingle();
@@ -42,7 +43,7 @@ async function getWatchData(
   const { data: series } = await supabase
     .from("series")
     .select(
-      "id, title, slug, description, genre, view_count, free_episode_count, status, poster_url, orientation"
+      "id, title, slug, description, genre, view_count, free_episode_count, cliffhanger_hook, total_episodes, status, poster_url, orientation"
     )
     .eq("id", episode.series_id)
     .maybeSingle();
@@ -62,6 +63,7 @@ async function getWatchData(
   } = await supabase.auth.getUser();
 
   let profile = null;
+  let ownsSeries = false;
   let initialProgress = 0;
   const isBingeNavigation = searchParams.autoplay === "true";
 
@@ -72,6 +74,8 @@ async function getWatchData(
       .eq("id", user.id)
       .maybeSingle();
     profile = p;
+
+    ownsSeries = await userOwnsSeries(supabase, user.id, series.id);
 
     const { data: history } = await supabase
       .from("watch_history")
@@ -85,17 +89,24 @@ async function getWatchData(
   const freeCount = resolveFreeEpisodeCount(series.free_episode_count);
   const isFreeEpisode = isEpisodeFree(episode.episode_number, freeCount);
 
+  // Verified Stripe session bridges the gap before the webhook grant lands.
+  // A subscription session unlocks everything; a one-time unlock session only
+  // unlocks the series it was purchased for.
   let guestSessionUnlock = false;
   if (!isFreeEpisode && searchParams.session_id) {
     const verified = await verifyCheckoutSession(searchParams.session_id);
-    guestSessionUnlock = verified?.active === true;
+    if (verified?.active) {
+      guestSessionUnlock =
+        verified.kind === "subscription" ||
+        (verified.kind === "series_unlock" && verified.seriesId === series.id);
+    }
   }
 
+  const hasSeriesAccess = ownsSeries || guestSessionUnlock;
   const unlocked =
-    isFreeEpisode ||
-    guestSessionUnlock ||
-    hasActiveSubscription(profile);
-  const isSubscribed = hasActiveSubscription(profile) || guestSessionUnlock;
+    isFreeEpisode || hasActiveSubscription(profile) || hasSeriesAccess;
+  const isSubscribed =
+    hasActiveSubscription(profile) || (guestSessionUnlock && !ownsSeries);
   // Paywall only for premium episodes without access — never gate free content
   const locked = !isFreeEpisode && !unlocked;
 
@@ -111,7 +122,7 @@ async function getWatchData(
 
   const pickerEpisodes = (allEpisodes ?? []).map((ep) => ({
     ...ep,
-    locked: !canWatchEpisode(ep.episode_number, freeCount, profile),
+    locked: !canWatchEpisode(ep.episode_number, freeCount, profile, hasSeriesAccess),
   }));
 
   const nextEpisode = nextEp
@@ -121,9 +132,29 @@ async function getWatchData(
         title: nextEp.title,
         description: nextEp.description,
         thumbnailUrl: nextEp.thumbnail_url,
-        locked: !canWatchEpisode(nextEp.episode_number, freeCount, profile),
+        locked: !canWatchEpisode(
+          nextEp.episode_number,
+          freeCount,
+          profile,
+          hasSeriesAccess
+        ),
       }
     : null;
+
+  // Locked-episode preview for the paywall (blurred thumbnails + scarcity count).
+  const lockedEpisodes = (allEpisodes ?? [])
+    .filter((ep) => ep.episode_number > freeCount)
+    .map((ep) => ({
+      episodeNumber: ep.episode_number,
+      thumbnailUrl: ep.thumbnail_url,
+    }));
+
+  const totalEpisodeCount = Math.max(
+    (allEpisodes ?? []).length,
+    series.total_episodes ?? 0
+  );
+
+  const cliffhangerHook = episode.cliffhanger_hook ?? series.cliffhanger_hook ?? null;
 
   const totalSeriesViews = (allEpisodes ?? []).reduce(
     (sum, ep) => sum + (getEpisodeDisplayViewCount(ep) ?? 0),
@@ -148,6 +179,10 @@ async function getWatchData(
     pickerEpisodes,
     otherSeries: otherSeries ?? [],
     initialProgress,
+    lockedEpisodes,
+    totalEpisodeCount,
+    freeCount,
+    cliffhangerHook,
     captionTracks,
   };
 }
@@ -173,6 +208,10 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
     pickerEpisodes,
     otherSeries,
     initialProgress,
+    lockedEpisodes,
+    totalEpisodeCount,
+    freeCount,
+    cliffhangerHook,
     captionTracks,
   } = data;
 
@@ -263,7 +302,13 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
                     {!isSubscribed && (
                       <SubscribeBanner
                         episodeId={episode.id}
+                        seriesId={series.id}
                         seriesSlug={series.slug}
+                        seriesTitle={series.title}
+                        totalEpisodes={totalEpisodeCount}
+                        freeEpisodeCount={freeCount}
+                        lockedEpisodes={lockedEpisodes}
+                        cliffhangerHook={cliffhangerHook}
                         isAuthenticated={isAuthenticated}
                         placement="below-player"
                       />
@@ -273,10 +318,15 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
               ) : (
                 <WatchPaywall
                   episodeId={episode.id}
+                  seriesId={series.id}
                   seriesSlug={series.slug}
                   posterUrl={episode.thumbnail_url ?? series.poster_url ?? null}
                   seriesTitle={series.title}
                   episodeNumber={episode.episode_number}
+                  totalEpisodes={totalEpisodeCount}
+                  freeEpisodeCount={freeCount}
+                  lockedEpisodes={lockedEpisodes}
+                  cliffhangerHook={cliffhangerHook}
                   showPaywall={locked}
                   isAuthenticated={isAuthenticated}
                 />
@@ -339,10 +389,15 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
             ) : (
               <WatchPaywall
                 episodeId={episode.id}
+                seriesId={series.id}
                 seriesSlug={series.slug}
                 posterUrl={episode.thumbnail_url ?? series.poster_url ?? null}
                 seriesTitle={series.title}
                 episodeNumber={episode.episode_number}
+                totalEpisodes={totalEpisodeCount}
+                freeEpisodeCount={freeCount}
+                lockedEpisodes={lockedEpisodes}
+                cliffhangerHook={cliffhangerHook}
                 showPaywall={locked}
                 isAuthenticated={isAuthenticated}
               />
@@ -386,7 +441,13 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
       {!isSubscribed && (
         <SubscribeBanner
           episodeId={episode.id}
+          seriesId={series.id}
           seriesSlug={series.slug}
+          seriesTitle={series.title}
+          totalEpisodes={totalEpisodeCount}
+          freeEpisodeCount={freeCount}
+          lockedEpisodes={lockedEpisodes}
+          cliffhangerHook={cliffhangerHook}
           isAuthenticated={isAuthenticated}
         />
       )}

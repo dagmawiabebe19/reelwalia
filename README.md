@@ -38,7 +38,11 @@ Copy `.env.example` to `.env.local` for local dev. Add the same keys in **Vercel
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
 | `STRIPE_SECRET_KEY` | Stripe secret key |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
-| `STRIPE_PRICE_*_INTRO` / `STRIPE_PRICE_*_STANDARD` | Intro + renewal price IDs per plan |
+| `STRIPE_PRICE_WEEKLY` | Recurring $2.99/week subscription price ID |
+| `STRIPE_PRICE_MONTHLY` | Recurring $5.99/month subscription price ID |
+| `STRIPE_PRICE_SERIES_UNLOCK` | One-time $2.99 series-unlock price ID |
+| `NEXT_PUBLIC_SERIES_UNLOCK_PRICE` | Display price for the one-time unlock (default `2.99`) |
+| `NEXT_PUBLIC_SOCIAL_PROOF_COUNT` | "Join N+ watching" number (default `1300`) |
 
 **`NEXT_PUBLIC_SITE_URL` on Vercel** (required for correct Stripe post-checkout redirects):
 
@@ -66,17 +70,23 @@ Apply in order via Supabase SQL Editor or CLI:
 4. `supabase/migrations/004_phase2_stripe.sql` — Stripe columns on profiles, plan enum values
 5. `supabase/migrations/005_creator_submissions.sql` — creator submission intake table + RLS
 6. `supabase/migrations/006_redbird_free_episodes.sql` — REDBIRD 3-episode free tier
+7. `supabase/migrations/020_series_unlock_and_paywall.sql` — one-time `series_purchases` table + RLS, `cliffhanger_hook` columns, paywall moved to end of episode 5
 
-## Stripe subscriptions
+## Stripe pricing
 
-Intro pricing auto-renews at standard rates via Subscription Schedules (set up in the checkout webhook).
+Two offers power the paywall:
 
-1. Create three products in Stripe with **intro** and **standard** recurring prices for 1-week, 2-week, and 1-month intervals.
-2. Copy price IDs into the `STRIPE_PRICE_*` env vars (exact names: `STRIPE_PRICE_1WEEK_INTRO`, not `1_WEEK`).
-3. Restart the dev server after editing `.env.local` — Next.js loads env at startup.
-4. Add webhook endpoint: `{SITE_URL}/api/stripe/webhook`
-   - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
-5. For local testing: `stripe listen --forward-to localhost:3000/api/stripe/webhook`
+- **One-time series unlock** (primary) — a single `payment`-mode price that grants permanent access to one series' episodes for the buyer. Access is granted by the webhook only.
+- **"All shows" subscription** (secondary) — recurring weekly / monthly prices.
+
+1. Create the following prices in Stripe and copy their IDs into env:
+   - `STRIPE_PRICE_SERIES_UNLOCK` — **one-time** price, $2.99 (product e.g. "Series Unlock").
+   - `STRIPE_PRICE_WEEKLY` — **recurring** price, $2.99 / week ("All shows").
+   - `STRIPE_PRICE_MONTHLY` — **recurring** price, $5.99 / month ("All shows", Most Popular).
+2. Restart the dev server after editing `.env.local` — Next.js loads env at startup.
+3. Add webhook endpoint: `{SITE_URL}/api/stripe/webhook`
+   - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`, `invoice.payment_succeeded`
+4. For local testing: `stripe listen --forward-to localhost:3000/api/stripe/webhook`
 
 Locked episodes show the paywall modal to everyone (signed-in or logged-out). Free episodes (`episode_number <= series.free_episode_count`, default 3) play with no sign-in — guests can browse the catalog and watch free episodes end-to-end.
 

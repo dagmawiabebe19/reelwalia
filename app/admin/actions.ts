@@ -16,6 +16,7 @@ export interface SeriesFormData {
   genre: SeriesGenre;
   total_episodes: number;
   free_episode_count: number;
+  cliffhanger_hook: string;
   poster_url: string;
   hero_banner_url: string;
   is_featured: boolean;
@@ -35,6 +36,7 @@ export async function saveSeries(data: SeriesFormData) {
     genre: [data.genre],
     total_episodes: data.total_episodes,
     free_episode_count: data.free_episode_count,
+    cliffhanger_hook: data.cliffhanger_hook.trim() || null,
     poster_url: data.poster_url || null,
     banner_url: data.hero_banner_url || null,
     is_featured: data.is_featured,

@@ -30,6 +30,9 @@ export function SeriesForm({ initial }: SeriesFormProps) {
   const [freeEpisodeCount, setFreeEpisodeCount] = useState(
     initial?.free_episode_count ?? DEFAULT_FREE_EPISODE_COUNT
   );
+  const [cliffhangerHook, setCliffhangerHook] = useState(
+    initial?.cliffhanger_hook ?? ""
+  );
   const [posterUrl, setPosterUrl] = useState(initial?.poster_url ?? "");
   const [heroBannerUrl, setHeroBannerUrl] = useState(initial?.banner_url ?? "");
   const [isFeatured, setIsFeatured] = useState(initial?.is_featured ?? false);
@@ -53,6 +56,7 @@ export function SeriesForm({ initial }: SeriesFormProps) {
       genre,
       total_episodes: totalEpisodes,
       free_episode_count: freeEpisodeCount,
+      cliffhanger_hook: cliffhangerHook,
       poster_url: posterUrl,
       hero_banner_url: heroBannerUrl,
       is_featured: isFeatured,
@@ -178,6 +182,19 @@ export function SeriesForm({ initial }: SeriesFormProps) {
             />
           </label>
         </div>
+        <label className="mt-4 block space-y-1.5">
+          <span className="rw-form-label">Cliffhanger hook (paywall)</span>
+          <textarea
+            value={cliffhangerHook}
+            onChange={(e) => setCliffhangerHook(e.target.value)}
+            rows={2}
+            placeholder="e.g. Mara's next move changes everything. Don't stop now."
+            className="rw-form-textarea"
+          />
+          <span className="block text-xs text-zinc-500">
+            Shown in the paywall modal below the “unlock next episode” headline. Leave blank for a generic line.
+          </span>
+        </label>
       </div>
 
       <div className="rw-form-section">
