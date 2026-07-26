@@ -39,9 +39,17 @@ export default async function AdminSeriesListPage() {
         title="Series"
         subtitle="Catalog overview — thumbnails, status, and featured placement."
         action={
-          <Link href="/admin/series/new" className="rw-btn-primary">
-            Add Series
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/admin/featured"
+              className="rounded-lg border border-white/[0.12] px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.06]"
+            >
+              Featured order
+            </Link>
+            <Link href="/admin/series/new" className="rw-btn-primary">
+              Add Series
+            </Link>
+          </div>
         }
       />
 

@@ -1,5 +1,11 @@
 # Supabase migrations — ReelWalia
 
+## Platform vs Studio
+
+Migrations in this folder target the **Platform** Supabase project
+(`joqibhmmegycfadipnki` — reelwalia.com). Do **not** run them against the Studio
+project (`dxtieidijudvekuwljrs`).
+
 ## Production workflow (required)
 
 This project applies schema changes to **production manually** via the Supabase Dashboard **SQL Editor**.

@@ -18,6 +18,7 @@ async function getCatalog() {
         .select(
           "id, title, slug, tagline, description, banner_url, poster_url, genre"
         )
+        // Admin-controlled order: /admin/featured writes featured_order (ASC, nulls last).
         .eq("status", "published")
         .eq("is_featured", true)
         .order("featured_order", { ascending: true, nullsFirst: false })

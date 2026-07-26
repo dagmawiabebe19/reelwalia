@@ -20,6 +20,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Catalog",
     items: [
       { href: "/admin/series", label: "Series" },
+      { href: "/admin/featured", label: "Featured order" },
       { href: "/admin/submissions", label: "Submissions" },
     ],
   },
@@ -38,6 +39,9 @@ function isActiveRoute(pathname: string, href: string): boolean {
   }
   if (href === "/admin/submissions") {
     return pathname === href || pathname.startsWith("/admin/submissions/");
+  }
+  if (href === "/admin/featured") {
+    return pathname === href || pathname.startsWith("/admin/featured/");
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

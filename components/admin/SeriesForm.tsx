@@ -214,6 +214,13 @@ export function SeriesForm({ initial }: SeriesFormProps) {
             Published
           </label>
         </div>
+        <p className="mt-2 text-xs text-zinc-500">
+          Homepage Featured order is managed under{" "}
+          <a href="/admin/featured" className="text-obsidian-red hover:underline">
+            Featured order
+          </a>
+          .
+        </p>
       </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
