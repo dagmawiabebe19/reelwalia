@@ -200,7 +200,11 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
   if (seriesOrientation === "landscape") {
     return (
       <PaywallOpenProvider>
-        <div className="min-h-screen overflow-x-hidden bg-black">
+        <div
+          className={`min-h-screen overflow-x-hidden bg-black ${
+            !isSubscribed ? "pb-28 lg:pb-0" : ""
+          }`}
+        >
           <TopNav />
           <main
             className={`mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:py-6 lg:px-6 ${
@@ -319,101 +323,105 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
 
   return (
     <PaywallOpenProvider>
-      <div className="min-h-screen overflow-x-hidden bg-black">
+      <div
+        className={`min-h-screen overflow-x-hidden bg-black ${
+          !isSubscribed ? "pb-28 lg:pb-0" : ""
+        }`}
+      >
         <TopNav />
         <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-4 sm:py-6 lg:flex-row lg:px-6">
-        <div className="contents lg:flex lg:w-full lg:flex-1 lg:flex-col lg:items-center lg:gap-4">
-          <div className="order-1 flex w-full flex-col items-center gap-4">
-            <WatchPostCheckout
-              unlocked={unlocked}
-              locked={locked}
-              isAuthenticated={isAuthenticated}
-            />
-            {unlocked && episode.video_url ? (
-              <>
-                {justSubscribed && isAuthenticated && (
-                  <p className="w-full max-w-md rounded-lg border border-obsidian-red/30 bg-obsidian-red/10 px-4 py-2 text-center text-sm text-obsidian-red lg:max-w-none">
-                    Subscription active — enjoy full access!
-                  </p>
-                )}
-                <VideoPlayer
-                  src={episode.video_url}
-                  poster={episode.thumbnail_url}
-                  captionTracks={captionTracks}
-                  episodeId={episode.id}
-                  episodeNumber={episode.episode_number}
-                  seriesId={series.id}
-                  seriesSlug={series.slug}
-                  seriesTitle={series.title}
-                  seriesOrientation={seriesOrientation}
-                  isFreeEpisode={isFreeEpisode}
-                  isSubscribed={isSubscribed}
-                  nextEpisode={nextEpisode}
-                  otherSeries={otherSeries}
-                  initialProgress={initialProgress}
-                  autoPlay={autoPlay}
-                  isAuthenticated={isAuthenticated}
-                />
-              </>
-            ) : (
-              <WatchPaywall
-                episodeId={episode.id}
-                seriesSlug={series.slug}
-                posterUrl={episode.thumbnail_url ?? series.poster_url ?? null}
-                seriesTitle={series.title}
-                episodeNumber={episode.episode_number}
-                showPaywall={locked}
+          {/* Primary column — real flex item on all breakpoints (no display:contents) */}
+          <div className="flex w-full min-w-0 flex-1 flex-col gap-4 lg:items-center">
+            <div className="flex w-full flex-col items-center gap-4">
+              <WatchPostCheckout
+                unlocked={unlocked}
+                locked={locked}
                 isAuthenticated={isAuthenticated}
               />
-            )}
+              {unlocked && episode.video_url ? (
+                <>
+                  {justSubscribed && isAuthenticated && (
+                    <p className="w-full max-w-md rounded-lg border border-obsidian-red/30 bg-obsidian-red/10 px-4 py-2 text-center text-sm text-obsidian-red lg:max-w-none">
+                      Subscription active — enjoy full access!
+                    </p>
+                  )}
+                  <VideoPlayer
+                    src={episode.video_url}
+                    poster={episode.thumbnail_url}
+                    captionTracks={captionTracks}
+                    episodeId={episode.id}
+                    episodeNumber={episode.episode_number}
+                    seriesId={series.id}
+                    seriesSlug={series.slug}
+                    seriesTitle={series.title}
+                    seriesOrientation={seriesOrientation}
+                    isFreeEpisode={isFreeEpisode}
+                    isSubscribed={isSubscribed}
+                    nextEpisode={nextEpisode}
+                    otherSeries={otherSeries}
+                    initialProgress={initialProgress}
+                    autoPlay={autoPlay}
+                    isAuthenticated={isAuthenticated}
+                  />
+                </>
+              ) : (
+                <WatchPaywall
+                  episodeId={episode.id}
+                  seriesSlug={series.slug}
+                  posterUrl={episode.thumbnail_url ?? series.poster_url ?? null}
+                  seriesTitle={series.title}
+                  episodeNumber={episode.episode_number}
+                  showPaywall={locked}
+                  isAuthenticated={isAuthenticated}
+                />
+              )}
+            </div>
+
+            {/* Meet the Characters — always in flow on mobile + desktop */}
+            <div className="w-full max-w-md lg:max-w-none">{meetSection}</div>
+
+            <WatchSeriesInfo
+              title={series.title}
+              genres={series.genre ?? []}
+              totalViews={totalSeriesViews}
+              description={series.description}
+              className="w-full max-w-md lg:max-w-none"
+            />
+
+            <div className="w-full max-w-md lg:max-w-none">
+              <h1 className="font-display text-xl uppercase leading-tight tracking-wide text-white sm:text-2xl">
+                {episode.title}
+              </h1>
+              <p className="rw-caption mt-1.5">
+                Episode {episode.episode_number}
+                <ViewCount
+                  count={getEpisodeDisplayViewCount(episode)}
+                  inline
+                  prefix=" · "
+                />
+              </p>
+              {episode.description && (
+                <p className="rw-body mt-4">{episode.description}</p>
+              )}
+            </div>
           </div>
 
-          <WatchSeriesInfo
-            title={series.title}
-            genres={series.genre ?? []}
-            totalViews={totalSeriesViews}
-            description={series.description}
-            className="order-3 lg:order-none"
-          />
-
-          <div className="order-4 w-full max-w-md lg:order-none lg:max-w-none">
-            <h1 className="font-display text-xl uppercase leading-tight tracking-wide text-white sm:text-2xl">
-              {episode.title}
-            </h1>
-            <p className="rw-caption mt-1.5">
-              Episode {episode.episode_number}
-              <ViewCount
-                count={getEpisodeDisplayViewCount(episode)}
-                inline
-                prefix=" · "
-              />
-            </p>
-            {episode.description && (
-              <p className="rw-body mt-4">{episode.description}</p>
-            )}
+          <div className="w-full shrink-0 lg:w-auto">
+            <EpisodePicker
+              episodes={pickerEpisodes}
+              currentEpisodeId={episode.id}
+              seriesSlug={series.slug}
+            />
           </div>
-
-          <div className="order-5 w-full max-w-md lg:order-none lg:max-w-none">
-            {meetSection}
-          </div>
-        </div>
-
-        <div className="order-2 lg:order-none lg:shrink-0">
-          <EpisodePicker
-            episodes={pickerEpisodes}
-            currentEpisodeId={episode.id}
+        </main>
+        {!isSubscribed && (
+          <SubscribeBanner
+            episodeId={episode.id}
             seriesSlug={series.slug}
+            isAuthenticated={isAuthenticated}
           />
-        </div>
-      </main>
-      {!isSubscribed && (
-        <SubscribeBanner
-          episodeId={episode.id}
-          seriesSlug={series.slug}
-          isAuthenticated={isAuthenticated}
-        />
-      )}
-    </div>
+        )}
+      </div>
     </PaywallOpenProvider>
   );
 }

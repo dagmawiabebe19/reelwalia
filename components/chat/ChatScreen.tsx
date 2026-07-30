@@ -358,7 +358,7 @@ export function ChatScreen({
       </aside>
 
       {/* Chat column — full width on mobile; ~60% on desktop */}
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col">
         {/* Mobile-only soft wash + cinematic header (unchanged behavior) */}
         {seriesPosterUrl && (
           // eslint-disable-next-line @next/next/no-img-element
