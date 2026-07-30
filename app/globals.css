@@ -401,3 +401,15 @@ body.player-fullscreen [data-subscribe-banner="below-player"] {
     @apply rounded-xl border border-white/[0.08] bg-white/[0.02] p-5 sm:p-6;
   }
 }
+
+@keyframes chatBubbleIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+

@@ -36,12 +36,13 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
 
   const { data: series } = await supabase
     .from("series")
-    .select("title, slug")
+    .select("title, slug, poster_url, banner_url")
     .eq("id", character.series_id)
     .maybeSingle();
 
   const seriesTitle = series?.title ?? "ReelWalia";
   const seriesSlug = series?.slug ?? searchParams.from ?? "";
+  const seriesPosterUrl = series?.poster_url ?? series?.banner_url ?? null;
 
   const parsedEpisode = searchParams.episode ? Number(searchParams.episode) : null;
   const currentEpisodeNumber =
@@ -79,6 +80,7 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
         avatar_url: character.avatar_url,
       }}
       seriesTitle={seriesTitle}
+      seriesPosterUrl={seriesPosterUrl}
       backHref={backHref}
       currentEpisodeNumber={currentEpisodeNumber}
       initialMessages={

@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { CharacterAvatar } from "@/components/chat/CharacterAvatar";
+import { expandStoredBubbleContent, parseBubbles } from "@/lib/chat/bubbles";
 
 export type ChatBubble = {
   id: string;
@@ -21,17 +23,47 @@ function formatTime(iso?: string): string {
 
 function TypingDots() {
   return (
-    <div className="flex items-center gap-1 px-1 py-1">
-      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:0ms]" />
-      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:150ms]" />
-      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:300ms]" />
+    <div className="flex items-center gap-1.5 px-1 py-1">
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-amber-200/80 [animation-delay:0ms]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-amber-200/80 [animation-delay:150ms]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-amber-200/80 [animation-delay:300ms]" />
     </div>
   );
+}
+
+function normalizeIncomingBubbles(content: string): string[] {
+  const expanded = expandStoredBubbleContent(content);
+  if (expanded.length > 1) return expanded;
+  // Still looks like a dumped array? force parseBubbles
+  if (content.trim().startsWith("[")) {
+    return parseBubbles(content);
+  }
+  return expanded.length ? expanded : parseBubbles(content);
+}
+
+function expandInitialMessages(messages: ChatBubble[]): ChatBubble[] {
+  const out: ChatBubble[] = [];
+  for (const msg of messages) {
+    if (msg.role !== "character") {
+      out.push(msg);
+      continue;
+    }
+    const parts = normalizeIncomingBubbles(msg.content);
+    parts.forEach((content, i) => {
+      out.push({
+        ...msg,
+        id: `${msg.id}-${i}`,
+        content,
+      });
+    });
+  }
+  return out;
 }
 
 export function ChatScreen({
   character,
   seriesTitle,
+  seriesPosterUrl,
   backHref,
   initialMessages,
   currentEpisodeNumber,
@@ -42,11 +74,14 @@ export function ChatScreen({
     avatar_url: string | null;
   };
   seriesTitle: string;
+  seriesPosterUrl: string | null;
   backHref: string;
   initialMessages: ChatBubble[];
   currentEpisodeNumber: number | null;
 }) {
-  const [messages, setMessages] = useState<ChatBubble[]>(initialMessages);
+  const [messages, setMessages] = useState<ChatBubble[]>(() =>
+    expandInitialMessages(initialMessages)
+  );
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [typing, setTyping] = useState(false);
@@ -57,6 +92,11 @@ export function ChatScreen({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
+
+  const emptyHint = useMemo(
+    () => `Say hi to ${character.name}. They only know up to what you've watched.`,
+    [character.name]
+  );
 
   const send = async (event?: FormEvent) => {
     event?.preventDefault();
@@ -97,6 +137,7 @@ export function ChatScreen({
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let bubbleCount = 0;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -118,20 +159,27 @@ export function ChatScreen({
 
           if (event === "bubble") {
             const payload = JSON.parse(dataLine) as { index: number; content: string };
-            setTyping(false);
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: `local-char-${Date.now()}-${payload.index}`,
-                role: "character",
-                content: payload.content,
-                createdAt: new Date().toISOString(),
-              },
-            ]);
-            if (payload.index >= 0) {
-              setTyping(true);
-              await new Promise((r) => setTimeout(r, 280));
+            const pieces = normalizeIncomingBubbles(payload.content);
+
+            for (let i = 0; i < pieces.length; i++) {
+              if (bubbleCount > 0 || i > 0) {
+                setTyping(true);
+                await new Promise((r) => setTimeout(r, 420));
+              }
               setTyping(false);
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: `local-char-${Date.now()}-${payload.index}-${i}`,
+                  role: "character",
+                  content: pieces[i],
+                  createdAt: new Date().toISOString(),
+                },
+              ]);
+              bubbleCount += 1;
+              if (i < pieces.length - 1) {
+                setTyping(true);
+              }
             }
           }
 
@@ -156,73 +204,82 @@ export function ChatScreen({
   };
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-black text-white">
-      <header className="sticky top-0 z-20 border-b border-white/[0.08] bg-black/95 pt-[env(safe-area-inset-top)] backdrop-blur-md">
-        <div className="mx-auto flex max-w-lg items-center gap-3 px-3 py-3">
-          <Link
-            href={backHref}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-zinc-400 hover:bg-white/[0.06] hover:text-white"
-            aria-label="Back"
-          >
-            ←
-          </Link>
-          <div className="relative h-10 w-10 shrink-0">
-            <div className="h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-zinc-900">
-              {character.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={character.avatar_url}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center font-display text-obsidian-red">
-                  {character.name.charAt(0)}
-                </div>
-              )}
-            </div>
-            <span
-              className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-black bg-emerald-400"
-              aria-label="Online"
-            />
+    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-black text-white">
+      {/* Soft poster wash behind the whole screen */}
+      {seriesPosterUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={seriesPosterUrl}
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-[0.18] blur-2xl"
+        />
+      )}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/70 via-black/90 to-black" />
+
+      <header className="relative z-20 overflow-hidden border-b border-white/[0.08] pt-[env(safe-area-inset-top)]">
+        {seriesPosterUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={seriesPosterUrl}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover opacity-40 blur-[2px]"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/75 to-black" />
+
+        <div className="relative mx-auto flex max-w-lg flex-col items-center px-3 pb-5 pt-3">
+          <div className="mb-3 flex w-full items-center">
+            <Link
+              href={backHref}
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black/40 text-zinc-200 backdrop-blur-sm transition hover:bg-black/60 hover:text-white"
+              aria-label="Back"
+            >
+              ←
+            </Link>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-display text-sm uppercase tracking-wide">
-              {character.name}
-            </p>
-            <p className="truncate text-[11px] text-zinc-500">
-              {seriesTitle} · online
-            </p>
-          </div>
+
+          <CharacterAvatar
+            name={character.name}
+            avatarUrl={character.avatar_url}
+            sizeClass="h-24 w-24"
+            textClass="text-3xl"
+            online
+          />
+          <p className="mt-3 font-display text-xl uppercase tracking-wide text-white drop-shadow">
+            {character.name}
+          </p>
+          <p className="mt-0.5 text-xs text-amber-100/70">
+            {seriesTitle} · <span className="text-emerald-400">online</span>
+          </p>
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col overflow-y-auto px-3 py-4">
+      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col overflow-y-auto px-3 py-4">
         {messages.length === 0 && (
-          <p className="mb-4 text-center text-sm text-zinc-500">
-            Say hi to {character.name}. They only know up to what you&apos;ve watched.
-          </p>
+          <p className="mb-4 text-center text-sm text-zinc-400">{emptyHint}</p>
         )}
 
-        <ul className="space-y-2">
+        <ul className="space-y-2.5">
           {messages.map((msg) => {
             const mine = msg.role === "user";
             return (
               <li
                 key={msg.id}
-                className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                className={`flex ${mine ? "justify-end" : "justify-start"} animate-[chatBubbleIn_0.28s_ease-out]`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
+                  className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-lg ${
                     mine
-                      ? "rounded-br-md bg-obsidian-red text-white"
-                      : "rounded-bl-md bg-zinc-800 text-zinc-100"
+                      ? "rounded-br-md bg-obsidian-red text-white shadow-obsidian-red/20"
+                      : "rounded-bl-md border border-amber-500/15 bg-gradient-to-br from-zinc-700/90 to-zinc-800/95 text-amber-50/95"
                   }`}
                 >
                   <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                   <div
                     className={`mt-1 flex items-center gap-1 text-[10px] ${
-                      mine ? "justify-end text-white/70" : "text-zinc-500"
+                      mine ? "justify-end text-white/70" : "text-amber-100/40"
                     }`}
                   >
                     <span>{formatTime(msg.createdAt)}</span>
@@ -235,8 +292,8 @@ export function ChatScreen({
         </ul>
 
         {typing && (
-          <div className="mt-2 flex justify-start">
-            <div className="rounded-2xl rounded-bl-md bg-zinc-800 px-3 py-2">
+          <div className="mt-2 flex justify-start animate-[chatBubbleIn_0.2s_ease-out]">
+            <div className="rounded-2xl rounded-bl-md border border-amber-500/15 bg-zinc-800/90 px-3.5 py-2.5">
               <TypingDots />
             </div>
           </div>
@@ -246,17 +303,16 @@ export function ChatScreen({
       </div>
 
       {error && (
-        <p className="mx-auto w-full max-w-lg px-3 pb-2 text-center text-xs text-red-400">
+        <p className="relative z-10 mx-auto w-full max-w-lg px-3 pb-2 text-center text-xs text-red-400">
           {error}
         </p>
       )}
 
       <form
         onSubmit={send}
-        className="border-t border-white/[0.08] bg-black/95 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md"
+        className="relative z-20 border-t border-white/[0.08] bg-black/90 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md"
       >
         <div className="mx-auto flex max-w-lg items-end gap-2 px-3">
-          {/* Phase 2 placeholders — not wired */}
           <button
             type="button"
             disabled
@@ -293,12 +349,12 @@ export function ChatScreen({
             rows={1}
             placeholder={`Message ${character.name}…`}
             disabled={sending}
-            className="max-h-28 min-h-11 flex-1 resize-none rounded-2xl border border-white/[0.12] bg-zinc-900 px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-obsidian-red/60 focus:outline-none"
+            className="max-h-28 min-h-11 flex-1 resize-none rounded-2xl border border-white/[0.12] bg-zinc-900/90 px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-obsidian-red/60 focus:outline-none"
           />
           <button
             type="submit"
             disabled={sending || !draft.trim()}
-            className="mb-1 inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-obsidian-red px-3 text-sm font-semibold text-white transition hover:bg-obsidian-red-hover disabled:opacity-40"
+            className="mb-1 inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-obsidian-red px-3 text-sm font-semibold text-white shadow-lg shadow-obsidian-red/30 transition hover:bg-obsidian-red-hover disabled:opacity-40"
           >
             Send
           </button>

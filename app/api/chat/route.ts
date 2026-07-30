@@ -240,11 +240,19 @@ export async function POST(request: Request) {
       .update(nextScores)
       .eq("conversation_id", conversation.id);
 
-    const bubbles = parseBubbles(textParts.join("\n"));
+    const bubbles = parseBubbles(textParts.join("\n")).flatMap((piece) => {
+      // Extra guard: never persist a raw JSON array string as one bubble
+      if (piece.trim().startsWith("[")) {
+        return parseBubbles(piece);
+      }
+      return [piece];
+    });
+
+    const finalBubbles = bubbles.length > 0 ? bubbles.slice(0, 4) : ["…"];
 
     // Persist character bubbles
     await supabase.from("chat_messages").insert(
-      bubbles.map((content, index) => ({
+      finalBubbles.map((content, index) => ({
         conversation_id: conversation.id,
         role: "character" as const,
         content,
@@ -266,18 +274,18 @@ export async function POST(request: Request) {
           )
         );
 
-        for (let i = 0; i < bubbles.length; i++) {
+        for (let i = 0; i < finalBubbles.length; i++) {
           controller.enqueue(
             encoder.encode(
               sseEncode("bubble", {
                 index: i,
-                content: bubbles[i],
+                content: finalBubbles[i],
               })
             )
           );
-          // Small pause between bubbles so the client typing indicator can show
-          if (i < bubbles.length - 1) {
-            await new Promise((r) => setTimeout(r, 350));
+          // Pause between bubbles so the client typing indicator can show
+          if (i < finalBubbles.length - 1) {
+            await new Promise((r) => setTimeout(r, 400));
           }
         }
 

@@ -44,7 +44,7 @@ async function getWatchData(
   const { data: series } = await supabase
     .from("series")
     .select(
-      "id, title, slug, description, genre, view_count, free_episode_count, status, poster_url, orientation"
+      "id, title, slug, description, genre, view_count, free_episode_count, status, poster_url, banner_url, orientation"
     )
     .eq("id", episode.series_id)
     .maybeSingle();
@@ -190,6 +190,8 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
     <MeetTheCharacters
       characters={characters}
       seriesSlug={series.slug}
+      seriesPosterUrl={series.poster_url ?? series.banner_url ?? null}
+      seriesTitle={series.title}
       episodeNumber={episode.episode_number}
       isAuthenticated={isAuthenticated}
     />

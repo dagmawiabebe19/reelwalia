@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CharacterAvatar } from "@/components/chat/CharacterAvatar";
 
 export type CharacterCardData = {
   id: string;
@@ -13,11 +14,15 @@ export type CharacterCardData = {
 export function MeetTheCharacters({
   characters,
   seriesSlug,
+  seriesPosterUrl,
+  seriesTitle,
   episodeNumber,
   isAuthenticated,
 }: {
   characters: CharacterCardData[];
   seriesSlug: string;
+  seriesPosterUrl: string | null;
+  seriesTitle?: string;
   episodeNumber: number;
   isAuthenticated: boolean;
 }) {
@@ -41,45 +46,56 @@ export function MeetTheCharacters({
               )}`;
 
           return (
-            <li
-              key={character.id}
-              className="flex gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3"
-            >
-              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full border border-white/10 bg-zinc-900">
-                {character.avatar_url ? (
+            <li key={character.id}>
+              <Link
+                href={chatHref}
+                className="group relative flex gap-4 overflow-hidden rounded-2xl border border-obsidian-red/20 bg-zinc-950/80 p-4 shadow-[0_8px_30px_rgba(0,0,0,0.35)] transition duration-200 hover:-translate-y-0.5 hover:border-obsidian-red/45 hover:shadow-[0_12px_36px_rgba(224,60,47,0.18)] active:scale-[0.99]"
+              >
+                {seriesPosterUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={character.avatar_url}
-                    alt={character.name}
-                    className="h-full w-full object-cover"
+                    src={seriesPosterUrl}
+                    alt=""
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-[0.22] transition duration-300 group-hover:opacity-[0.32] group-hover:scale-105"
                   />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center font-display text-lg text-obsidian-red">
-                    {character.name.charAt(0).toUpperCase()}
-                  </div>
                 )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-display text-sm uppercase tracking-wide text-white">
-                  {character.name}
-                </p>
-                {character.short_bio && (
-                  <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-zinc-400">
-                    {character.short_bio}
+                <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/70 to-black/50" />
+
+                <div className="relative shrink-0">
+                  <CharacterAvatar
+                    name={character.name}
+                    avatarUrl={character.avatar_url}
+                    sizeClass="h-20 w-20"
+                    textClass="text-2xl"
+                    online
+                  />
+                </div>
+
+                <div className="relative min-w-0 flex-1">
+                  {seriesTitle && (
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-obsidian-red/90">
+                      {seriesTitle}
+                    </p>
+                  )}
+                  <p className="mt-0.5 font-display text-base uppercase tracking-wide text-white">
+                    {character.name}
                   </p>
-                )}
-                {character.personality_summary && (
-                  <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-zinc-500">
-                    {character.personality_summary}
-                  </p>
-                )}
-                <Link
-                  href={chatHref}
-                  className="rw-btn-primary mt-3 inline-flex min-h-10 px-4 text-xs"
-                >
-                  Chat
-                </Link>
-              </div>
+                  {character.short_bio && (
+                    <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-zinc-300">
+                      {character.short_bio}
+                    </p>
+                  )}
+                  {character.personality_summary && (
+                    <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-zinc-500">
+                      {character.personality_summary}
+                    </p>
+                  )}
+                  <span className="rw-btn-primary mt-3 inline-flex min-h-10 px-5 text-xs shadow-obsidian-red/25 transition group-hover:brightness-110">
+                    Chat with {character.name}
+                  </span>
+                </div>
+              </Link>
             </li>
           );
         })}
