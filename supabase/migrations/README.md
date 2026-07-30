@@ -3,8 +3,14 @@
 ## Platform vs Studio
 
 Migrations in this folder target the **Platform** Supabase project
-(`joqibhmmegycfadipnki` — reelwalia.com). Do **not** run them against the Studio
-project (`dxtieidijudvekuwljrs`).
+(`joqibhmmegycfadipnki` — reelwalia.com / github.com/dagmawiabebe19/reelwalia).
+Do **not** run them against the Studio project (`dxtieidijudvekuwljrs` / reelwaliastudio).
+
+Manual-apply migrations to eyeball carefully:
+- `023_ai_character_chat.sql` — AI character chat tables + RLS (Phase 1)
+- `022_featured_order_backfill.sql` — featured_order backfill
+- `021_episode_captions.sql` — captions
+- `020_series_unlock_and_paywall.sql` — series unlock (if/when used)
 
 ## Production workflow (required)
 

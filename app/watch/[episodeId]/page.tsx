@@ -8,7 +8,9 @@ import { WatchPostCheckout } from "@/components/watch/WatchPostCheckout";
 import { WatchSeriesInfo } from "@/components/watch/WatchSeriesInfo";
 import { PaywallOpenProvider } from "@/components/watch/PaywallOpenContext";
 import { SubscribeBanner } from "@/components/watch/SubscribeBanner";
+import { MeetTheCharacters } from "@/components/chat/MeetTheCharacters";
 import { canWatchEpisode, hasActiveSubscription, isEpisodeFree, resolveFreeEpisodeCount } from "@/lib/access";
+import { listActiveCharactersForSeries } from "@/lib/chat/server";
 import { getSignedCaptionTracksForEpisode } from "@/lib/captions/server";
 import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
 import { getNextEpisode } from "@/lib/episodes";
@@ -133,6 +135,8 @@ async function getWatchData(
   const captionTracks =
     unlocked ? await getSignedCaptionTracksForEpisode(episodeId) : [];
 
+  const characters = await listActiveCharactersForSeries(supabase, series.id);
+
   return {
     episode,
     series,
@@ -149,6 +153,7 @@ async function getWatchData(
     otherSeries: otherSeries ?? [],
     initialProgress,
     captionTracks,
+    characters,
   };
 }
 
@@ -174,11 +179,21 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
     otherSeries,
     initialProgress,
     captionTracks,
+    characters,
   } = data;
 
   const seriesOrientation = normalizeSeriesOrientation(series.orientation);
   const isLandscapeStandaloneFilm =
     seriesOrientation === "landscape" && pickerEpisodes.length === 1;
+
+  const meetSection = (
+    <MeetTheCharacters
+      characters={characters}
+      seriesSlug={series.slug}
+      episodeNumber={episode.episode_number}
+      isAuthenticated={isAuthenticated}
+    />
+  );
 
   if (seriesOrientation === "landscape") {
     return (
@@ -281,6 +296,8 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
                   isAuthenticated={isAuthenticated}
                 />
               )}
+
+              <div className="mt-2 w-full">{meetSection}</div>
             </div>
 
             {!isLandscapeStandaloneFilm && (
@@ -372,6 +389,10 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
             {episode.description && (
               <p className="rw-body mt-4">{episode.description}</p>
             )}
+          </div>
+
+          <div className="order-5 w-full max-w-md lg:order-none lg:max-w-none">
+            {meetSection}
           </div>
         </div>
 

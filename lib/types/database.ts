@@ -138,6 +138,73 @@ export interface SeriesPurchase {
   created_at: string;
 }
 
+export interface Character {
+  id: string;
+  series_id: string;
+  name: string;
+  age: number | null;
+  role: string | null;
+  short_bio: string | null;
+  personality_summary: string | null;
+  avatar_url: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface CharacterBible {
+  character_id: string;
+  biography: unknown;
+  timeline: unknown;
+  family: unknown;
+  enemies: unknown;
+  allies: unknown;
+  past_events: unknown;
+  current_motivations: unknown;
+  speech_examples: unknown;
+  catchphrases: unknown;
+  goals: unknown;
+  fears: unknown;
+  secrets: unknown;
+  emotional_tendencies: unknown;
+  episode_knowledge: Record<string, unknown>;
+}
+
+export interface WorldBible {
+  series_id: string;
+  world_rules: unknown;
+  locations: unknown;
+  important_objects: unknown;
+}
+
+export interface ChatConversation {
+  id: string;
+  user_id: string;
+  character_id: string;
+  unlocked_through_episode: number;
+  memory_summary: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversation_id: string;
+  role: "user" | "character";
+  content: string;
+  bubble_index: number;
+  created_at: string;
+}
+
+export interface RelationshipScore {
+  conversation_id: string;
+  trust: number;
+  friendship: number;
+  romance: number;
+  suspicion: number;
+  respect: number;
+  updated_at: string;
+}
+
 export type SeriesCard = Pick<
   Series,
   "id" | "title" | "slug" | "tagline" | "poster_url" | "banner_url" | "genre"
