@@ -27,7 +27,7 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
 
   const { data: character } = await supabase
     .from("characters")
-    .select("id, series_id, name, avatar_url, is_active")
+    .select("id, series_id, name, avatar_url, short_bio, is_active")
     .eq("id", params.characterId)
     .eq("is_active", true)
     .maybeSingle();
@@ -78,6 +78,7 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
         id: character.id,
         name: character.name,
         avatar_url: character.avatar_url,
+        short_bio: character.short_bio,
       }}
       seriesTitle={seriesTitle}
       seriesPosterUrl={seriesPosterUrl}

@@ -34,7 +34,6 @@ function TypingDots() {
 function normalizeIncomingBubbles(content: string): string[] {
   const expanded = expandStoredBubbleContent(content);
   if (expanded.length > 1) return expanded;
-  // Still looks like a dumped array? force parseBubbles
   if (content.trim().startsWith("[")) {
     return parseBubbles(content);
   }
@@ -72,6 +71,7 @@ export function ChatScreen({
     id: string;
     name: string;
     avatar_url: string | null;
+    short_bio?: string | null;
   };
   seriesTitle: string;
   seriesPosterUrl: string | null;
@@ -203,163 +203,245 @@ export function ChatScreen({
     }
   };
 
-  return (
-    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-black text-white">
-      {/* Soft poster wash behind the whole screen */}
-      {seriesPosterUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={seriesPosterUrl}
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-[0.18] blur-2xl"
-        />
+  const messageList = (
+    <>
+      {messages.length === 0 && (
+        <p className="mb-4 text-center text-sm text-zinc-400">{emptyHint}</p>
       )}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/70 via-black/90 to-black" />
 
-      <header className="relative z-20 overflow-hidden border-b border-white/[0.08] pt-[env(safe-area-inset-top)]">
+      <ul className="space-y-2.5">
+        {messages.map((msg) => {
+          const mine = msg.role === "user";
+          return (
+            <li
+              key={msg.id}
+              className={`flex ${mine ? "justify-end" : "justify-start"} animate-[chatBubbleIn_0.28s_ease-out]`}
+            >
+              <div
+                className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-lg ${
+                  mine
+                    ? "rounded-br-md bg-obsidian-red text-white shadow-obsidian-red/20"
+                    : "rounded-bl-md border border-amber-500/15 bg-gradient-to-br from-zinc-700/90 to-zinc-800/95 text-amber-50/95"
+                }`}
+              >
+                <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                <div
+                  className={`mt-1 flex items-center gap-1 text-[10px] ${
+                    mine ? "justify-end text-white/70" : "text-amber-100/40"
+                  }`}
+                >
+                  <span>{formatTime(msg.createdAt)}</span>
+                  {mine && <span aria-hidden="true">✓✓</span>}
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {typing && (
+        <div className="mt-2 flex justify-start animate-[chatBubbleIn_0.2s_ease-out]">
+          <div className="rounded-2xl rounded-bl-md border border-amber-500/15 bg-zinc-800/90 px-3.5 py-2.5">
+            <TypingDots />
+          </div>
+        </div>
+      )}
+
+      <div ref={bottomRef} />
+    </>
+  );
+
+  const composer = (
+    <form
+      onSubmit={send}
+      className="relative z-20 border-t border-white/[0.08] bg-black/90 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md lg:pb-3"
+    >
+      <div className="mx-auto flex w-full max-w-lg items-end gap-2 px-3 lg:max-w-2xl lg:px-5">
+        <button
+          type="button"
+          disabled
+          title="Coming soon"
+          aria-label="Voice message (coming soon)"
+          className="mb-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 text-zinc-600 opacity-50"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
+            <path d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v5a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-5 9a1 1 0 01-1-1v-2h2v2a1 1 0 01-1 1z" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          disabled
+          title="Coming soon"
+          aria-label="Photo (coming soon)"
+          className="mb-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 text-zinc-600 opacity-50"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
+            <path d="M4 5a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2H4zm3 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm-1 9l3.5-4.5 2.5 3 3.5-4.5L19 17H6z" />
+          </svg>
+        </button>
+
+        <textarea
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void send();
+            }
+          }}
+          rows={1}
+          placeholder={`Message ${character.name}…`}
+          disabled={sending}
+          className="max-h-28 min-h-11 flex-1 resize-none rounded-2xl border border-white/[0.12] bg-zinc-900/90 px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-obsidian-red/60 focus:outline-none"
+        />
+        <button
+          type="submit"
+          disabled={sending || !draft.trim()}
+          className="mb-1 inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-obsidian-red px-3 text-sm font-semibold text-white shadow-lg shadow-obsidian-red/30 transition hover:bg-obsidian-red-hover disabled:opacity-40"
+        >
+          Send
+        </button>
+      </div>
+    </form>
+  );
+
+  return (
+    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-black text-white lg:flex-row">
+      {/* Desktop poster hero — sticky, full-height, ~40% */}
+      <aside className="relative hidden h-full w-[40%] min-w-[320px] max-w-[520px] shrink-0 overflow-hidden lg:flex lg:flex-col">
+        {seriesPosterUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={seriesPosterUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 via-black to-obsidian-red/40" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/25" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/30" />
+
+        <div className="relative z-10 flex h-full flex-col justify-between p-8 xl:p-10">
+          <Link
+            href={backHref}
+            className="inline-flex w-fit min-h-11 items-center gap-2 rounded-full bg-black/45 px-4 text-sm text-zinc-200 backdrop-blur-sm transition hover:bg-black/65 hover:text-white"
+          >
+            ← Back
+          </Link>
+
+          <div className="max-w-md space-y-4 pb-4">
+            <CharacterAvatar
+              name={character.name}
+              avatarUrl={character.avatar_url}
+              sizeClass="h-24 w-24"
+              textClass="text-3xl"
+              online
+            />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-obsidian-red">
+                {seriesTitle}
+              </p>
+              <h1 className="mt-2 font-display text-4xl uppercase leading-none tracking-wide text-white drop-shadow-lg xl:text-5xl">
+                {character.name}
+              </h1>
+              <p className="mt-2 text-sm text-emerald-400">Online now</p>
+            </div>
+            {character.short_bio && (
+              <p className="text-sm leading-relaxed text-zinc-200/90 drop-shadow">
+                {character.short_bio}
+              </p>
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* Chat column — full width on mobile; ~60% on desktop */}
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+        {/* Mobile-only soft wash + cinematic header (unchanged behavior) */}
         {seriesPosterUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={seriesPosterUrl}
             alt=""
             aria-hidden
-            className="absolute inset-0 h-full w-full object-cover opacity-40 blur-[2px]"
+            className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-[0.18] blur-2xl lg:hidden"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/75 to-black" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/70 via-black/90 to-black lg:hidden" />
+        <div className="pointer-events-none absolute inset-0 hidden bg-zinc-950 lg:block" />
 
-        <div className="relative mx-auto flex max-w-lg flex-col items-center px-3 pb-5 pt-3">
-          <div className="mb-3 flex w-full items-center">
-            <Link
-              href={backHref}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black/40 text-zinc-200 backdrop-blur-sm transition hover:bg-black/60 hover:text-white"
-              aria-label="Back"
-            >
-              ←
-            </Link>
+        <header className="relative z-20 overflow-hidden border-b border-white/[0.08] pt-[env(safe-area-inset-top)] lg:hidden">
+          {seriesPosterUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={seriesPosterUrl}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full object-cover opacity-40 blur-[2px]"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/75 to-black" />
+
+          <div className="relative mx-auto flex max-w-lg flex-col items-center px-3 pb-5 pt-3">
+            <div className="mb-3 flex w-full items-center">
+              <Link
+                href={backHref}
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black/40 text-zinc-200 backdrop-blur-sm transition hover:bg-black/60 hover:text-white"
+                aria-label="Back"
+              >
+                ←
+              </Link>
+            </div>
+
+            <CharacterAvatar
+              name={character.name}
+              avatarUrl={character.avatar_url}
+              sizeClass="h-24 w-24"
+              textClass="text-3xl"
+              online
+            />
+            <p className="mt-3 font-display text-xl uppercase tracking-wide text-white drop-shadow">
+              {character.name}
+            </p>
+            <p className="mt-0.5 text-xs text-amber-100/70">
+              {seriesTitle} · <span className="text-emerald-400">online</span>
+            </p>
           </div>
+        </header>
 
+        {/* Desktop chat top bar */}
+        <div className="relative z-20 hidden items-center gap-3 border-b border-white/[0.08] bg-black/80 px-5 py-3 backdrop-blur-md lg:flex">
           <CharacterAvatar
             name={character.name}
             avatarUrl={character.avatar_url}
-            sizeClass="h-24 w-24"
-            textClass="text-3xl"
+            sizeClass="h-11 w-11"
+            textClass="text-base"
             online
           />
-          <p className="mt-3 font-display text-xl uppercase tracking-wide text-white drop-shadow">
-            {character.name}
-          </p>
-          <p className="mt-0.5 text-xs text-amber-100/70">
-            {seriesTitle} · <span className="text-emerald-400">online</span>
-          </p>
-        </div>
-      </header>
-
-      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col overflow-y-auto px-3 py-4">
-        {messages.length === 0 && (
-          <p className="mb-4 text-center text-sm text-zinc-400">{emptyHint}</p>
-        )}
-
-        <ul className="space-y-2.5">
-          {messages.map((msg) => {
-            const mine = msg.role === "user";
-            return (
-              <li
-                key={msg.id}
-                className={`flex ${mine ? "justify-end" : "justify-start"} animate-[chatBubbleIn_0.28s_ease-out]`}
-              >
-                <div
-                  className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-lg ${
-                    mine
-                      ? "rounded-br-md bg-obsidian-red text-white shadow-obsidian-red/20"
-                      : "rounded-bl-md border border-amber-500/15 bg-gradient-to-br from-zinc-700/90 to-zinc-800/95 text-amber-50/95"
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                  <div
-                    className={`mt-1 flex items-center gap-1 text-[10px] ${
-                      mine ? "justify-end text-white/70" : "text-amber-100/40"
-                    }`}
-                  >
-                    <span>{formatTime(msg.createdAt)}</span>
-                    {mine && <span aria-hidden="true">✓✓</span>}
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-
-        {typing && (
-          <div className="mt-2 flex justify-start animate-[chatBubbleIn_0.2s_ease-out]">
-            <div className="rounded-2xl rounded-bl-md border border-amber-500/15 bg-zinc-800/90 px-3.5 py-2.5">
-              <TypingDots />
-            </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-display text-sm uppercase tracking-wide text-white">
+              {character.name}
+            </p>
+            <p className="truncate text-[11px] text-zinc-500">
+              {seriesTitle} · <span className="text-emerald-400">online</span>
+            </p>
           </div>
+        </div>
+
+        <div className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col overflow-y-auto px-3 py-4 lg:max-w-2xl lg:px-5">
+          {messageList}
+        </div>
+
+        {error && (
+          <p className="relative z-10 mx-auto w-full max-w-lg px-3 pb-2 text-center text-xs text-red-400 lg:max-w-2xl">
+            {error}
+          </p>
         )}
 
-        <div ref={bottomRef} />
+        {composer}
       </div>
-
-      {error && (
-        <p className="relative z-10 mx-auto w-full max-w-lg px-3 pb-2 text-center text-xs text-red-400">
-          {error}
-        </p>
-      )}
-
-      <form
-        onSubmit={send}
-        className="relative z-20 border-t border-white/[0.08] bg-black/90 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md"
-      >
-        <div className="mx-auto flex max-w-lg items-end gap-2 px-3">
-          <button
-            type="button"
-            disabled
-            title="Coming soon"
-            aria-label="Voice message (coming soon)"
-            className="mb-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 text-zinc-600 opacity-50"
-          >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
-              <path d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v5a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-5 9a1 1 0 01-1-1v-2h2v2a1 1 0 01-1 1z" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            disabled
-            title="Coming soon"
-            aria-label="Photo (coming soon)"
-            className="mb-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 text-zinc-600 opacity-50"
-          >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
-              <path d="M4 5a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2H4zm3 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm-1 9l3.5-4.5 2.5 3 3.5-4.5L19 17H6z" />
-            </svg>
-          </button>
-
-          <textarea
-            ref={inputRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void send();
-              }
-            }}
-            rows={1}
-            placeholder={`Message ${character.name}…`}
-            disabled={sending}
-            className="max-h-28 min-h-11 flex-1 resize-none rounded-2xl border border-white/[0.12] bg-zinc-900/90 px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-obsidian-red/60 focus:outline-none"
-          />
-          <button
-            type="submit"
-            disabled={sending || !draft.trim()}
-            className="mb-1 inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-obsidian-red px-3 text-sm font-semibold text-white shadow-lg shadow-obsidian-red/30 transition hover:bg-obsidian-red-hover disabled:opacity-40"
-          >
-            Send
-          </button>
-        </div>
-      </form>
     </div>
   );
 }
