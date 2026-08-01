@@ -41,6 +41,7 @@ import {
   enterPlayerFullscreen,
   exitLandscapeRotateFullscreen,
   exitPlayerFullscreen,
+  fsLog,
   isDeviceLandscape,
   isLandscapeRotateFullscreenActive,
   isMobileViewport,
@@ -107,6 +108,12 @@ interface VideoPlayerProps {
   onFeedAdvance?: () => void;
   /** Called when the episode ends on a locked next episode (feed mode). */
   onFeedLockedNext?: () => void;
+  /**
+   * Feed swipe / step: +1 next, -1 previous.
+   * Parent swaps episode props on the same player (no remount).
+   * Returns "paywall" when the step hit a locked episode.
+   */
+  onFeedStep?: (delta: number) => "ok" | "paywall" | "noop";
   /** Fill the parent slide (100% height) instead of aspect-ratio box. */
   fillContainer?: boolean;
 }
@@ -269,6 +276,7 @@ export function VideoPlayer({
   feedMode = false,
   onFeedAdvance,
   onFeedLockedNext,
+  onFeedStep,
   fillContainer = false,
 }: VideoPlayerProps) {
   const isLandscapeSeries = seriesOrientation === "landscape";
@@ -291,6 +299,10 @@ export function VideoPlayer({
   const episodeStartedTrackedRef = useRef(false);
   const episodeCompletedTrackedRef = useRef(false);
   const fsConfirmCancelRef = useRef<(() => void) | null>(null);
+  /** Keep / restore CSS fullscreen across in-place episode src swaps. */
+  const maintainFsAcrossEpisodeRef = useRef(false);
+  const fsSessionRef = useRef(false);
+  const swipeStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -318,6 +330,13 @@ export function VideoPlayer({
   const [mobileCaptionMode, setMobileCaptionMode] = useState(false);
   const [mobileCaptionText, setMobileCaptionText] = useState("");
   const [mobileCaptionTopPx, setMobileCaptionTopPx] = useState<number | null>(null);
+
+  useEffect(() => {
+    fsSessionRef.current =
+      isFullscreen ||
+      cssFullscreen ||
+      (videoRef.current ? isNativeVideoFullscreen(videoRef.current) : false);
+  }, [isFullscreen, cssFullscreen]);
 
   const attemptAutoPlay = useCallback(async () => {
     const video = videoRef.current;
@@ -549,32 +568,47 @@ export function VideoPlayer({
       video.canPlayType("application/vnd.apple.mpegurl") !== "";
 
     const onVideoError = () => setLoadError(true);
+    video.addEventListener("error", onVideoError);
 
     if (canNativeHls) {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
       video.src = src;
+      video.load();
     } else if (Hls.isSupported()) {
-      const hls = new Hls({ enableWorker: true });
-      hlsRef.current = hls;
-      hls.loadSource(src);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal) {
-          console.error("HLS fatal error:", data);
-          setLoadError(true);
-        }
-      });
+      if (hlsRef.current) {
+        hlsRef.current.loadSource(src);
+      } else {
+        const hls = new Hls({ enableWorker: true });
+        hlsRef.current = hls;
+        hls.loadSource(src);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          if (data.fatal) {
+            console.error("HLS fatal error:", data);
+            setLoadError(true);
+          }
+        });
+      }
     } else {
       video.src = src;
+      video.load();
     }
-
-    video.addEventListener("error", onVideoError);
 
     return () => {
       video.removeEventListener("error", onVideoError);
+    };
+  }, [src]);
+
+  // Destroy HLS only on unmount (src swaps reuse the instance)
+  useEffect(() => {
+    return () => {
       hlsRef.current?.destroy();
       hlsRef.current = null;
     };
-  }, [src]);
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -604,14 +638,11 @@ export function VideoPlayer({
         void saveProgress(video.duration || video.currentTime, true);
       }
 
-      const maintainFs =
+      const inFs =
         (screenfull.isEnabled && screenfull.isFullscreen) ||
         isFullscreen ||
         cssFullscreen ||
         (video ? isNativeVideoFullscreen(video) : false);
-      if (maintainFs) {
-        sessionStorage.setItem(FULLSCREEN_STORAGE_KEY, "1");
-      }
 
       markBingeContinuation();
       trackEpisodeAdvanced({
@@ -622,6 +653,17 @@ export function VideoPlayer({
       });
 
       if (feedMode) {
+        // Same <video> element — keep FS via CSS handoff if iOS native drops
+        if (inFs) {
+          maintainFsAcrossEpisodeRef.current = true;
+          fsLog("binge-advance", {
+            reason: "ended-keep-fs",
+            fromEpisode: episodeId,
+            toEpisode: nextEpisode.id,
+            wasNative: video ? isNativeVideoFullscreen(video) : false,
+            cssFullscreen,
+          });
+        }
         autoplayLog("[autoplay] feed_advanced", {
           fromEpisode: episodeId,
           toEpisode: nextEpisode.id,
@@ -629,6 +671,10 @@ export function VideoPlayer({
         });
         onFeedAdvance?.();
         return;
+      }
+
+      if (inFs) {
+        sessionStorage.setItem(FULLSCREEN_STORAGE_KEY, "1");
       }
 
       autoplayLog("[autoplay] auto_navigated", {
@@ -651,6 +697,17 @@ export function VideoPlayer({
       seriesSlug,
     ]
   );
+
+  const exitFullscreenForPaywall = useCallback(async () => {
+    const container = containerRef.current;
+    const video = videoRef.current;
+    if (!container || !video) return;
+    maintainFsAcrossEpisodeRef.current = false;
+    fsLog("exit", { reason: "paywall-hard-stop", episodeId });
+    await exitPlayerFullscreen(video, container);
+    setIsFullscreen(false);
+    setCssFullscreen(false);
+  }, [episodeId]);
 
   const handleCancelAutoplay = useCallback(() => {
     setAutoplayCanceled(true);
@@ -707,6 +764,47 @@ export function VideoPlayer({
     const container = containerRef.current;
     const video = videoRef.current;
     if (!container || !video) return;
+
+    // In-place feed binge: stay/restore CSS fullscreen after src swap
+    if (feedMode && (maintainFsAcrossEpisodeRef.current || fsSessionRef.current)) {
+      const handoff = () => {
+        if (isNativeVideoFullscreen(video)) {
+          fsLog("native-ios", {
+            reason: "binge-still-native-after-src",
+            episodeId,
+          });
+          setIsFullscreen(true);
+          setCssFullscreen(false);
+          applyNativeFullscreenClass();
+          maintainFsAcrossEpisodeRef.current = false;
+          return;
+        }
+        if (screenfull.isEnabled && screenfull.isFullscreen) {
+          fsLog("native-requestFullscreen", {
+            reason: "binge-still-screenfull-after-src",
+            episodeId,
+          });
+          setIsFullscreen(true);
+          setCssFullscreen(false);
+          applyNativeFullscreenClass();
+          maintainFsAcrossEpisodeRef.current = false;
+          return;
+        }
+        enterCssFullscreenPortal(container, "binge-continuous");
+        setIsFullscreen(true);
+        setCssFullscreen(true);
+        maintainFsAcrossEpisodeRef.current = false;
+        fsLog("css-fallback", {
+          reason: "binge-continuous",
+          episodeId,
+        });
+      };
+
+      const t = window.setTimeout(handoff, 80);
+      return () => window.clearTimeout(t);
+    }
+
+    // Classic remount binge restore (router.push)
     if (sessionStorage.getItem(FULLSCREEN_STORAGE_KEY) !== "1") return;
     sessionStorage.removeItem(FULLSCREEN_STORAGE_KEY);
 
@@ -717,7 +815,6 @@ export function VideoPlayer({
         setCssFullscreen(false);
         applyNativeFullscreenClass();
       } else {
-        // No user gesture for webkit after navigation — portal CSS FS
         enterCssFullscreenPortal(container, "binge-restore");
         setIsFullscreen(true);
         setCssFullscreen(true);
@@ -728,7 +825,7 @@ export function VideoPlayer({
       void restore();
     }, 120);
     return () => window.clearTimeout(t);
-  }, [src]);
+  }, [src, feedMode, episodeId]);
 
   // Sync isFullscreen with native WebKit video fullscreen (iOS)
   useEffect(() => {
@@ -742,14 +839,32 @@ export function VideoPlayer({
       setIsFullscreen(true);
       setCssFullscreen(false);
       applyNativeFullscreenClass();
+      fsSessionRef.current = true;
     };
     const onEnd = () => {
       fsConfirmCancelRef.current?.();
       fsConfirmCancelRef.current = null;
+
+      // iOS often exits native FS on src change / ended — keep seamless binge in CSS FS
+      if (maintainFsAcrossEpisodeRef.current || (feedMode && fsSessionRef.current && navigatedRef.current)) {
+        if (container) {
+          enterCssFullscreenPortal(container, "ios-native-exit-binge-handoff");
+        }
+        setIsFullscreen(true);
+        setCssFullscreen(true);
+        maintainFsAcrossEpisodeRef.current = false;
+        fsLog("css-fallback", {
+          reason: "ios-native-exit-binge-handoff",
+          episodeId,
+        });
+        return;
+      }
+
       if (container) restorePlayerFromBody(container);
       clearFullscreenClasses();
       setIsFullscreen(false);
       setCssFullscreen(false);
+      fsSessionRef.current = false;
     };
 
     video.addEventListener("webkitbeginfullscreen", onBegin);
@@ -758,7 +873,7 @@ export function VideoPlayer({
       video.removeEventListener("webkitbeginfullscreen", onBegin);
       video.removeEventListener("webkitendfullscreen", onEnd);
     };
-  }, [src]);
+  }, [src, feedMode, episodeId]);
 
   useEffect(() => {
     return () => {
@@ -1027,6 +1142,8 @@ export function VideoPlayer({
       isNativeVideoFullscreen(video) ||
       (screenfull.isEnabled && screenfull.isFullscreen)
     ) {
+      maintainFsAcrossEpisodeRef.current = false;
+      fsSessionRef.current = false;
       void (async () => {
         await exitPlayerFullscreen(video, container);
         setIsFullscreen(false);
@@ -1037,17 +1154,20 @@ export function VideoPlayer({
 
     // ENTER — WebKit fullscreen MUST stay synchronous with the tap (user gesture)
     if (tryEnterNativeVideoFullscreen(video)) {
+      fsSessionRef.current = true;
       fsConfirmCancelRef.current = confirmNativeOrCssFallback(
         video,
         container,
         () => {
           setIsFullscreen(true);
           setCssFullscreen(false);
+          fsSessionRef.current = true;
           fsConfirmCancelRef.current = null;
         },
         () => {
           setIsFullscreen(true);
           setCssFullscreen(true);
+          fsSessionRef.current = true;
           fsConfirmCancelRef.current = null;
         }
       );
@@ -1060,10 +1180,12 @@ export function VideoPlayer({
       if (result.mode === "exit") {
         setIsFullscreen(false);
         setCssFullscreen(false);
+        fsSessionRef.current = false;
         return;
       }
       setIsFullscreen(true);
       setCssFullscreen(result.custom);
+      fsSessionRef.current = true;
     })();
   }, [cssFullscreen]);
   useEffect(() => {
@@ -1250,7 +1372,11 @@ export function VideoPlayer({
         setCountdownVisible(false);
         if (feedMode) {
           navigatedRef.current = true;
-          onFeedLockedNext?.();
+          maintainFsAcrossEpisodeRef.current = false;
+          void (async () => {
+            await exitFullscreenForPaywall();
+            onFeedLockedNext?.();
+          })();
         } else {
           setShowEndPaywall(true);
         }
@@ -1299,14 +1425,85 @@ export function VideoPlayer({
     }, 280);
   };
 
+  const handleFeedSwipe = useCallback(
+    async (deltaY: number) => {
+      if (!feedMode || !onFeedStep) return;
+      // Swipe up (negative deltaY) → next; swipe down → previous
+      if (Math.abs(deltaY) < 56) return;
+      const delta = deltaY < 0 ? 1 : -1;
+
+      const video = videoRef.current;
+      if (video && !video.muted) persistAudioPreference(true);
+      if (video) void saveProgress(video.currentTime, false);
+
+      const inFs =
+        isFullscreen ||
+        cssFullscreen ||
+        (video ? isNativeVideoFullscreen(video) : false);
+
+      if (delta > 0 && nextEpisode?.locked) {
+        maintainFsAcrossEpisodeRef.current = false;
+        await exitFullscreenForPaywall();
+        onFeedStep(1);
+        return;
+      }
+
+      if (inFs) {
+        maintainFsAcrossEpisodeRef.current = true;
+        fsLog("binge-advance", {
+          reason: delta > 0 ? "swipe-up-keep-fs" : "swipe-down-keep-fs",
+          episodeId,
+          delta,
+        });
+      }
+
+      const result = onFeedStep(delta);
+      if (result === "paywall") {
+        maintainFsAcrossEpisodeRef.current = false;
+        await exitFullscreenForPaywall();
+      }
+    },
+    [
+      cssFullscreen,
+      episodeId,
+      exitFullscreenForPaywall,
+      feedMode,
+      isFullscreen,
+      nextEpisode?.locked,
+      onFeedStep,
+      saveProgress,
+    ]
+  );
+
   const onSurfaceClick = (event: MouseEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     handleSurfaceTap(event.clientX, rect.width, rect.left);
   };
 
+  const onSurfaceTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    if (!feedMode) return;
+    const touch = event.changedTouches[0] ?? event.touches[0];
+    if (!touch) return;
+    swipeStartRef.current = { x: touch.clientX, y: touch.clientY, t: Date.now() };
+  };
+
   const onSurfaceTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
     const touch = event.changedTouches[0];
     if (!touch) return;
+
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+
+    if (feedMode && start) {
+      const dx = touch.clientX - start.x;
+      const dy = touch.clientY - start.y;
+      if (Math.abs(dy) > 56 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+        if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+        void handleFeedSwipe(dy);
+        return;
+      }
+    }
+
     const rect = event.currentTarget.getBoundingClientRect();
     handleSurfaceTap(touch.clientX, rect.width, rect.left);
   };
@@ -1360,6 +1557,7 @@ export function VideoPlayer({
           <div
             className="absolute inset-0 z-10"
             onClick={onSurfaceClick}
+            onTouchStart={onSurfaceTouchStart}
             onTouchEnd={onSurfaceTouchEnd}
             aria-hidden
           />

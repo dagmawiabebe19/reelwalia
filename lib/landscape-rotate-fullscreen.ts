@@ -16,7 +16,8 @@ export type FullscreenPath =
   | "native-requestFullscreen"
   | "css-fallback"
   | "exit"
-  | "attempt-native-ios";
+  | "attempt-native-ios"
+  | "binge-advance";
 
 type FsReturnSlot = {
   parent: Node;

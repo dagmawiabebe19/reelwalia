@@ -10,7 +10,7 @@ import {
 } from "react";
 import { VideoPlayer, type CaptionTrack, type NextEpisodeData } from "@/components/VideoPlayer";
 import { WatchPaywall } from "@/components/watch/WatchPaywall";
-import { isMobileViewport } from "@/lib/landscape-rotate-fullscreen";
+import { fsLog, isMobileViewport } from "@/lib/landscape-rotate-fullscreen";
 import { markBingeContinuation, watchEpisodeHref } from "@/lib/watch-playback";
 import type { SeriesOrientation } from "@/lib/types/database";
 
@@ -65,6 +65,8 @@ function NextEpisodePreload({ src }: { src: string }) {
 
 /**
  * Mobile TikTok-style vertical episode feed (vertical series only).
+ * Uses ONE stable VideoPlayer so fullscreen survives episode advances
+ * (src swap on the same <video>, not remount).
  * Desktop / landscape falls back to a single classic VideoPlayer.
  */
 export function MobileVerticalFeed({
@@ -88,14 +90,12 @@ export function MobileVerticalFeed({
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [useFeed, setUseFeed] = useState(false);
   const [ready, setReady] = useState(false);
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const slideRefs = useRef<(HTMLElement | null)[]>([]);
   const progressSeedRef = useRef({ id: initialEpisodeId, seconds: initialProgress });
+  const captionEpisodeIdRef = useRef(initialEpisodeId);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
     const sync = () => {
-      // Feed is mobile-only; tablet/desktop keep classic player
       setUseFeed(!mq.matches && isMobileViewport());
       setReady(true);
     };
@@ -105,6 +105,7 @@ export function MobileVerticalFeed({
   }, []);
 
   const active = episodes[activeIndex] ?? episodes[0];
+
   const nextUnlocked = useMemo(() => {
     for (let i = activeIndex + 1; i < episodes.length; i++) {
       if (!episodes[i].locked && episodes[i].videoUrl) return episodes[i];
@@ -121,65 +122,61 @@ export function MobileVerticalFeed({
       title: next.title,
       description: next.description,
       thumbnailUrl: next.thumbnailUrl,
-      locked: next.locked,
+      locked: next.locked || !next.videoUrl,
     };
   }, [activeIndex, episodes]);
 
-  const scrollToIndex = useCallback((index: number, behavior: ScrollBehavior = "smooth") => {
-    const el = slideRefs.current[index];
-    if (!el) return;
-    el.scrollIntoView({ behavior, block: "start" });
-  }, []);
-
   const goToIndex = useCallback(
-    (index: number, opts?: { binge?: boolean; behavior?: ScrollBehavior }) => {
-      if (index < 0 || index >= episodes.length) return;
+    (index: number, opts?: { binge?: boolean; reason?: string }) => {
+      if (index < 0 || index >= episodes.length) return false;
+      const target = episodes[index];
       if (opts?.binge) markBingeContinuation();
       setActiveIndex(index);
-      softReplaceWatchUrl(episodes[index].id);
-      scrollToIndex(index, opts?.behavior ?? "smooth");
+      softReplaceWatchUrl(target.id);
+      fsLog("binge-advance", {
+        reason: opts?.reason ?? "go-to-index",
+        fromIndex: activeIndex,
+        toIndex: index,
+        episodeId: target.id,
+        locked: target.locked,
+        hasUrl: !!target.videoUrl,
+      });
+      return true;
     },
-    [episodes, scrollToIndex]
+    [activeIndex, episodes]
   );
 
-  // IntersectionObserver → active slide
-  useEffect(() => {
-    if (!useFeed || !ready) return;
-    const root = scrollerRef.current;
-    if (!root) return;
+  /** Unlocked step — same VideoPlayer, new src. Locked → paywall slide only. */
+  const stepEpisode = useCallback(
+    (delta: number, reason: string): "ok" | "paywall" | "noop" => {
+      const nextIndex = activeIndex + delta;
+      if (nextIndex < 0 || nextIndex >= episodes.length) return "noop";
+      const target = episodes[nextIndex];
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let best: { index: number; ratio: number } | null = null;
-        for (const entry of entries) {
-          const idx = Number((entry.target as HTMLElement).dataset.index);
-          if (!Number.isFinite(idx)) continue;
-          if (!best || entry.intersectionRatio > best.ratio) {
-            best = { index: idx, ratio: entry.intersectionRatio };
-          }
-        }
-        if (best && best.ratio >= 0.55) {
-          setActiveIndex((prev) => {
-            if (prev === best!.index) return prev;
-            softReplaceWatchUrl(episodes[best!.index].id);
-            return best!.index;
-          });
-        }
-      },
-      { root, threshold: [0.55, 0.75] }
-    );
+      if (target.locked || !target.videoUrl) {
+        if (delta < 0) return "noop";
+        goToIndex(nextIndex, { binge: true, reason: `${reason}-paywall` });
+        return "paywall";
+      }
 
-    slideRefs.current.forEach((el) => {
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
-  }, [useFeed, ready, episodes]);
+      goToIndex(nextIndex, { binge: true, reason });
+      return "ok";
+    },
+    [activeIndex, episodes, goToIndex]
+  );
 
-  // Jump to initial episode once feed mounts
-  useEffect(() => {
-    if (!useFeed || !ready) return;
-    scrollToIndex(initialIndex, "auto");
-  }, [useFeed, ready, initialIndex, scrollToIndex]);
+  const onFeedAdvance = useCallback(() => {
+    stepEpisode(1, "ended");
+  }, [stepEpisode]);
+
+  const onFeedLockedNext = useCallback(() => {
+    stepEpisode(1, "locked-end");
+  }, [stepEpisode]);
+
+  const onFeedStep = useCallback(
+    (delta: number) => stepEpisode(delta, delta > 0 ? "swipe-up" : "swipe-down"),
+    [stepEpisode]
+  );
 
   if (!ready) {
     return (
@@ -239,8 +236,12 @@ export function MobileVerticalFeed({
     );
   }
 
+  const activeLocked = !active || active.locked || !active.videoUrl;
+  const playerCaptions =
+    active && active.id === captionEpisodeIdRef.current ? captionTracks : [];
+
   return (
-    <div className="relative bg-black">
+    <div className="relative h-[100dvh] overflow-hidden bg-black">
       <Link
         href={`/series/${seriesSlug}`}
         data-feed-chrome
@@ -250,90 +251,65 @@ export function MobileVerticalFeed({
         ←
       </Link>
 
-      <div
-        ref={scrollerRef}
-        className="relative h-[100dvh] w-full snap-y snap-mandatory overflow-y-auto overscroll-y-contain bg-black [-webkit-overflow-scrolling:touch]"
-        style={{ scrollSnapType: "y mandatory" }}
-      >
-      {episodes.map((ep, index) => {
-        const isActive = index === activeIndex;
-        // Mount active + next only (smooth advance without burning bandwidth)
-        const near = index === activeIndex || index === activeIndex + 1;
-        return (
-          <section
-            key={ep.id}
-            ref={(node) => {
-              slideRefs.current[index] = node;
-            }}
-            data-index={index}
-            className="relative flex h-[100dvh] w-full snap-start snap-always flex-col justify-center"
-          >
-            {ep.locked || !ep.videoUrl ? (
-              <div className="flex h-full w-full items-center justify-center px-4">
-                <WatchPaywall
-                  episodeId={ep.id}
-                  seriesSlug={seriesSlug}
-                  posterUrl={ep.thumbnailUrl ?? seriesPosterUrl}
-                  seriesTitle={seriesTitle}
-                  episodeNumber={ep.episodeNumber}
-                  showPaywall={isActive}
-                  isAuthenticated={isAuthenticated}
-                />
-              </div>
-            ) : near ? (
-              <div className="h-full w-full">
-                <VideoPlayer
-                  key={ep.id}
-                  src={ep.videoUrl}
-                  poster={ep.thumbnailUrl}
-                  captionTracks={isActive ? captionTracks : []}
-                  episodeId={ep.id}
-                  episodeNumber={ep.episodeNumber}
-                  seriesId={seriesId}
-                  seriesSlug={seriesSlug}
-                  seriesTitle={seriesTitle}
-                  seriesOrientation={seriesOrientation}
-                  isFreeEpisode
-                  isSubscribed={isSubscribed}
-                  nextEpisode={isActive ? nextEpisodeForPlayer : null}
-                  otherSeries={otherSeries}
-                  initialProgress={
-                    isActive && progressSeedRef.current.id === ep.id
-                      ? progressSeedRef.current.seconds
-                      : 0
-                  }
-                  autoPlay={isActive}
-                  isAuthenticated={isAuthenticated}
-                  feedMode
-                  fillContainer
-                  onFeedAdvance={() => goToIndex(index + 1, { binge: true })}
-                  onFeedLockedNext={() => goToIndex(index + 1, { binge: true })}
-                />
-              </div>
-            ) : (
-              <div className="relative h-full w-full bg-black">
-                {ep.thumbnailUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={ep.thumbnailUrl}
-                    alt=""
-                    className="h-full w-full object-cover opacity-40"
-                  />
-                ) : null}
-                <p className="absolute bottom-24 left-4 font-display text-lg uppercase text-white/80">
-                  Episode {ep.episodeNumber}
-                </p>
-              </div>
-            )}
-          </section>
-        );
-      })}
+      {activeLocked ? (
+        <div className="flex h-full w-full items-center justify-center px-4">
+          <WatchPaywall
+            episodeId={active?.id ?? initialEpisodeId}
+            seriesSlug={seriesSlug}
+            posterUrl={active?.thumbnailUrl ?? seriesPosterUrl}
+            seriesTitle={seriesTitle}
+            episodeNumber={active?.episodeNumber ?? 1}
+            showPaywall
+            isAuthenticated={isAuthenticated}
+          />
+        </div>
+      ) : (
+        <div className="h-full w-full">
+          {/* Stable key — never remount across episode advances */}
+          <VideoPlayer
+            key="rw-feed-player"
+            src={active.videoUrl!}
+            poster={active.thumbnailUrl}
+            captionTracks={playerCaptions}
+            episodeId={active.id}
+            episodeNumber={active.episodeNumber}
+            seriesId={seriesId}
+            seriesSlug={seriesSlug}
+            seriesTitle={seriesTitle}
+            seriesOrientation={seriesOrientation}
+            isFreeEpisode
+            isSubscribed={isSubscribed}
+            nextEpisode={nextEpisodeForPlayer}
+            otherSeries={otherSeries}
+            initialProgress={
+              progressSeedRef.current.id === active.id
+                ? progressSeedRef.current.seconds
+                : 0
+            }
+            autoPlay
+            isAuthenticated={isAuthenticated}
+            feedMode
+            fillContainer
+            onFeedAdvance={onFeedAdvance}
+            onFeedLockedNext={onFeedLockedNext}
+            onFeedStep={onFeedStep}
+          />
+        </div>
+      )}
 
-      {/* Bandwidth-light preload of the next unlocked episode */}
-      {nextUnlocked?.videoUrl && active && !active.locked ? (
+      {nextUnlocked?.videoUrl && !activeLocked ? (
         <NextEpisodePreload src={nextUnlocked.videoUrl} />
       ) : null}
-      </div>
+
+      {!activeLocked && (
+        <p
+          data-feed-chrome
+          className="pointer-events-none absolute bottom-[calc(6.5rem+env(safe-area-inset-bottom))] left-4 z-40 font-display text-sm uppercase tracking-wide text-white/70"
+        >
+          Episode {active.episodeNumber}
+          {active.title ? ` · ${active.title}` : ""}
+        </p>
+      )}
     </div>
   );
 }
