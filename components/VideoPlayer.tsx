@@ -298,6 +298,7 @@ export function VideoPlayer({
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [cssFullscreen, setCssFullscreen] = useState(false);
   const [fitToScreen, setFitToScreen] = useState(false);
   const [isLandscapeMobile, setIsLandscapeMobile] = useState(false);
   const [countdownVisible, setCountdownVisible] = useState(false);
@@ -593,21 +594,24 @@ export function VideoPlayer({
         void saveProgress(video.duration || video.currentTime, true);
       }
 
+      const maintainFs =
+        (screenfull.isEnabled && screenfull.isFullscreen) ||
+        isFullscreen ||
+        cssFullscreen ||
+        (video ? isNativeVideoFullscreen(video) : false);
+      if (maintainFs) {
+        sessionStorage.setItem(FULLSCREEN_STORAGE_KEY, "1");
+      }
+
+      markBingeContinuation();
+      trackEpisodeAdvanced({
+        from_episode_id: episodeId,
+        to_episode_id: nextEpisode.id,
+        series_slug: seriesSlug,
+        method: "autoplay",
+      });
+
       if (feedMode) {
-        const maintainFs =
-          (screenfull.isEnabled && screenfull.isFullscreen) ||
-          isFullscreen ||
-          (video ? isNativeVideoFullscreen(video) : false);
-        if (maintainFs) {
-          sessionStorage.setItem(FULLSCREEN_STORAGE_KEY, "1");
-        }
-        markBingeContinuation();
-        trackEpisodeAdvanced({
-          from_episode_id: episodeId,
-          to_episode_id: nextEpisode.id,
-          series_slug: seriesSlug,
-          method: "autoplay",
-        });
         autoplayLog("[autoplay] feed_advanced", {
           fromEpisode: episodeId,
           toEpisode: nextEpisode.id,
@@ -617,31 +621,16 @@ export function VideoPlayer({
         return;
       }
 
-      const container = containerRef.current;
-      const maintainFs =
-        (screenfull.isEnabled && screenfull.isFullscreen) ||
-        isFullscreen ||
-        (video ? isNativeVideoFullscreen(video) : false);
-      if (maintainFs) {
-        sessionStorage.setItem(FULLSCREEN_STORAGE_KEY, "1");
-      }
-      markBingeContinuation();
-      trackEpisodeAdvanced({
-        from_episode_id: episodeId,
-        to_episode_id: nextEpisode.id,
-        series_slug: seriesSlug,
-        method: "autoplay",
-      });
       autoplayLog("[autoplay] auto_navigated", {
         fromEpisode: episodeId,
         toEpisode: nextEpisode.id,
         immediate,
       });
-      void container; // kept for clarity; fullscreen flag set above
       router.push(watchEpisodeHref(nextEpisode.id));
     },
     [
       autoplayCanceled,
+      cssFullscreen,
       episodeId,
       feedMode,
       isFullscreen,
@@ -713,16 +702,20 @@ export function VideoPlayer({
 
     const restore = async () => {
       const mode = await enterPlayerFullscreen(video, container);
-      if (mode === "none") {
+      if (mode === "webkit" || mode === "screenfull") {
         setIsFullscreen(true);
+        setCssFullscreen(false);
         document.body.classList.add("player-fullscreen");
+        document.body.classList.remove("player-css-fullscreen");
       } else {
+        // No user gesture for webkit after navigation — use hardened CSS FS
         setIsFullscreen(true);
-        document.body.classList.add("player-fullscreen");
+        setCssFullscreen(true);
+        document.body.classList.add("player-fullscreen", "player-css-fullscreen");
+        console.info("[rw-fs]", "css-fallback", { reason: "binge-restore" });
       }
     };
 
-    // Allow the new video element to attach before requesting FS
     const t = window.setTimeout(() => {
       void restore();
     }, 120);
@@ -736,11 +729,14 @@ export function VideoPlayer({
 
     const onBegin = () => {
       setIsFullscreen(true);
+      setCssFullscreen(false);
       document.body.classList.add("player-fullscreen");
+      document.body.classList.remove("player-css-fullscreen");
     };
     const onEnd = () => {
       setIsFullscreen(false);
-      document.body.classList.remove("player-fullscreen");
+      setCssFullscreen(false);
+      document.body.classList.remove("player-fullscreen", "player-css-fullscreen");
     };
 
     video.addEventListener("webkitbeginfullscreen", onBegin);
@@ -978,7 +974,9 @@ export function VideoPlayer({
     const onChange = () => {
       const active = screenfull.isFullscreen;
       setIsFullscreen(active);
+      setCssFullscreen(false);
       document.body.classList.toggle("player-fullscreen", active);
+      if (!active) document.body.classList.remove("player-css-fullscreen");
     };
 
     screenfull.on("change", onChange);
@@ -993,9 +991,15 @@ export function VideoPlayer({
     const video = videoRef.current;
     if (!container || !video) return;
 
-    const result = await togglePlayerFullscreen(video, container, isFullscreen);
-    setIsFullscreen(result.mode !== "exit");
-  }, [isFullscreen]);
+    const result = await togglePlayerFullscreen(video, container, cssFullscreen);
+    if (result.mode === "exit") {
+      setIsFullscreen(false);
+      setCssFullscreen(false);
+      return;
+    }
+    setIsFullscreen(true);
+    setCssFullscreen(result.custom);
+  }, [cssFullscreen]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
@@ -1247,21 +1251,24 @@ export function VideoPlayer({
 
   const iconClass = "h-6 w-6 fill-white md:h-5 md:w-5";
 
-  const containerClassName = fillContainer
-    ? `relative h-full w-full overflow-hidden bg-black ${
-        isFullscreen ? "fixed inset-0 z-[100]" : ""
-      }`
-    : isLandscapeSeries
-      ? `relative mx-auto w-full overflow-hidden rounded-xl bg-black ${
-          isFullscreen
-            ? "fixed inset-0 z-[100] max-h-none max-w-none rounded-none"
-            : "aspect-video"
+  const containerClassName = [
+    "rw-player-fs-root",
+    fillContainer
+      ? `relative h-full w-full overflow-hidden bg-black ${
+          isFullscreen ? "fixed inset-0 z-[100]" : ""
         }`
-      : `relative mx-auto w-full max-w-md overflow-hidden rounded-xl bg-black ${
-          isFullscreen
-            ? "fixed inset-0 z-[100] max-h-none max-w-none rounded-none"
-            : "max-h-[calc(100dvh-5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] aspect-[9/16]"
-        }`;
+      : isLandscapeSeries
+        ? `relative mx-auto w-full overflow-hidden rounded-xl bg-black ${
+            isFullscreen
+              ? "fixed inset-0 z-[100] max-h-none max-w-none rounded-none"
+              : "aspect-video"
+          }`
+        : `relative mx-auto w-full max-w-md overflow-hidden rounded-xl bg-black ${
+            isFullscreen
+              ? "fixed inset-0 z-[100] max-h-none max-w-none rounded-none"
+              : "max-h-[calc(100dvh-5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] aspect-[9/16]"
+          }`,
+  ].join(" ");
 
   const playerContent = (
     <>

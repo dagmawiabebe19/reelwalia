@@ -243,6 +243,7 @@ export function MobileVerticalFeed({
     <div className="relative bg-black">
       <Link
         href={`/series/${seriesSlug}`}
+        data-feed-chrome
         className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] z-50 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm"
         aria-label="Back to series"
       >

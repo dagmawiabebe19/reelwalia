@@ -67,6 +67,7 @@ export function SubscribeBanner({
           {/* Mobile: sticky bottom bar */}
           <div
             className={mobileBarClass}
+            data-subscribe-banner="viewport"
             role="region"
             aria-label="Subscribe to unlock all episodes"
           >
@@ -91,6 +92,7 @@ export function SubscribeBanner({
           {/* Desktop: floating bottom-right pill */}
           <div
             className={desktopPillClass}
+            data-subscribe-banner="viewport"
             role="region"
             aria-label="Subscribe to unlock all episodes"
           >
