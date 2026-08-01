@@ -15,12 +15,6 @@ function chatHref(character: PromoCharacter): string {
   return `/chat/${character.id}?episode=1&from=${encodeURIComponent(character.seriesSlug)}`;
 }
 
-function gatedHref(character: PromoCharacter, isAuthenticated: boolean): string {
-  const dest = chatHref(character);
-  if (isAuthenticated) return dest;
-  return `/auth/sign-in?next=${encodeURIComponent(dest)}`;
-}
-
 function attributedWaitingLine(characters: PromoCharacter[]): string {
   if (characters.length === 1) {
     const c = characters[0];
@@ -36,14 +30,22 @@ function attributedWaitingLine(characters: PromoCharacter[]): string {
 export function CharacterChatPromo({
   characters,
   isAuthenticated,
+  /** Total active published characters — decides picker vs direct chat. */
+  activeCharacterCount,
 }: {
   characters: PromoCharacter[];
   isAuthenticated: boolean;
+  activeCharacterCount?: number;
 }) {
   if (!characters.length) return null;
 
   const primary = characters[0];
-  const ctaHref = gatedHref(primary, isAuthenticated);
+  const totalActive = activeCharacterCount ?? characters.length;
+  const browseDest = totalActive <= 1 ? chatHref(primary) : "/chat";
+  const startChattingHref = isAuthenticated
+    ? browseDest
+    : `/auth/sign-in?next=${encodeURIComponent(browseDest)}`;
+
   const supporting = attributedWaitingLine(characters);
   const teaser = primary.teaser;
 
@@ -68,10 +70,14 @@ export function CharacterChatPromo({
               {characters.slice(0, 3).map((character, index) => (
                 <Link
                   key={character.id}
-                  href={gatedHref(character, isAuthenticated)}
+                  href={startChattingHref}
                   className="relative transition hover:-translate-y-0.5"
                   style={{ zIndex: 3 - index }}
-                  aria-label={`Chat with ${character.name}`}
+                  aria-label={
+                    totalActive > 1
+                      ? "Choose a character to chat with"
+                      : `Chat with ${character.name}`
+                  }
                 >
                   <CharacterAvatar
                     name={character.name}
@@ -104,7 +110,7 @@ export function CharacterChatPromo({
         </div>
 
         <Link
-          href={ctaHref}
+          href={startChattingHref}
           className="rw-btn-primary inline-flex w-full shrink-0 justify-center px-5 text-sm sm:w-auto"
         >
           Start chatting

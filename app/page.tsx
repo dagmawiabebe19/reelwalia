@@ -58,7 +58,17 @@ function pickPromoTeaser(
     : firstSentence.replace(/\.$/, "");
 }
 
-async function getChatPromoCharacters() {
+async function getChatPromoCharacters(): Promise<{
+  characters: {
+    id: string;
+    name: string;
+    avatar_url: string | null;
+    seriesSlug: string;
+    seriesTitle: string;
+    teaser: string | null;
+  }[];
+  totalActive: number;
+}> {
   try {
     // Service role: homepage must tease characters for signed-out visitors
     // (characters table is authenticated-only via RLS).
@@ -70,10 +80,9 @@ async function getChatPromoCharacters() {
       )
       .eq("is_active", true)
       .eq("series.status", "published")
-      .order("name", { ascending: true })
-      .limit(6);
+      .order("name", { ascending: true });
 
-    if (error || !data?.length) return [];
+    if (error || !data?.length) return { characters: [], totalActive: 0 };
 
     type SeriesJoin = { title: string; slug: string; status: string };
     type BibleJoin = {
@@ -101,17 +110,19 @@ async function getChatPromoCharacters() {
       })
       .filter((row): row is NonNullable<typeof row> => row != null);
 
-    // Prefer characters with real avatars first, cap at 3
-    return mapped
+    // Prefer characters with real avatars first, cap promo strip at 3
+    const characters = mapped
       .sort((a, b) => {
         const aHas = a.avatar_url && !a.avatar_url.includes("<PLACEHOLDER") ? 0 : 1;
         const bHas = b.avatar_url && !b.avatar_url.includes("<PLACEHOLDER") ? 0 : 1;
         return aHas - bHas;
       })
       .slice(0, 3);
+
+    return { characters, totalActive: mapped.length };
   } catch (err) {
     console.error("getChatPromoCharacters:", err);
-    return [];
+    return { characters: [], totalActive: 0 };
   }
 }
 
@@ -126,7 +137,7 @@ async function getCatalog() {
     {
       data: { user },
     },
-    promoCharacters,
+    promoResult,
   ] = await Promise.all([
     supabase
       .from("series")
@@ -206,7 +217,8 @@ async function getCatalog() {
     trendingSeries,
     comingSoon: comingSoonList,
     isEmpty,
-    promoCharacters,
+    promoCharacters: promoResult.characters,
+    activeCharacterCount: promoResult.totalActive,
     isAuthenticated: !!user,
   };
 }
@@ -219,6 +231,7 @@ export default async function HomePage() {
     comingSoon,
     isEmpty,
     promoCharacters,
+    activeCharacterCount,
     isAuthenticated,
   } = await getCatalog();
 
@@ -234,6 +247,7 @@ export default async function HomePage() {
               <CharacterChatPromo
                 characters={promoCharacters}
                 isAuthenticated={isAuthenticated}
+                activeCharacterCount={activeCharacterCount}
               />
             )}
           </>
@@ -250,6 +264,7 @@ export default async function HomePage() {
               <CharacterChatPromo
                 characters={promoCharacters}
                 isAuthenticated={isAuthenticated}
+                activeCharacterCount={activeCharacterCount}
               />
             )}
             {trendingSeries.length > 0 && (
