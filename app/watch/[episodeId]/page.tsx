@@ -3,6 +3,7 @@ import { VideoPlayer } from "@/components/VideoPlayer";
 import { TopNav } from "@/components/layout/TopNav";
 import { ViewCount } from "@/components/ui/ViewCount";
 import { EpisodePicker } from "@/components/watch/EpisodePicker";
+import { MobileVerticalFeed } from "@/components/watch/MobileVerticalFeed";
 import { WatchPaywall } from "@/components/watch/WatchPaywall";
 import { WatchPostCheckout } from "@/components/watch/WatchPostCheckout";
 import { WatchSeriesInfo } from "@/components/watch/WatchSeriesInfo";
@@ -54,7 +55,7 @@ async function getWatchData(
   const { data: allEpisodes } = await supabase
     .from("episodes")
     .select(
-      "id, episode_number, title, description, thumbnail_url, display_view_count, view_count"
+      "id, episode_number, title, description, thumbnail_url, display_view_count, view_count, video_url"
     )
     .eq("series_id", series.id)
     .order("episode_number", { ascending: true });
@@ -112,9 +113,30 @@ async function getWatchData(
     .limit(10);
 
   const pickerEpisodes = (allEpisodes ?? []).map((ep) => ({
-    ...ep,
+    id: ep.id,
+    episode_number: ep.episode_number,
+    title: ep.title,
+    description: ep.description,
+    thumbnail_url: ep.thumbnail_url,
+    display_view_count: ep.display_view_count,
+    view_count: ep.view_count,
     locked: !canWatchEpisode(ep.episode_number, freeCount, profile),
   }));
+
+  // Feed props: never send video_url for locked episodes
+  const feedEpisodes = (allEpisodes ?? []).map((ep) => {
+    const canWatch =
+      isSubscribed || canWatchEpisode(ep.episode_number, freeCount, profile);
+    return {
+      id: ep.id,
+      episodeNumber: ep.episode_number,
+      title: ep.title,
+      description: ep.description,
+      thumbnailUrl: ep.thumbnail_url,
+      locked: !canWatch,
+      videoUrl: canWatch ? ep.video_url : null,
+    };
+  });
 
   const nextEpisode = nextEp
     ? {
@@ -150,6 +172,7 @@ async function getWatchData(
     autoPlay: shouldAutoStartWatch(unlocked, !!episode.video_url),
     nextEpisode,
     pickerEpisodes,
+    feedEpisodes,
     otherSeries: otherSeries ?? [],
     initialProgress,
     captionTracks,
@@ -176,6 +199,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
     autoPlay,
     nextEpisode,
     pickerEpisodes,
+    feedEpisodes,
     otherSeries,
     initialProgress,
     captionTracks,
@@ -324,13 +348,33 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
   return (
     <PaywallOpenProvider>
       <div
-        className={`min-h-screen overflow-x-hidden bg-black ${
-          !isSubscribed ? "pb-28 lg:pb-0" : ""
-        }`}
+        className={`overflow-x-hidden bg-black ${
+          !isSubscribed ? "pb-28 md:pb-0 lg:pb-0" : ""
+        } min-h-screen max-md:h-[100dvh] max-md:overflow-hidden md:h-auto md:overflow-x-hidden`}
       >
-        <TopNav />
-        <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-4 sm:py-6 lg:flex-row lg:px-6">
-          {/* Primary column — real flex item on all breakpoints (no display:contents) */}
+        <div className="max-md:hidden">
+          <TopNav />
+        </div>
+        {/* Mobile vertical feed — full-viewport TikTok-style */}
+        <div className="md:hidden">
+          <MobileVerticalFeed
+            episodes={feedEpisodes}
+            initialEpisodeId={episode.id}
+            seriesId={series.id}
+            seriesSlug={series.slug}
+            seriesTitle={series.title}
+            seriesPosterUrl={series.poster_url ?? series.banner_url ?? null}
+            seriesOrientation={seriesOrientation}
+            isAuthenticated={isAuthenticated}
+            isSubscribed={isSubscribed}
+            initialProgress={initialProgress}
+            captionTracks={captionTracks}
+            otherSeries={otherSeries}
+          />
+        </div>
+
+        <main className="mx-auto hidden max-w-6xl flex-col gap-6 px-4 py-4 sm:py-6 md:flex lg:flex-row lg:px-6">
+          {/* Primary column — desktop / tablet classic player */}
           <div className="flex w-full min-w-0 flex-1 flex-col gap-4 lg:items-center">
             <div className="flex w-full flex-col items-center gap-4">
               <WatchPostCheckout
@@ -377,7 +421,6 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
               )}
             </div>
 
-            {/* Meet the Characters — always in flow on mobile + desktop */}
             <div className="w-full max-w-md lg:max-w-none">{meetSection}</div>
 
             <WatchSeriesInfo

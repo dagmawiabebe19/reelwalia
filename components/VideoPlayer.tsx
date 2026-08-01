@@ -34,10 +34,13 @@ import type { SeriesOrientation } from "@/lib/types/database";
 import {
   canAutoRotateFullscreen,
   enterLandscapeRotateFullscreen,
+  enterPlayerFullscreen,
   exitLandscapeRotateFullscreen,
   isDeviceLandscape,
   isLandscapeRotateFullscreenActive,
   isMobileViewport,
+  isNativeVideoFullscreen,
+  togglePlayerFullscreen,
 } from "@/lib/landscape-rotate-fullscreen";
 
 const autoplayLog = (...args: unknown[]) => {
@@ -88,6 +91,17 @@ interface VideoPlayerProps {
   autoPlay?: boolean;
   isAuthenticated?: boolean;
   seriesOrientation?: SeriesOrientation;
+  /**
+   * When true, end-of-episode advances via onFeedAdvance instead of router.push.
+   * Used by the mobile vertical episode feed.
+   */
+  feedMode?: boolean;
+  /** Called when the episode ends and the next unlocked episode should play (feed mode). */
+  onFeedAdvance?: () => void;
+  /** Called when the episode ends on a locked next episode (feed mode). */
+  onFeedLockedNext?: () => void;
+  /** Fill the parent slide (100% height) instead of aspect-ratio box. */
+  fillContainer?: boolean;
 }
 
 const SPEEDS = [0.5, 1, 1.25, 1.5, 2] as const;
@@ -245,6 +259,10 @@ export function VideoPlayer({
   autoPlay = false,
   isAuthenticated = false,
   seriesOrientation = "vertical",
+  feedMode = false,
+  onFeedAdvance,
+  onFeedLockedNext,
+  fillContainer = false,
 }: VideoPlayerProps) {
   const isLandscapeSeries = seriesOrientation === "landscape";
   const tracks = useMemo(
@@ -574,9 +592,37 @@ export function VideoPlayer({
         }
         void saveProgress(video.duration || video.currentTime, true);
       }
-      if (screenfull.isEnabled && screenfull.isFullscreen) {
-        sessionStorage.setItem(FULLSCREEN_STORAGE_KEY, "1");
-      } else if (isFullscreen) {
+
+      if (feedMode) {
+        const maintainFs =
+          (screenfull.isEnabled && screenfull.isFullscreen) ||
+          isFullscreen ||
+          (video ? isNativeVideoFullscreen(video) : false);
+        if (maintainFs) {
+          sessionStorage.setItem(FULLSCREEN_STORAGE_KEY, "1");
+        }
+        markBingeContinuation();
+        trackEpisodeAdvanced({
+          from_episode_id: episodeId,
+          to_episode_id: nextEpisode.id,
+          series_slug: seriesSlug,
+          method: "autoplay",
+        });
+        autoplayLog("[autoplay] feed_advanced", {
+          fromEpisode: episodeId,
+          toEpisode: nextEpisode.id,
+          immediate,
+        });
+        onFeedAdvance?.();
+        return;
+      }
+
+      const container = containerRef.current;
+      const maintainFs =
+        (screenfull.isEnabled && screenfull.isFullscreen) ||
+        isFullscreen ||
+        (video ? isNativeVideoFullscreen(video) : false);
+      if (maintainFs) {
         sessionStorage.setItem(FULLSCREEN_STORAGE_KEY, "1");
       }
       markBingeContinuation();
@@ -591,9 +637,20 @@ export function VideoPlayer({
         toEpisode: nextEpisode.id,
         immediate,
       });
+      void container; // kept for clarity; fullscreen flag set above
       router.push(watchEpisodeHref(nextEpisode.id));
     },
-    [autoplayCanceled, episodeId, isFullscreen, nextEpisode, router, saveProgress, seriesSlug]
+    [
+      autoplayCanceled,
+      episodeId,
+      feedMode,
+      isFullscreen,
+      nextEpisode,
+      onFeedAdvance,
+      router,
+      saveProgress,
+      seriesSlug,
+    ]
   );
 
   const handleCancelAutoplay = useCallback(() => {
@@ -649,12 +706,50 @@ export function VideoPlayer({
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !screenfull.isEnabled) return;
+    const video = videoRef.current;
+    if (!container || !video) return;
     if (sessionStorage.getItem(FULLSCREEN_STORAGE_KEY) !== "1") return;
     sessionStorage.removeItem(FULLSCREEN_STORAGE_KEY);
-    void screenfull.request(container);
+
+    const restore = async () => {
+      const mode = await enterPlayerFullscreen(video, container);
+      if (mode === "none") {
+        setIsFullscreen(true);
+        document.body.classList.add("player-fullscreen");
+      } else {
+        setIsFullscreen(true);
+        document.body.classList.add("player-fullscreen");
+      }
+    };
+
+    // Allow the new video element to attach before requesting FS
+    const t = window.setTimeout(() => {
+      void restore();
+    }, 120);
+    return () => window.clearTimeout(t);
   }, [src]);
 
+  // Sync isFullscreen with native WebKit video fullscreen (iOS)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const onBegin = () => {
+      setIsFullscreen(true);
+      document.body.classList.add("player-fullscreen");
+    };
+    const onEnd = () => {
+      setIsFullscreen(false);
+      document.body.classList.remove("player-fullscreen");
+    };
+
+    video.addEventListener("webkitbeginfullscreen", onBegin);
+    video.addEventListener("webkitendfullscreen", onEnd);
+    return () => {
+      video.removeEventListener("webkitbeginfullscreen", onBegin);
+      video.removeEventListener("webkitendfullscreen", onEnd);
+    };
+  }, [src]);
   useEffect(() => {
     if (!autoPlay) return;
 
@@ -898,32 +993,9 @@ export function VideoPlayer({
     const video = videoRef.current;
     if (!container || !video) return;
 
-    if (screenfull.isEnabled) {
-      await screenfull.toggle(container);
-      return;
-    }
-
-    // Mobile Safari native video fullscreen does not render custom HTML overlays.
-    // Use container-based "custom fullscreen" so caption overlay stays visible.
-    if (isMobileViewport()) {
-      setIsFullscreen((v) => {
-        const next = !v;
-        document.body.classList.toggle("player-fullscreen", next);
-        return next;
-      });
-      return;
-    }
-
-    const webkitVideo = video as HTMLVideoElement & {
-      webkitEnterFullscreen?: () => void;
-    };
-    if (webkitVideo.webkitEnterFullscreen) {
-      webkitVideo.webkitEnterFullscreen();
-      setIsFullscreen(true);
-      document.body.classList.add("player-fullscreen");
-    }
-  }, []);
-
+    const result = await togglePlayerFullscreen(video, container, isFullscreen);
+    setIsFullscreen(result.mode !== "exit");
+  }, [isFullscreen]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
@@ -1106,7 +1178,12 @@ export function VideoPlayer({
     if (nextEpisode && !autoplayCanceled && !navigatedRef.current) {
       if (nextEpisode.locked) {
         setCountdownVisible(false);
-        setShowEndPaywall(true);
+        if (feedMode) {
+          navigatedRef.current = true;
+          onFeedLockedNext?.();
+        } else {
+          setShowEndPaywall(true);
+        }
         autoplayLog("[autoplay] paywall_before_locked_episode", {
           episodeId,
           nextEpisodeId: nextEpisode.id,
@@ -1170,17 +1247,21 @@ export function VideoPlayer({
 
   const iconClass = "h-6 w-6 fill-white md:h-5 md:w-5";
 
-  const containerClassName = isLandscapeSeries
-    ? `relative mx-auto w-full overflow-hidden rounded-xl bg-black ${
-        isFullscreen
-          ? "fixed inset-0 z-[100] max-h-none max-w-none rounded-none"
-          : "aspect-video"
+  const containerClassName = fillContainer
+    ? `relative h-full w-full overflow-hidden bg-black ${
+        isFullscreen ? "fixed inset-0 z-[100]" : ""
       }`
-    : `relative mx-auto w-full max-w-md overflow-hidden rounded-xl bg-black ${
-        isFullscreen
-          ? "fixed inset-0 z-[100] max-h-none max-w-none rounded-none"
-          : "max-h-[calc(100dvh-5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] aspect-[9/16]"
-      }`;
+    : isLandscapeSeries
+      ? `relative mx-auto w-full overflow-hidden rounded-xl bg-black ${
+          isFullscreen
+            ? "fixed inset-0 z-[100] max-h-none max-w-none rounded-none"
+            : "aspect-video"
+        }`
+      : `relative mx-auto w-full max-w-md overflow-hidden rounded-xl bg-black ${
+          isFullscreen
+            ? "fixed inset-0 z-[100] max-h-none max-w-none rounded-none"
+            : "max-h-[calc(100dvh-5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] aspect-[9/16]"
+        }`;
 
   const playerContent = (
     <>
