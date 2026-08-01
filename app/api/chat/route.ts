@@ -1,6 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
+import { hasActiveSubscription } from "@/lib/access";
 import { parseBubbles } from "@/lib/chat/bubbles";
+import {
+  CHAT_LIMITS,
+  friendlyQuotaMessage,
+  getDailyCapForUser,
+  quotaHttpStatus,
+  tryConsumeChatQuota,
+} from "@/lib/chat/limits";
 import {
   getAnthropic,
   getChatModel,
@@ -18,7 +26,6 @@ import {
   getOrCreateConversation,
   getRelationshipScores,
 } from "@/lib/chat/server";
-import { checkRateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -45,14 +52,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Sign in required" }, { status: 401 });
     }
 
-    const rate = checkRateLimit(`chat:${user.id}`, 20, 60_000);
-    if (!rate.ok) {
-      return NextResponse.json(
-        { error: "Too many messages. Try again shortly.", retryAfter: rate.retryAfterSeconds },
-        { status: 429 }
-      );
-    }
-
     const body = (await request.json()) as ChatBody;
     const characterId = body.characterId?.trim();
     const message = body.message?.trim();
@@ -67,8 +66,14 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    if (message.length > 2000) {
-      return NextResponse.json({ error: "Message too long" }, { status: 400 });
+    if (message.length > CHAT_LIMITS.maxMessageChars) {
+      return NextResponse.json(
+        {
+          error: `That message is too long — keep it under ${CHAT_LIMITS.maxMessageChars} characters.`,
+          code: "message_too_long",
+        },
+        { status: 400 }
+      );
     }
 
     const { data: character, error: characterError } = await supabase
@@ -82,6 +87,33 @@ export async function POST(request: Request) {
 
     if (characterError || !character) {
       return NextResponse.json({ error: "Character not found" }, { status: 404 });
+    }
+
+    // Resolve tiered daily cap (premium hook for later)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("subscription_status")
+      .eq("id", user.id)
+      .maybeSingle();
+    const dailyCap = getDailyCapForUser({
+      isPremium: hasActiveSubscription(profile),
+    });
+
+    // Layer 1–3: DB-backed quota (replaces in-memory checkRateLimit for chat).
+    // Consumes only when allowed — blocked attempts do not increment.
+    // Runs immediately before the Anthropic path (after input/character validation).
+    const quota = await tryConsumeChatQuota({
+      userId: user.id,
+      dailyCap,
+    });
+    if (!quota.allowed) {
+      return NextResponse.json(
+        {
+          error: friendlyQuotaMessage(quota.reason),
+          code: quota.reason,
+        },
+        { status: quotaHttpStatus(quota.reason) }
+      );
     }
 
     const [{ data: bible }, { data: world }, { data: series }] = await Promise.all([

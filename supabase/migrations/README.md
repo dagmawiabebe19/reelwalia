@@ -7,6 +7,7 @@ Migrations in this folder target the **Platform** Supabase project
 Do **not** run them against the Studio project (`dxtieidijudvekuwljrs` / reelwaliastudio).
 
 Manual-apply migrations to eyeball carefully:
+- `024_chat_usage_limits.sql` — chat rate limits / daily caps / global kill-switch counters
 - `023_ai_character_chat.sql` — AI character chat tables + RLS (Phase 1)
 - `022_featured_order_backfill.sql` — featured_order backfill
 - `021_episode_captions.sql` — captions

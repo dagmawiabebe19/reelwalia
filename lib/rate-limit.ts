@@ -9,7 +9,10 @@ export type RateLimitResult =
   | { ok: true; remaining: number }
   | { ok: false; retryAfterSeconds: number };
 
-/** Lightweight in-memory rate limiter (per server instance). */
+/** Lightweight in-memory rate limiter (per server instance).
+ *  Fine for auth/submit spam; chat uses durable DB quotas in lib/chat/limits.ts
+ *  because in-memory buckets do not survive serverless cold starts or share across instances.
+ */
 export function checkRateLimit(
   key: string,
   limit: number,

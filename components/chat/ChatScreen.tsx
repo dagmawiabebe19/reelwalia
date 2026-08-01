@@ -194,8 +194,20 @@ export function ChatScreen({
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Chat failed");
+      const message = err instanceof Error ? err.message : "Chat failed";
+      setError(message);
       setTyping(false);
+      // Drop optimistic user bubble — server did not accept the turn
+      setMessages((prev) => {
+        if (!prev.length) return prev;
+        const last = prev[prev.length - 1];
+        if (last.role === "user" && last.id.startsWith("local-user-")) {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
+      // Restore draft so they can retry without retyping
+      setDraft((current) => (current.trim() ? current : text));
     } finally {
       setSending(false);
       setTyping(false);
@@ -435,7 +447,10 @@ export function ChatScreen({
         </div>
 
         {error && (
-          <p className="relative z-10 mx-auto w-full max-w-lg px-3 pb-2 text-center text-xs text-red-400 lg:max-w-2xl">
+          <p
+            role="status"
+            className="relative z-10 mx-auto w-full max-w-lg px-3 pb-2 text-center text-xs leading-relaxed text-amber-200/90 lg:max-w-2xl"
+          >
             {error}
           </p>
         )}
