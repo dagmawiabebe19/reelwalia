@@ -17,6 +17,11 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
 import { AutoplayOverlay } from "@/components/watch/AutoplayOverlay";
 import { EndOfSeriesOverlay } from "@/components/watch/EndOfSeriesOverlay";
+import {
+  FeedSwipeHint,
+  hasLearnedFeedSwipeUp,
+  markFeedSwipeUpLearned,
+} from "@/components/watch/FeedSwipeHint";
 import type { Series } from "@/lib/types/database";
 import {
   consumeUnmutedIntent,
@@ -330,6 +335,9 @@ export function VideoPlayer({
   const [mobileCaptionMode, setMobileCaptionMode] = useState(false);
   const [mobileCaptionText, setMobileCaptionText] = useState("");
   const [mobileCaptionTopPx, setMobileCaptionTopPx] = useState<number | null>(null);
+  const [swipeHintVisible, setSwipeHintVisible] = useState(false);
+  const [swipeHintLearned, setSwipeHintLearned] = useState(false);
+  const swipeIntroTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fsSessionRef.current =
@@ -888,6 +896,24 @@ export function VideoPlayer({
     setShowControls(true);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
   }, [feedMode, episodeId]);
+
+  // First-load swipe hint (session: hide forever after first successful swipe-up)
+  useEffect(() => {
+    if (!feedMode || !nextEpisode || hasLearnedFeedSwipeUp() || swipeHintLearned) {
+      return;
+    }
+    setSwipeHintVisible(true);
+    if (swipeIntroTimerRef.current) clearTimeout(swipeIntroTimerRef.current);
+    swipeIntroTimerRef.current = setTimeout(() => {
+      setSwipeHintVisible(false);
+      swipeIntroTimerRef.current = null;
+    }, 3500);
+    return () => {
+      if (swipeIntroTimerRef.current) clearTimeout(swipeIntroTimerRef.current);
+    };
+    // Only on feed mount / when next becomes available — not every episodeId
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedMode]);
   useEffect(() => {
     if (!autoPlay) return;
 
@@ -1342,7 +1368,27 @@ export function VideoPlayer({
         setCountdownSeconds(AUToplay_THRESHOLD);
         countdownStartedRef.current = false;
       }
+      // Drop near-end swipe nudge once we're no longer in the last 5s
+      // (keep intro hint on its own timer).
+      if (
+        feedMode &&
+        !hasLearnedFeedSwipeUp() &&
+        !swipeHintLearned &&
+        !swipeIntroTimerRef.current
+      ) {
+        setSwipeHintVisible(false);
+      }
       return;
+    }
+
+    // Near episode end — nudge swipe if user hasn't learned it yet
+    if (
+      feedMode &&
+      nextEpisode &&
+      !hasLearnedFeedSwipeUp() &&
+      !swipeHintLearned
+    ) {
+      setSwipeHintVisible(true);
     }
 
     if (remaining <= 0) return;
@@ -1442,6 +1488,9 @@ export function VideoPlayer({
         (video ? isNativeVideoFullscreen(video) : false);
 
       if (delta > 0 && nextEpisode?.locked) {
+        markFeedSwipeUpLearned();
+        setSwipeHintLearned(true);
+        setSwipeHintVisible(false);
         maintainFsAcrossEpisodeRef.current = false;
         await exitFullscreenForPaywall();
         onFeedStep(1);
@@ -1458,6 +1507,11 @@ export function VideoPlayer({
       }
 
       const result = onFeedStep(delta);
+      if (delta > 0 && result !== "noop") {
+        markFeedSwipeUpLearned();
+        setSwipeHintLearned(true);
+        setSwipeHintVisible(false);
+      }
       if (result === "paywall") {
         maintainFsAcrossEpisodeRef.current = false;
         await exitFullscreenForPaywall();
@@ -1672,6 +1726,14 @@ export function VideoPlayer({
                 {mobileCaptionText}
               </p>
             </div>
+          )}
+
+          {feedMode && nextEpisode && (
+            <FeedSwipeHint
+              visible={swipeHintVisible && !hasLearnedFeedSwipeUp() && !swipeHintLearned}
+              lockedNext={!!nextEpisode.locked}
+              liftAbovePaywall={liftControlsAbovePaywall}
+            />
           )}
 
           <div

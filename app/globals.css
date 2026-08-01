@@ -468,3 +468,19 @@ body.player-css-fullscreen .rw-player-fs-root[data-rw-fs-portal] {
   }
 }
 
+@keyframes rwSwipeUpHint {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.88;
+  }
+  50% {
+    transform: translateY(-7px);
+    opacity: 1;
+  }
+}
+
+.rw-swipe-up-hint {
+  animation: rwSwipeUpHint 1.35s ease-in-out infinite;
+}
+
