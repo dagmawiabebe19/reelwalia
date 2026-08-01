@@ -11,7 +11,6 @@ import {
   useState,
   type MouseEvent,
   type ReactNode,
-  type TouchEvent,
 } from "react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
@@ -322,7 +321,6 @@ export function VideoPlayer({
   /** Keep / restore CSS fullscreen across in-place episode src swaps. */
   const maintainFsAcrossEpisodeRef = useRef(false);
   const fsSessionRef = useRef(false);
-  const swipeStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
