@@ -348,15 +348,13 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
   return (
     <PaywallOpenProvider>
       <div
-        className={`overflow-x-hidden bg-black ${
-          !isSubscribed ? "pb-28 md:pb-0 lg:pb-0" : ""
-        } min-h-screen max-md:h-[100dvh] max-md:overflow-hidden md:h-auto md:overflow-x-hidden`}
+        className="min-h-screen overflow-x-hidden bg-black max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:overflow-hidden md:h-auto md:overflow-x-hidden"
       >
         <div className="max-md:hidden">
           <TopNav />
         </div>
         {/* Mobile vertical feed — full-viewport TikTok-style */}
-        <div className="md:hidden">
+        <div className="relative h-[100dvh] max-h-[100dvh] overflow-hidden bg-black md:hidden">
           <MobileVerticalFeed
             episodes={feedEpisodes}
             initialEpisodeId={episode.id}

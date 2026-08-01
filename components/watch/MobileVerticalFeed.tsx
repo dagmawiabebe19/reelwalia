@@ -48,19 +48,22 @@ function softReplaceWatchUrl(episodeId: string) {
   }
 }
 
-/** Lightweight next-episode buffer — metadata only, no autoplay. */
+/** Prefetch next episode metadata without painting any video pixels. */
 function NextEpisodePreload({ src }: { src: string }) {
-  return (
-    <video
-      src={src}
-      preload="metadata"
-      muted
-      playsInline
-      className="pointer-events-none absolute h-0 w-0 opacity-0"
-      aria-hidden
-      tabIndex={-1}
-    />
-  );
+  useEffect(() => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+    video.setAttribute("playsinline", "");
+    video.src = src;
+    // Never append to the document — avoids iOS painting a strip of the next ep.
+    return () => {
+      video.removeAttribute("src");
+      video.load();
+    };
+  }, [src]);
+  return null;
 }
 
 /**
@@ -241,7 +244,7 @@ export function MobileVerticalFeed({
     active && active.id === captionEpisodeIdRef.current ? captionTracks : [];
 
   return (
-    <div className="relative h-[100dvh] overflow-hidden bg-black">
+    <div className="relative isolate h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-black">
       <Link
         href={`/series/${seriesSlug}`}
         data-feed-chrome
@@ -252,7 +255,7 @@ export function MobileVerticalFeed({
       </Link>
 
       {activeLocked ? (
-        <div className="flex h-full w-full items-center justify-center px-4">
+        <div className="absolute inset-0 flex h-full w-full items-center justify-center bg-black px-4">
           <WatchPaywall
             episodeId={active?.id ?? initialEpisodeId}
             seriesSlug={seriesSlug}
@@ -264,7 +267,7 @@ export function MobileVerticalFeed({
           />
         </div>
       ) : (
-        <div className="h-full w-full">
+        <div className="absolute inset-0 h-full w-full overflow-hidden bg-black">
           {/* Stable key — never remount across episode advances */}
           <VideoPlayer
             key="rw-feed-player"

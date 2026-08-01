@@ -1566,7 +1566,7 @@ export function VideoPlayer({
     ? isFullscreen
       ? "object-cover"
       : "object-contain"
-    : fitToScreen && isLandscapeMobile
+    : feedMode || (fitToScreen && isLandscapeMobile)
       ? "object-cover"
       : "object-contain";
 
@@ -1579,7 +1579,7 @@ export function VideoPlayer({
   const containerClassName = [
     "rw-player-fs-root",
     fillContainer
-      ? `relative h-full w-full overflow-hidden bg-black ${
+      ? `relative h-full min-h-full w-full overflow-hidden bg-black ${
           isFullscreen || cssFullscreen ? "fixed inset-0 z-[2147483646]" : ""
         }`
       : isLandscapeSeries
@@ -1618,7 +1618,7 @@ export function VideoPlayer({
 
           <video
             ref={videoRef}
-            className={`rw-video-element relative z-0 h-full w-full ${objectFitClass}`}
+            className={`rw-video-element relative z-0 h-full w-full bg-black ${objectFitClass}`}
             poster={poster ?? undefined}
             crossOrigin="anonymous"
             playsInline
