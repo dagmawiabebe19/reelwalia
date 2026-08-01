@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { MeetTheCharacters } from "@/components/chat/MeetTheCharacters";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import { WatchEpisodeLink } from "@/components/watch/WatchEpisodeLink";
@@ -9,6 +10,10 @@ import { SeriesComingSoonView } from "@/components/series/SeriesComingSoonView";
 import { Card } from "@/components/ui/Card";
 import { ViewCount } from "@/components/ui/ViewCount";
 import { canWatchEpisode, hasActiveSubscription, resolveFreeEpisodeCount } from "@/lib/access";
+import {
+  getHighestUnlockedEpisode,
+  listActiveCharactersForSeries,
+} from "@/lib/chat/server";
 import { isComingSoonSeries } from "@/lib/coming-soon";
 import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
 import { normalizeSeriesOrientation } from "@/lib/series-orientation";
@@ -64,6 +69,8 @@ async function getSeries(slug: string) {
     .order("episode_number", { ascending: true });
 
   let profile = null;
+  // unlocked_through_episode = max(watched_episode, 1) — EP1 floor for series landing
+  let chatUnlockedEpisode = 1;
 
   if (user) {
     const { data: p } = await supabase
@@ -72,7 +79,15 @@ async function getSeries(slug: string) {
       .eq("id", user.id)
       .maybeSingle();
     profile = p;
+
+    chatUnlockedEpisode = await getHighestUnlockedEpisode(
+      supabase,
+      user.id,
+      series.id
+    );
   }
+
+  const characters = await listActiveCharactersForSeries(supabase, series.id);
 
   const freeCount = resolveFreeEpisodeCount(series.free_episode_count);
   const episodesWithLock = (episodes ?? []).map((ep) => ({
@@ -88,6 +103,8 @@ async function getSeries(slug: string) {
     inWatchlist,
     isAuthenticated: !!user,
     isSubscribed: hasActiveSubscription(profile),
+    characters,
+    chatUnlockedEpisode,
   };
 }
 
@@ -106,7 +123,15 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
     );
   }
 
-  const { series, episodes, inWatchlist, isAuthenticated, isSubscribed } = data;
+  const {
+    series,
+    episodes,
+    inWatchlist,
+    isAuthenticated,
+    isSubscribed,
+    characters,
+    chatUnlockedEpisode,
+  } = data;
   const firstEpisode = episodes[0];
   const seriesOrientation = normalizeSeriesOrientation(series.orientation);
   const isLandscapeSeries = seriesOrientation === "landscape";
@@ -161,6 +186,17 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
                 </WatchEpisodeLink>
               )}
               <WatchlistButton seriesId={series.id} initialInWatchlist={inWatchlist} />
+            </div>
+
+            <div className="mt-8 max-w-2xl">
+              <MeetTheCharacters
+                characters={characters}
+                seriesSlug={series.slug}
+                seriesPosterUrl={series.poster_url ?? series.banner_url ?? null}
+                seriesTitle={series.title}
+                episodeNumber={chatUnlockedEpisode}
+                isAuthenticated={isAuthenticated}
+              />
             </div>
 
             {!isLandscapeStandaloneFilm && (

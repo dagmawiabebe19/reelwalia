@@ -28,6 +28,9 @@ export function filterEpisodeKnowledge(
 /**
  * Highest episode the user has meaningfully watched in a series.
  * Prefer completed episodes; also count progress > 30s as watched.
+ *
+ * Always floors at Episode 1: premise knowledge is safe even for new visitors
+ * (unlocked_through_episode = max(watched_episode, 1)).
  */
 export function resolveUnlockedEpisode(params: {
   history: Array<{
@@ -35,7 +38,7 @@ export function resolveUnlockedEpisode(params: {
     completed: boolean;
     progress_seconds: number;
   }>;
-  /** Episode the viewer opened chat from (optional floor). */
+  /** Episode the viewer opened chat from (optional raise, never below 1). */
   currentEpisodeNumber?: number | null;
 }): number {
   let max = 0;
@@ -47,5 +50,5 @@ export function resolveUnlockedEpisode(params: {
   if (params.currentEpisodeNumber != null && params.currentEpisodeNumber > 0) {
     max = Math.max(max, params.currentEpisodeNumber);
   }
-  return max;
+  return Math.max(max, 1);
 }
