@@ -320,56 +320,7 @@ export function ChatScreen({
 
   return (
     <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-black text-white lg:flex-row">
-      {/* Desktop poster hero — sticky, full-height, ~40% */}
-      <aside className="relative hidden h-full w-[40%] min-w-[320px] max-w-[520px] shrink-0 overflow-hidden lg:flex lg:flex-col">
-        {seriesPosterUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={seriesPosterUrl}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 via-black to-obsidian-red/40" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/25" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/30" />
-
-        <div className="relative z-10 flex h-full flex-col justify-between p-8 xl:p-10">
-          <Link
-            href={backHref}
-            className="inline-flex w-fit min-h-11 items-center gap-2 rounded-full bg-black/45 px-4 text-sm text-zinc-200 backdrop-blur-sm transition hover:bg-black/65 hover:text-white"
-          >
-            ← Back
-          </Link>
-
-          <div className="max-w-md space-y-4 pb-4">
-            <CharacterAvatar
-              name={character.name}
-              avatarUrl={character.avatar_url}
-              sizeClass="h-24 w-24"
-              textClass="text-3xl"
-              online
-            />
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-obsidian-red">
-                {seriesTitle}
-              </p>
-              <h1 className="mt-2 font-display text-4xl uppercase leading-none tracking-wide text-white drop-shadow-lg xl:text-5xl">
-                {character.name}
-              </h1>
-              <p className="mt-2 text-sm text-emerald-400">Online now</p>
-            </div>
-            {character.short_bio && (
-              <p className="text-sm leading-relaxed text-zinc-200/90 drop-shadow">
-                {character.short_bio}
-              </p>
-            )}
-          </div>
-        </div>
-      </aside>
-
-      {/* Chat column — full width on mobile; ~60% on desktop */}
+      {/* Chat column — full width on mobile; ~60% on desktop (LEFT on lg+) */}
       <div className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col">
         {/* Mobile-only soft wash + cinematic header (unchanged behavior) */}
         {seriesPosterUrl && (
@@ -457,6 +408,55 @@ export function ChatScreen({
 
         {composer}
       </div>
+
+      {/* Desktop poster hero — sticky, full-height, ~40% (RIGHT on lg+) */}
+      <aside className="relative hidden h-full w-[40%] min-w-[320px] max-w-[520px] shrink-0 overflow-hidden lg:flex lg:flex-col">
+        {seriesPosterUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={seriesPosterUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 via-black to-obsidian-red/40" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/25" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/30" />
+
+        <div className="relative z-10 flex h-full flex-col justify-between p-8 xl:p-10">
+          <Link
+            href={backHref}
+            className="inline-flex w-fit min-h-11 items-center gap-2 rounded-full bg-black/45 px-4 text-sm text-zinc-200 backdrop-blur-sm transition hover:bg-black/65 hover:text-white"
+          >
+            ← Back
+          </Link>
+
+          <div className="max-w-md space-y-4 pb-4">
+            <CharacterAvatar
+              name={character.name}
+              avatarUrl={character.avatar_url}
+              sizeClass="h-24 w-24"
+              textClass="text-3xl"
+              online
+            />
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-obsidian-red">
+                {seriesTitle}
+              </p>
+              <h1 className="mt-2 font-display text-4xl uppercase leading-none tracking-wide text-white drop-shadow-lg xl:text-5xl">
+                {character.name}
+              </h1>
+              <p className="mt-2 text-sm text-emerald-400">Online now</p>
+            </div>
+            {character.short_bio && (
+              <p className="text-sm leading-relaxed text-zinc-200/90 drop-shadow">
+                {character.short_bio}
+              </p>
+            )}
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }
