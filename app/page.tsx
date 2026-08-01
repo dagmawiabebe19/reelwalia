@@ -10,6 +10,54 @@ import { filterPublishedCatalogRows } from "@/lib/coming-soon";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+/** Prefer EP1-safe voice lines; skip later-episode name-drops. */
+function pickPromoTeaser(
+  speechExamples: unknown,
+  catchphrases: unknown
+): string | null {
+  const spoilerHint =
+    /\b(rhys|morwenna|throne|seraphine|episode\s*[2-9]|ep\s*[2-9])\b/i;
+
+  type SpeechExample = { register?: string; line?: string };
+  const examples = Array.isArray(speechExamples)
+    ? (speechExamples as SpeechExample[])
+        .map((e) => ({
+          register: typeof e?.register === "string" ? e.register : "",
+          line: typeof e?.line === "string" ? e.line.trim() : "",
+        }))
+        .filter((e) => e.line && !spoilerHint.test(e.line))
+    : [];
+
+  const byRegister = (...patterns: RegExp[]) =>
+    examples.find((e) => patterns.some((p) => p.test(e.register)));
+
+  // Prefer intrigue over polite court register for the homepage tease
+  const preferred =
+    byRegister(/private|confiding/i) ??
+    byRegister(/blade/i) ??
+    byRegister(/court|perfect bride/i) ??
+    examples[0];
+
+  let line: string | null = preferred?.line ?? null;
+  if (!line && Array.isArray(catchphrases)) {
+    const phrase = catchphrases.find(
+      (p): p is string => typeof p === "string" && !!p.trim() && !spoilerHint.test(p)
+    );
+    line = phrase ? phrase.trim() : null;
+  }
+  if (!line) return null;
+
+  // First sentence only — punchy promo length
+  const firstSentence = line.split(/(?<=[.!?])\s+/)[0]?.trim() ?? line;
+  // Soften long knife metaphor to the hook the visitor will feel
+  const knifeHook = firstSentence.match(/^(Every smile in this room is a knife)\b/i);
+  if (knifeHook) return knifeHook[1];
+
+  return firstSentence.length > 110
+    ? `${firstSentence.slice(0, 107).trimEnd()}…`
+    : firstSentence.replace(/\.$/, "");
+}
+
 async function getChatPromoCharacters() {
   try {
     // Service role: homepage must tease characters for signed-out visitors
@@ -18,7 +66,7 @@ async function getChatPromoCharacters() {
     const { data, error } = await admin
       .from("characters")
       .select(
-        "id, name, avatar_url, is_active, series:series_id!inner(title, slug, status)"
+        "id, name, avatar_url, is_active, series:series_id!inner(title, slug, status), bible:character_bible(speech_examples, catchphrases)"
       )
       .eq("is_active", true)
       .eq("series.status", "published")
@@ -28,17 +76,27 @@ async function getChatPromoCharacters() {
     if (error || !data?.length) return [];
 
     type SeriesJoin = { title: string; slug: string; status: string };
+    type BibleJoin = {
+      speech_examples: unknown;
+      catchphrases: unknown;
+    };
     const mapped = data
       .map((row) => {
         const series = row.series as unknown as SeriesJoin | SeriesJoin[] | null;
         const s = Array.isArray(series) ? series[0] : series;
         if (!s || s.status !== "published") return null;
+        const bibleRaw = row.bible as unknown as BibleJoin | BibleJoin[] | null;
+        const bible = Array.isArray(bibleRaw) ? bibleRaw[0] : bibleRaw;
         return {
           id: row.id as string,
           name: row.name as string,
           avatar_url: (row.avatar_url as string | null) ?? null,
           seriesSlug: s.slug,
           seriesTitle: s.title,
+          teaser: pickPromoTeaser(
+            bible?.speech_examples,
+            bible?.catchphrases
+          ),
         };
       })
       .filter((row): row is NonNullable<typeof row> => row != null);

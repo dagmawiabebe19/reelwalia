@@ -45,9 +45,15 @@ export function CharacterAvatar({
       </div>
       {online && (
         <span
-          className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full border-2 border-black bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]"
+          className="absolute bottom-0.5 right-0.5 flex h-3.5 w-3.5"
           aria-label="Online"
-        />
+        >
+          <span
+            className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/70"
+            aria-hidden
+          />
+          <span className="relative inline-flex h-3.5 w-3.5 rounded-full border-2 border-black bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]" />
+        </span>
       )}
     </div>
   );

@@ -7,6 +7,8 @@ export type PromoCharacter = {
   avatar_url: string | null;
   seriesSlug: string;
   seriesTitle: string;
+  /** EP1-safe voice line for the promo teaser bubble */
+  teaser: string | null;
 };
 
 function chatHref(character: PromoCharacter): string {
@@ -17,6 +19,18 @@ function gatedHref(character: PromoCharacter, isAuthenticated: boolean): string 
   const dest = chatHref(character);
   if (isAuthenticated) return dest;
   return `/auth/sign-in?next=${encodeURIComponent(dest)}`;
+}
+
+function attributedWaitingLine(characters: PromoCharacter[]): string {
+  if (characters.length === 1) {
+    const c = characters[0];
+    return `${c.name} from ${c.seriesTitle} is waiting. Say something.`;
+  }
+  const names = characters
+    .slice(0, 3)
+    .map((c) => `${c.name} from ${c.seriesTitle}`)
+    .join(" · ");
+  return `${names} are waiting. Say something.`;
 }
 
 export function CharacterChatPromo({
@@ -30,10 +44,8 @@ export function CharacterChatPromo({
 
   const primary = characters[0];
   const ctaHref = gatedHref(primary, isAuthenticated);
-  const supporting =
-    characters.length === 1
-      ? `${primary.name}'s story isn't over — talk to her.`
-      : "Their stories aren't over — talk to them.";
+  const supporting = attributedWaitingLine(characters);
+  const teaser = primary.teaser;
 
   return (
     <section
@@ -50,34 +62,44 @@ export function CharacterChatPromo({
       />
 
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-        <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
-          <div className="flex shrink-0 -space-x-3">
-            {characters.slice(0, 3).map((character, index) => (
-              <Link
-                key={character.id}
-                href={gatedHref(character, isAuthenticated)}
-                className="relative transition hover:-translate-y-0.5"
-                style={{ zIndex: 3 - index }}
-                aria-label={`Chat with ${character.name}`}
-              >
-                <CharacterAvatar
-                  name={character.name}
-                  avatarUrl={character.avatar_url}
-                  sizeClass="h-12 w-12 sm:h-14 sm:w-14"
-                  textClass="text-base sm:text-lg"
-                  online
-                />
-              </Link>
-            ))}
+        <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center sm:gap-4">
+          <div className="flex shrink-0 flex-col items-center gap-1.5">
+            <div className="flex -space-x-3">
+              {characters.slice(0, 3).map((character, index) => (
+                <Link
+                  key={character.id}
+                  href={gatedHref(character, isAuthenticated)}
+                  className="relative transition hover:-translate-y-0.5"
+                  style={{ zIndex: 3 - index }}
+                  aria-label={`Chat with ${character.name}`}
+                >
+                  <CharacterAvatar
+                    name={character.name}
+                    avatarUrl={character.avatar_url}
+                    sizeClass="h-12 w-12 sm:h-14 sm:w-14"
+                    textClass="text-base sm:text-lg"
+                    online
+                  />
+                </Link>
+              ))}
+            </div>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400/90">
+              Online now
+            </span>
           </div>
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="font-display text-lg uppercase leading-tight tracking-wide text-white sm:text-xl">
               The characters are online.
             </p>
             <p className="mt-1 text-sm leading-relaxed text-zinc-300">
               {supporting}
             </p>
+            {teaser && (
+              <p className="mt-2 max-w-xl border-l-2 border-obsidian-red/50 pl-3 text-sm italic leading-snug text-zinc-400">
+                &ldquo;{teaser}&rdquo;
+              </p>
+            )}
           </div>
         </div>
 
