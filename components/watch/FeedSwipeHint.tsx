@@ -15,25 +15,23 @@ type FeedSwipeHintProps = {
   visible: boolean;
   /** Next episode is locked — still cue that more content exists. */
   lockedNext?: boolean;
-  /** Lift above the subscribe CTA when it overlays the player. */
-  liftAbovePaywall?: boolean;
 };
 
 /**
  * Subtle “swipe up” cue for the mobile vertical feed.
  * pointer-events-none so it never blocks controls.
+ * Sits just above the bottom-anchored control bar.
  */
 export function FeedSwipeHint({
   visible,
   lockedNext = false,
-  liftAbovePaywall = false,
 }: FeedSwipeHintProps) {
   return (
     <div
       data-swipe-up-hint
-      className={`pointer-events-none absolute inset-x-0 z-40 flex justify-center transition-opacity duration-500 ${
-        liftAbovePaywall ? "bottom-[8.75rem] lg:bottom-[5.25rem]" : "bottom-[5.25rem]"
-      } ${visible ? "opacity-100" : "opacity-0"}`}
+      className={`pointer-events-none absolute inset-x-0 bottom-[5.25rem] z-40 flex justify-center transition-opacity duration-500 ${
+        visible ? "opacity-100" : "opacity-0"
+      }`}
       aria-hidden={!visible}
     >
       <div className="rw-swipe-up-hint flex flex-col items-center gap-1 rounded-full border border-white/10 bg-black/55 px-3.5 py-2 backdrop-blur-sm">

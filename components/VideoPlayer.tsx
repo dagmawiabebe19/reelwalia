@@ -1572,10 +1572,6 @@ export function VideoPlayer({
 
   const iconClass = "h-6 w-6 fill-white md:h-5 md:w-5";
 
-  // Keep controls above the fixed subscribe CTA in normal playback (not during FS).
-  const liftControlsAbovePaywall =
-    !isSubscribed && !isFullscreen && !cssFullscreen;
-
   const containerClassName = [
     "rw-player-fs-root",
     fillContainer
@@ -1732,18 +1728,13 @@ export function VideoPlayer({
             <FeedSwipeHint
               visible={swipeHintVisible && !hasLearnedFeedSwipeUp() && !swipeHintLearned}
               lockedNext={!!nextEpisode.locked}
-              liftAbovePaywall={liftControlsAbovePaywall}
             />
           )}
 
           <div
             data-player-controls
-            className={`pointer-events-none absolute inset-x-0 z-50 bg-gradient-to-t from-black/95 via-black/60 to-transparent pt-16 transition-opacity duration-300 ${
+            className={`pointer-events-none absolute inset-x-0 bottom-0 z-50 bg-gradient-to-t from-black/95 via-black/60 to-transparent pt-16 transition-opacity duration-300 ${
               showControls ? "opacity-100" : "opacity-0"
-            } ${
-              liftControlsAbovePaywall
-                ? "bottom-24 lg:bottom-0"
-                : "bottom-0"
             }`}
           >
             <div className="pointer-events-auto px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">

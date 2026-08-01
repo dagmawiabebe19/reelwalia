@@ -353,8 +353,8 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
         <div className="max-md:hidden">
           <TopNav />
         </div>
-        {/* Mobile vertical feed — full-viewport TikTok-style */}
-        <div className="relative h-[100dvh] max-h-[100dvh] overflow-hidden bg-black md:hidden">
+        {/* Mobile vertical feed — full-bleed slide; banner sits below when present */}
+        <div className="relative overflow-hidden bg-black md:hidden">
           <MobileVerticalFeed
             episodes={feedEpisodes}
             initialEpisodeId={episode.id}

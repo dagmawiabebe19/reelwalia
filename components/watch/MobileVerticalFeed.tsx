@@ -242,9 +242,17 @@ export function MobileVerticalFeed({
   const activeLocked = !active || active.locked || !active.videoUrl;
   const playerCaptions =
     active && active.id === captionEpisodeIdRef.current ? captionTracks : [];
+  // Leave a bottom slot for the fixed subscribe CTA so controls stay flush
+  // at the slide bottom — not floating mid-frame above the banner.
+  const reserveBanner = !isSubscribed;
+  const slideHeightClass = reserveBanner
+    ? "h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom))] max-h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom))]"
+    : "h-[100dvh] max-h-[100dvh]";
 
   return (
-    <div className="relative isolate h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-black">
+    <div
+      className={`relative isolate w-full overflow-hidden bg-black ${slideHeightClass}`}
+    >
       <Link
         href={`/series/${seriesSlug}`}
         data-feed-chrome
@@ -303,16 +311,6 @@ export function MobileVerticalFeed({
       {nextUnlocked?.videoUrl && !activeLocked ? (
         <NextEpisodePreload src={nextUnlocked.videoUrl} />
       ) : null}
-
-      {!activeLocked && (
-        <p
-          data-feed-chrome
-          className="pointer-events-none absolute bottom-[calc(6.5rem+env(safe-area-inset-bottom))] left-4 z-40 font-display text-sm uppercase tracking-wide text-white/70"
-        >
-          Episode {active.episodeNumber}
-          {active.title ? ` · ${active.title}` : ""}
-        </p>
-      )}
     </div>
   );
 }
