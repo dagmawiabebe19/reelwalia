@@ -88,10 +88,58 @@ export function ChatScreen({
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
 
+  // Keep the thread scrolled to the latest message without scrolling the document
+  // (scrollIntoView on iOS can bounce the whole page / composer).
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const thread = threadRef.current;
+    if (!thread) return;
+    thread.scrollTop = thread.scrollHeight;
   }, [messages, typing]);
+
+  // Lock page scroll + pin shell to the visual viewport (keyboard-safe on iOS).
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevBodyOverscroll = body.style.overscrollBehavior;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+
+    const shell = shellRef.current;
+    const vv = window.visualViewport;
+
+    const syncViewport = () => {
+      if (!shell) return;
+      const desktop = window.matchMedia("(min-width: 1024px)").matches;
+      if (desktop || !vv) {
+        shell.style.height = "";
+        shell.style.top = "";
+        return;
+      }
+      // Sit inside the visual viewport so the composer stays just above the keyboard
+      shell.style.height = `${Math.round(vv.height)}px`;
+      shell.style.top = `${Math.round(vv.offsetTop)}px`;
+    };
+
+    syncViewport();
+    vv?.addEventListener("resize", syncViewport);
+    vv?.addEventListener("scroll", syncViewport);
+    window.addEventListener("resize", syncViewport);
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      body.style.overscrollBehavior = prevBodyOverscroll;
+      vv?.removeEventListener("resize", syncViewport);
+      vv?.removeEventListener("scroll", syncViewport);
+      window.removeEventListener("resize", syncViewport);
+    };
+  }, []);
 
   const emptyHint = useMemo(
     () => `Say hi to ${character.name}. They only know up to what you've watched.`,
@@ -266,7 +314,7 @@ export function ChatScreen({
   const composer = (
     <form
       onSubmit={send}
-      className="relative z-20 border-t border-white/[0.08] bg-black/90 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md lg:pb-3"
+      className="relative z-20 shrink-0 border-t border-white/[0.08] bg-black/90 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md lg:pb-3"
     >
       <div className="mx-auto flex w-full max-w-lg items-end gap-2 px-3 lg:max-w-2xl lg:px-5">
         <button
@@ -305,7 +353,8 @@ export function ChatScreen({
           rows={1}
           placeholder={`Message ${character.name}…`}
           disabled={sending}
-          className="max-h-28 min-h-11 flex-1 resize-none rounded-2xl border border-white/[0.12] bg-zinc-900/90 px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-obsidian-red/60 focus:outline-none"
+          // text-base (16px) prevents iOS Safari zoom-on-focus; keep 16px on lg too
+          className="max-h-28 min-h-11 flex-1 resize-none rounded-2xl border border-white/[0.12] bg-zinc-900/90 px-4 py-2.5 text-base leading-snug text-white placeholder:text-zinc-500 focus:border-obsidian-red/60 focus:outline-none"
         />
         <button
           type="submit"
@@ -319,9 +368,12 @@ export function ChatScreen({
   );
 
   return (
-    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-black text-white lg:flex-row">
+    <div
+      ref={shellRef}
+      className="fixed inset-x-0 top-0 z-40 flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden overscroll-none bg-black text-white lg:inset-0 lg:flex-row"
+    >
       {/* Chat column — full width on mobile; ~60% on desktop (LEFT on lg+) */}
-      <div className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col">
+      <div className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
         {/* Mobile-only soft wash + cinematic header (unchanged behavior) */}
         {seriesPosterUrl && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -335,7 +387,7 @@ export function ChatScreen({
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/70 via-black/90 to-black lg:hidden" />
         <div className="pointer-events-none absolute inset-0 hidden bg-zinc-950 lg:block" />
 
-        <header className="relative z-20 overflow-hidden border-b border-white/[0.08] pt-[env(safe-area-inset-top)] lg:hidden">
+        <header className="relative z-20 shrink-0 overflow-hidden border-b border-white/[0.08] pt-[env(safe-area-inset-top)] lg:hidden">
           {seriesPosterUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -375,7 +427,7 @@ export function ChatScreen({
         </header>
 
         {/* Desktop chat top bar */}
-        <div className="relative z-20 hidden items-center gap-3 border-b border-white/[0.08] bg-black/80 px-5 py-3 backdrop-blur-md lg:flex">
+        <div className="relative z-20 hidden shrink-0 items-center gap-3 border-b border-white/[0.08] bg-black/80 px-5 py-3 backdrop-blur-md lg:flex">
           <CharacterAvatar
             name={character.name}
             avatarUrl={character.avatar_url}
@@ -393,14 +445,17 @@ export function ChatScreen({
           </div>
         </div>
 
-        <div className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col overflow-y-auto px-3 py-4 lg:max-w-2xl lg:px-5">
+        <div
+          ref={threadRef}
+          className="relative z-10 mx-auto flex w-full max-w-lg min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 py-4 [-webkit-overflow-scrolling:touch] lg:max-w-2xl lg:px-5"
+        >
           {messageList}
         </div>
 
         {error && (
           <p
             role="status"
-            className="relative z-10 mx-auto w-full max-w-lg px-3 pb-2 text-center text-xs leading-relaxed text-amber-200/90 lg:max-w-2xl"
+            className="relative z-10 mx-auto w-full max-w-lg shrink-0 px-3 pb-2 text-center text-xs leading-relaxed text-amber-200/90 lg:max-w-2xl"
           >
             {error}
           </p>
