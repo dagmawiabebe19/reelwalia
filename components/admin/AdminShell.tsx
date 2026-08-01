@@ -25,6 +25,13 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: "Character chat",
+    items: [
+      { href: "/admin/characters", label: "Characters" },
+      { href: "/admin/world", label: "World bibles" },
+    ],
+  },
+  {
     label: "Revenue",
     items: [
       { href: "/admin/sales", label: "Sales" },
@@ -42,6 +49,12 @@ function isActiveRoute(pathname: string, href: string): boolean {
   }
   if (href === "/admin/featured") {
     return pathname === href || pathname.startsWith("/admin/featured/");
+  }
+  if (href === "/admin/characters") {
+    return pathname === href || pathname.startsWith("/admin/characters/");
+  }
+  if (href === "/admin/world") {
+    return pathname === href || pathname.startsWith("/admin/world/");
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
