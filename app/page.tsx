@@ -2,45 +2,104 @@ import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import { ComingSoon } from "@/components/home/ComingSoon";
 import { ComingSoonRow } from "@/components/home/ComingSoonRow";
+import { CharacterChatPromo } from "@/components/home/CharacterChatPromo";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { SeriesRow } from "@/components/home/SeriesRow";
 import { SubtitlesPromoStrip } from "@/components/home/SubtitlesPromoStrip";
 import { filterPublishedCatalogRows } from "@/lib/coming-soon";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+
+async function getChatPromoCharacters() {
+  try {
+    // Service role: homepage must tease characters for signed-out visitors
+    // (characters table is authenticated-only via RLS).
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("characters")
+      .select(
+        "id, name, avatar_url, is_active, series:series_id!inner(title, slug, status)"
+      )
+      .eq("is_active", true)
+      .eq("series.status", "published")
+      .order("name", { ascending: true })
+      .limit(6);
+
+    if (error || !data?.length) return [];
+
+    type SeriesJoin = { title: string; slug: string; status: string };
+    const mapped = data
+      .map((row) => {
+        const series = row.series as unknown as SeriesJoin | SeriesJoin[] | null;
+        const s = Array.isArray(series) ? series[0] : series;
+        if (!s || s.status !== "published") return null;
+        return {
+          id: row.id as string,
+          name: row.name as string,
+          avatar_url: (row.avatar_url as string | null) ?? null,
+          seriesSlug: s.slug,
+          seriesTitle: s.title,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row != null);
+
+    // Prefer characters with real avatars first, cap at 3
+    return mapped
+      .sort((a, b) => {
+        const aHas = a.avatar_url && !a.avatar_url.includes("<PLACEHOLDER") ? 0 : 1;
+        const bHas = b.avatar_url && !b.avatar_url.includes("<PLACEHOLDER") ? 0 : 1;
+        return aHas - bHas;
+      })
+      .slice(0, 3);
+  } catch (err) {
+    console.error("getChatPromoCharacters:", err);
+    return [];
+  }
+}
 
 async function getCatalog() {
   const supabase = createClient();
 
-  const [{ data: featured }, { data: recent }, { data: trending }, { data: comingSoon }] =
-    await Promise.all([
-      supabase
-        .from("series")
-        .select(
-          "id, title, slug, tagline, description, banner_url, poster_url, genre"
-        )
-        // Admin-controlled order: /admin/featured writes featured_order (ASC, nulls last).
-        .eq("status", "published")
-        .eq("is_featured", true)
-        .order("featured_order", { ascending: true, nullsFirst: false })
-        .limit(3),
-      supabase
-        .from("series")
-        .select("id, title, slug, tagline, poster_url, genre, status")
-        .eq("status", "published")
-        .order("created_at", { ascending: false })
-        .limit(12),
-      supabase
-        .from("series")
-        .select("id, title, slug, tagline, poster_url, genre, status")
-        .eq("status", "published")
-        .order("view_count", { ascending: false })
-        .limit(12),
-      supabase
-        .from("series")
-        .select("id, title, slug, description, poster_url, genre, status, created_at")
-        .eq("status", "coming_soon")
-        .order("created_at", { ascending: false }),
-    ]);
+  const [
+    { data: featured },
+    { data: recent },
+    { data: trending },
+    { data: comingSoon },
+    {
+      data: { user },
+    },
+    promoCharacters,
+  ] = await Promise.all([
+    supabase
+      .from("series")
+      .select(
+        "id, title, slug, tagline, description, banner_url, poster_url, genre"
+      )
+      // Admin-controlled order: /admin/featured writes featured_order (ASC, nulls last).
+      .eq("status", "published")
+      .eq("is_featured", true)
+      .order("featured_order", { ascending: true, nullsFirst: false })
+      .limit(3),
+    supabase
+      .from("series")
+      .select("id, title, slug, tagline, poster_url, genre, status")
+      .eq("status", "published")
+      .order("created_at", { ascending: false })
+      .limit(12),
+    supabase
+      .from("series")
+      .select("id, title, slug, tagline, poster_url, genre, status")
+      .eq("status", "published")
+      .order("view_count", { ascending: false })
+      .limit(12),
+    supabase
+      .from("series")
+      .select("id, title, slug, description, poster_url, genre, status, created_at")
+      .eq("status", "coming_soon")
+      .order("created_at", { ascending: false }),
+    supabase.auth.getUser(),
+    getChatPromoCharacters(),
+  ]);
 
   // Featured query is already constrained to published + is_featured.
   // Avoid applying the coming-soon slug fallback filter here, which can
@@ -89,12 +148,21 @@ async function getCatalog() {
     trendingSeries,
     comingSoon: comingSoonList,
     isEmpty,
+    promoCharacters,
+    isAuthenticated: !!user,
   };
 }
 
 export default async function HomePage() {
-  const { featuredWithEpisodes, newSeries, trendingSeries, comingSoon, isEmpty } =
-    await getCatalog();
+  const {
+    featuredWithEpisodes,
+    newSeries,
+    trendingSeries,
+    comingSoon,
+    isEmpty,
+    promoCharacters,
+    isAuthenticated,
+  } = await getCatalog();
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -104,16 +172,28 @@ export default async function HomePage() {
           <>
             <ComingSoon />
             {comingSoon.length > 0 && <ComingSoonRow series={comingSoon} />}
+            {promoCharacters.length > 0 && (
+              <CharacterChatPromo
+                characters={promoCharacters}
+                isAuthenticated={isAuthenticated}
+              />
+            )}
           </>
         ) : (
           <>
-            {/* Catalog order: Hero → Trending Now → Coming Soon → New Series */}
+            {/* Catalog order: Hero → Chat promo → Trending Now → Coming Soon → New Series */}
             <div className="space-y-3 sm:space-y-4">
               {featuredWithEpisodes.length > 0 && (
                 <HeroCarousel items={featuredWithEpisodes} />
               )}
               <SubtitlesPromoStrip />
             </div>
+            {promoCharacters.length > 0 && (
+              <CharacterChatPromo
+                characters={promoCharacters}
+                isAuthenticated={isAuthenticated}
+              />
+            )}
             {trendingSeries.length > 0 && (
               <SeriesRow title="Trending Now" series={trendingSeries} />
             )}
