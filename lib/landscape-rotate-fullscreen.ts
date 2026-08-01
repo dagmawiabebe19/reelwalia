@@ -5,19 +5,30 @@ type WebkitVideo = HTMLVideoElement & {
   webkitExitFullscreen?: () => void;
   webkitDisplayingFullscreen?: boolean;
   webkitSupportsFullscreen?: boolean;
+  webkitSetPresentationMode?: (
+    mode: "inline" | "fullscreen" | "picture-in-picture"
+  ) => void;
+  webkitPresentationMode?: "inline" | "fullscreen" | "picture-in-picture";
 };
 
 export type FullscreenPath =
   | "native-ios"
   | "native-requestFullscreen"
   | "css-fallback"
-  | "exit";
+  | "exit"
+  | "attempt-native-ios";
 
-function fsLog(
+type FsReturnSlot = {
+  parent: Node;
+  next: ChildNode | null;
+};
+
+const FS_RETURN = "__rwFsReturn";
+
+export function fsLog(
   path: FullscreenPath,
   detail?: Record<string, unknown>
 ): void {
-  // On-device debug: filter console by [rw-fs]
   console.info("[rw-fs]", path, {
     ua: typeof navigator !== "undefined" ? navigator.userAgent : "",
     ...detail,
@@ -33,14 +44,24 @@ export function isDeviceLandscape(): boolean {
 }
 
 export function isIOSDevice(): boolean {
-  return (
-    /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-  );
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  if (/iPad|iPhone|iPod/i.test(ua)) return true;
+  if (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) return true;
+  if (
+    /Apple Computer/.test(navigator.vendor) &&
+    "ontouchend" in document &&
+    /Safari/i.test(ua) &&
+    !/Chrome|CriOS|FxiOS|EdgiOS/i.test(ua)
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export function isNativeVideoFullscreen(video: HTMLVideoElement): boolean {
-  return !!(video as WebkitVideo).webkitDisplayingFullscreen;
+  const v = video as WebkitVideo;
+  return !!(v.webkitDisplayingFullscreen || v.webkitPresentationMode === "fullscreen");
 }
 
 function asWebkitVideo(video: HTMLVideoElement): WebkitVideo {
@@ -48,14 +69,15 @@ function asWebkitVideo(video: HTMLVideoElement): WebkitVideo {
 }
 
 export function canUseWebkitVideoFullscreen(video: HTMLVideoElement): boolean {
-  const webkitVideo = asWebkitVideo(video);
-  return typeof webkitVideo.webkitEnterFullscreen === "function";
+  const v = asWebkitVideo(video);
+  return (
+    typeof v.webkitEnterFullscreen === "function" ||
+    typeof v.webkitSetPresentationMode === "function"
+  );
 }
 
 export function canAutoRotateFullscreen(video: HTMLVideoElement): boolean {
-  if (isIOSDevice()) {
-    return canUseWebkitVideoFullscreen(video);
-  }
+  if (canUseWebkitVideoFullscreen(video)) return true;
   return screenfull.isEnabled;
 }
 
@@ -63,8 +85,7 @@ export async function enterLandscapeRotateFullscreen(
   video: HTMLVideoElement,
   container: HTMLElement
 ): Promise<boolean> {
-  const result = await enterPlayerFullscreen(video, container);
-  return result !== "none";
+  return tryEnterNativeVideoFullscreen(video) || (await tryEnterScreenfull(container));
 }
 
 export async function exitLandscapeRotateFullscreen(
@@ -81,7 +102,6 @@ export function isLandscapeRotateFullscreenActive(
   return isPlayerFullscreenActive(video, container);
 }
 
-/** True if native video FS, Screenfull FS, or custom CSS FS is active. */
 export function isPlayerFullscreenActive(
   video: HTMLVideoElement,
   container: HTMLElement,
@@ -92,137 +112,226 @@ export function isPlayerFullscreenActive(
   return screenfull.isEnabled && screenfull.isFullscreen && screenfull.element === container;
 }
 
-function applyCssFullscreenClasses(): void {
+export function applyCssFullscreenClasses(): void {
+  document.documentElement.classList.add("player-css-fullscreen");
   document.body.classList.add("player-fullscreen", "player-css-fullscreen");
 }
 
-function clearFullscreenClasses(): void {
+export function clearFullscreenClasses(): void {
+  document.documentElement.classList.remove("player-css-fullscreen");
   document.body.classList.remove("player-fullscreen", "player-css-fullscreen");
 }
 
-function applyNativeFullscreenClass(): void {
+export function applyNativeFullscreenClass(): void {
+  document.documentElement.classList.remove("player-css-fullscreen");
   document.body.classList.add("player-fullscreen");
   document.body.classList.remove("player-css-fullscreen");
 }
 
-/** Wait until WebKit reports native video fullscreen (or timeout). */
-function waitForWebkitFullscreen(
-  video: HTMLVideoElement,
-  timeoutMs: number
-): Promise<boolean> {
-  const webkitVideo = asWebkitVideo(video);
-  if (webkitVideo.webkitDisplayingFullscreen) return Promise.resolve(true);
+/**
+ * Relocate the player container under document.body so position:fixed / z-index
+ * are not trapped by the feed scroller's overflow stacking context.
+ * Same DOM node → video keeps playing (no React remount).
+ */
+export function relocatePlayerToBody(container: HTMLElement): void {
+  if (container.parentElement === document.body) return;
+  if (!container.parentNode) return;
+  const slot: FsReturnSlot = {
+    parent: container.parentNode,
+    next: container.nextSibling,
+  };
+  (container as unknown as Record<string, FsReturnSlot>)[FS_RETURN] = slot;
+  container.setAttribute("data-rw-fs-portal", "1");
+  document.body.appendChild(container);
+}
 
-  return new Promise((resolve) => {
-    let settled = false;
-    const done = (ok: boolean) => {
-      if (settled) return;
-      settled = true;
-      video.removeEventListener("webkitbeginfullscreen", onBegin);
-      window.clearTimeout(timer);
-      resolve(ok);
-    };
-    const onBegin = () => done(true);
-    const timer = window.setTimeout(() => {
-      done(!!webkitVideo.webkitDisplayingFullscreen);
-    }, timeoutMs);
-    video.addEventListener("webkitbeginfullscreen", onBegin);
-  });
+export function restorePlayerFromBody(container: HTMLElement): void {
+  const slot = (container as unknown as Record<string, FsReturnSlot | undefined>)[FS_RETURN];
+  if (!slot?.parent) {
+    container.removeAttribute("data-rw-fs-portal");
+    return;
+  }
+  try {
+    if (slot.next && slot.next.parentNode === slot.parent) {
+      slot.parent.insertBefore(container, slot.next);
+    } else {
+      slot.parent.appendChild(container);
+    }
+  } catch {
+    slot.parent.appendChild(container);
+  }
+  delete (container as unknown as Record<string, unknown>)[FS_RETURN];
+  container.removeAttribute("data-rw-fs-portal");
+}
+
+export function enterCssFullscreenPortal(container: HTMLElement, reason: string): void {
+  relocatePlayerToBody(container);
+  applyCssFullscreenClasses();
+  fsLog("css-fallback", { reason });
 }
 
 /**
- * Cross-browser enter:
- * - iOS Safari: video.webkitEnterFullscreen() synchronously (user-gesture safe),
- *   then verify it actually entered — otherwise report "none" for CSS fallback.
- * - Android/desktop: Screenfull on the player container (video + controls only).
+ * SYNCHRONOUS native iOS / WebKit fullscreen.
+ * Must run in the same turn as the tap handler (do not await before this).
+ * Does NOT gate on readyState — calling webkitEnterFullscreen when not ready
+ * throws (caught); gating previously forced css-fallback on false negatives.
  */
+export function tryEnterNativeVideoFullscreen(video: HTMLVideoElement): boolean {
+  const v = asWebkitVideo(video);
+  const hasEnter = typeof v.webkitEnterFullscreen === "function";
+  const hasPresentation = typeof v.webkitSetPresentationMode === "function";
+
+  fsLog("attempt-native-ios", {
+    readyState: video.readyState,
+    paused: video.paused,
+    networkState: video.networkState,
+    tagName: video.tagName,
+    currentSrc: (video.currentSrc || "").slice(0, 120),
+    hasWebkitEnterFullscreen: hasEnter,
+    hasWebkitSetPresentationMode: hasPresentation,
+    webkitSupportsFullscreen: v.webkitSupportsFullscreen ?? null,
+    webkitPresentationMode: v.webkitPresentationMode ?? null,
+    isIOSDevice: isIOSDevice(),
+  });
+
+  if (!hasEnter && !hasPresentation) {
+    fsLog("css-fallback", {
+      reason: "no-webkit-api",
+      readyState: video.readyState,
+    });
+    return false;
+  }
+
+  // Some iOS builds no-op FS while paused — kick play without awaiting
+  if (video.paused) {
+    try {
+      void video.play();
+    } catch {
+      // Non-blocking
+    }
+  }
+
+  try {
+    // Prefer classic webkitEnterFullscreen (true OS fullscreen on iPhone)
+    if (hasEnter) {
+      v.webkitEnterFullscreen!();
+      fsLog("native-ios", {
+        via: "webkitEnterFullscreen",
+        readyState: video.readyState,
+        displaying: !!v.webkitDisplayingFullscreen,
+      });
+      return true;
+    }
+
+    v.webkitSetPresentationMode!("fullscreen");
+    fsLog("native-ios", {
+      via: "webkitSetPresentationMode",
+      readyState: video.readyState,
+      mode: v.webkitPresentationMode ?? null,
+    });
+    return true;
+  } catch (err) {
+    fsLog("css-fallback", {
+      reason: "webkit-throw",
+      readyState: video.readyState,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return false;
+  }
+}
+
+/**
+ * After a sync native attempt: if WebKit never actually enters, apply CSS portal.
+ * Returns a cancel function (call on unmount / exit).
+ */
+export function confirmNativeOrCssFallback(
+  video: HTMLVideoElement,
+  container: HTMLElement,
+  onNative: () => void,
+  onCss: () => void,
+  timeoutMs = 700
+): () => void {
+  if (isNativeVideoFullscreen(video)) {
+    applyNativeFullscreenClass();
+    onNative();
+    return () => undefined;
+  }
+
+  let settled = false;
+  const finishNative = () => {
+    if (settled) return;
+    settled = true;
+    window.clearTimeout(timer);
+    video.removeEventListener("webkitbeginfullscreen", finishNative);
+    video.removeEventListener("webkitpresentationmodechanged", onPresentation);
+    applyNativeFullscreenClass();
+    onNative();
+  };
+
+  const onPresentation = () => {
+    if (isNativeVideoFullscreen(video)) finishNative();
+  };
+
+  const timer = window.setTimeout(() => {
+    if (settled) return;
+    if (isNativeVideoFullscreen(video)) {
+      finishNative();
+      return;
+    }
+    settled = true;
+    video.removeEventListener("webkitbeginfullscreen", finishNative);
+    video.removeEventListener("webkitpresentationmodechanged", onPresentation);
+    enterCssFullscreenPortal(container, "webkit-noop");
+    onCss();
+  }, timeoutMs);
+
+  video.addEventListener("webkitbeginfullscreen", finishNative);
+  video.addEventListener("webkitpresentationmodechanged", onPresentation);
+
+  return () => {
+    settled = true;
+    window.clearTimeout(timer);
+    video.removeEventListener("webkitbeginfullscreen", finishNative);
+    video.removeEventListener("webkitpresentationmodechanged", onPresentation);
+  };
+}
+
+async function tryEnterScreenfull(container: HTMLElement): Promise<boolean> {
+  if (!screenfull.isEnabled) return false;
+  try {
+    if (!screenfull.isFullscreen || screenfull.element !== container) {
+      await screenfull.request(container);
+    }
+    fsLog("native-requestFullscreen", {
+      element: container.tagName,
+    });
+    return true;
+  } catch (err) {
+    fsLog("css-fallback", {
+      reason: "screenfull-throw",
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return false;
+  }
+}
+
 export async function enterPlayerFullscreen(
   video: HTMLVideoElement,
   container: HTMLElement
 ): Promise<"webkit" | "screenfull" | "none"> {
-  const webkitVideo = asWebkitVideo(video);
-
-  // --- iOS / WebKit native video fullscreen ---
-  if (isIOSDevice() && typeof webkitVideo.webkitEnterFullscreen === "function") {
-    if (video.readyState < 1) {
-      fsLog("css-fallback", {
-        reason: "video-not-ready",
-        readyState: video.readyState,
-      });
-      return "none";
-    }
-
-    // Prefer playing — some iOS versions no-op FS on a paused video
-    if (video.paused) {
-      try {
-        void video.play();
-      } catch {
-        // Non-blocking; still attempt FS
-      }
-    }
-
-    try {
-      // MUST stay synchronous with the user gesture (no await before this call)
-      webkitVideo.webkitEnterFullscreen();
-    } catch (err) {
-      fsLog("css-fallback", {
-        reason: "webkit-throw",
-        error: err instanceof Error ? err.message : String(err),
-      });
-      return "none";
-    }
-
-    const ok = await waitForWebkitFullscreen(video, 500);
-    if (ok) {
-      fsLog("native-ios", { readyState: video.readyState });
-      return "webkit";
-    }
-
-    fsLog("css-fallback", {
-      reason: "webkit-noop",
-      readyState: video.readyState,
-      displaying: !!webkitVideo.webkitDisplayingFullscreen,
-    });
-    return "none";
+  if (tryEnterNativeVideoFullscreen(video)) {
+    return "webkit";
   }
 
-  // --- Standard Fullscreen API via screenfull (Android / desktop) ---
-  if (screenfull.isEnabled) {
-    try {
-      if (!screenfull.isFullscreen || screenfull.element !== container) {
-        await screenfull.request(container);
-      }
-      fsLog("native-requestFullscreen", {
-        element: container.tagName,
-        className: container.className.slice(0, 80),
-      });
-      return "screenfull";
-    } catch (err) {
-      fsLog("css-fallback", {
-        reason: "screenfull-throw",
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
-
-  // Non-iOS WebKit that still exposes webkitEnterFullscreen
-  if (typeof webkitVideo.webkitEnterFullscreen === "function" && video.readyState >= 1) {
-    try {
-      webkitVideo.webkitEnterFullscreen();
-      const ok = await waitForWebkitFullscreen(video, 500);
-      if (ok) {
-        fsLog("native-ios", { reason: "non-ios-webkit" });
-        return "webkit";
-      }
-    } catch {
-      // fall through
-    }
+  if (await tryEnterScreenfull(container)) {
+    return "screenfull";
   }
 
   fsLog("css-fallback", {
     reason: "no-native-api",
+    readyState: video.readyState,
     screenfullEnabled: screenfull.isEnabled,
-    hasWebkit: typeof webkitVideo.webkitEnterFullscreen === "function",
+    hasWebkit: canUseWebkitVideoFullscreen(video),
   });
   return "none";
 }
@@ -231,7 +340,7 @@ export async function exitPlayerFullscreen(
   video: HTMLVideoElement,
   container: HTMLElement
 ): Promise<void> {
-  const webkitVideo = asWebkitVideo(video);
+  const v = asWebkitVideo(video);
 
   try {
     if (screenfull.isEnabled && screenfull.isFullscreen) {
@@ -241,24 +350,33 @@ export async function exitPlayerFullscreen(
     // Non-blocking
   }
 
-  if (
-    webkitVideo.webkitDisplayingFullscreen &&
-    typeof webkitVideo.webkitExitFullscreen === "function"
-  ) {
+  try {
+    if (
+      typeof v.webkitSetPresentationMode === "function" &&
+      v.webkitPresentationMode === "fullscreen"
+    ) {
+      v.webkitSetPresentationMode("inline");
+    }
+  } catch {
+    // Non-blocking
+  }
+
+  if (v.webkitDisplayingFullscreen && typeof v.webkitExitFullscreen === "function") {
     try {
-      webkitVideo.webkitExitFullscreen();
+      v.webkitExitFullscreen();
     } catch {
       // Already exiting
     }
   }
 
+  restorePlayerFromBody(container);
   clearFullscreenClasses();
   fsLog("exit");
 }
 
 /**
- * Toggle fullscreen with the correct API per platform.
- * Returns how fullscreen is represented so the UI can sync custom CSS fallback.
+ * Toggle fullscreen. Prefer calling tryEnterNativeVideoFullscreen synchronously
+ * from the tap handler (see VideoPlayer) before this async helper.
  */
 export async function togglePlayerFullscreen(
   video: HTMLVideoElement,
@@ -272,14 +390,16 @@ export async function togglePlayerFullscreen(
     return { mode: "exit", custom: false };
   }
 
-  const entered = await enterPlayerFullscreen(video, container);
-  if (entered === "webkit" || entered === "screenfull") {
+  if (tryEnterNativeVideoFullscreen(video)) {
     applyNativeFullscreenClass();
-    return { mode: entered, custom: false };
+    return { mode: "webkit", custom: false };
   }
 
-  // CSS fallback: fixed player + hide all page chrome via body.player-css-fullscreen
-  applyCssFullscreenClasses();
-  fsLog("css-fallback", { reason: "applied-css-classes" });
+  if (await tryEnterScreenfull(container)) {
+    applyNativeFullscreenClass();
+    return { mode: "screenfull", custom: false };
+  }
+
+  enterCssFullscreenPortal(container, "applied-css-portal");
   return { mode: "custom", custom: true };
 }

@@ -32,15 +32,20 @@ import {
 } from "@/lib/analytics/funnel";
 import type { SeriesOrientation } from "@/lib/types/database";
 import {
+  applyNativeFullscreenClass,
   canAutoRotateFullscreen,
+  confirmNativeOrCssFallback,
+  enterCssFullscreenPortal,
   enterLandscapeRotateFullscreen,
   enterPlayerFullscreen,
   exitLandscapeRotateFullscreen,
+  exitPlayerFullscreen,
   isDeviceLandscape,
   isLandscapeRotateFullscreenActive,
   isMobileViewport,
   isNativeVideoFullscreen,
   togglePlayerFullscreen,
+  tryEnterNativeVideoFullscreen,
 } from "@/lib/landscape-rotate-fullscreen";
 
 const autoplayLog = (...args: unknown[]) => {
@@ -223,7 +228,7 @@ function ControlButton({
   active,
 }: {
   label: string;
-  onClick: () => void;
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
   children: ReactNode;
   active?: boolean;
 }) {
@@ -283,6 +288,7 @@ export function VideoPlayer({
   const playbackReadyRef = useRef(false);
   const episodeStartedTrackedRef = useRef(false);
   const episodeCompletedTrackedRef = useRef(false);
+  const fsConfirmCancelRef = useRef<(() => void) | null>(null);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -705,14 +711,12 @@ export function VideoPlayer({
       if (mode === "webkit" || mode === "screenfull") {
         setIsFullscreen(true);
         setCssFullscreen(false);
-        document.body.classList.add("player-fullscreen");
-        document.body.classList.remove("player-css-fullscreen");
+        applyNativeFullscreenClass();
       } else {
-        // No user gesture for webkit after navigation — use hardened CSS FS
+        // No user gesture for webkit after navigation — portal CSS FS
+        enterCssFullscreenPortal(container, "binge-restore");
         setIsFullscreen(true);
         setCssFullscreen(true);
-        document.body.classList.add("player-fullscreen", "player-css-fullscreen");
-        console.info("[rw-fs]", "css-fallback", { reason: "binge-restore" });
       }
     };
 
@@ -728,15 +732,17 @@ export function VideoPlayer({
     if (!video) return;
 
     const onBegin = () => {
+      fsConfirmCancelRef.current?.();
+      fsConfirmCancelRef.current = null;
       setIsFullscreen(true);
       setCssFullscreen(false);
-      document.body.classList.add("player-fullscreen");
-      document.body.classList.remove("player-css-fullscreen");
+      applyNativeFullscreenClass();
     };
     const onEnd = () => {
       setIsFullscreen(false);
       setCssFullscreen(false);
       document.body.classList.remove("player-fullscreen", "player-css-fullscreen");
+      document.documentElement.classList.remove("player-css-fullscreen");
     };
 
     video.addEventListener("webkitbeginfullscreen", onBegin);
@@ -746,6 +752,13 @@ export function VideoPlayer({
       video.removeEventListener("webkitendfullscreen", onEnd);
     };
   }, [src]);
+
+  useEffect(() => {
+    return () => {
+      fsConfirmCancelRef.current?.();
+      fsConfirmCancelRef.current = null;
+    };
+  }, []);
   useEffect(() => {
     if (!autoPlay) return;
 
@@ -986,19 +999,58 @@ export function VideoPlayer({
     };
   }, []);
 
-  const toggleFullscreen = useCallback(async () => {
+  const toggleFullscreen = useCallback(() => {
     const container = containerRef.current;
     const video = videoRef.current;
     if (!container || !video) return;
 
-    const result = await togglePlayerFullscreen(video, container, cssFullscreen);
-    if (result.mode === "exit") {
-      setIsFullscreen(false);
-      setCssFullscreen(false);
+    fsConfirmCancelRef.current?.();
+    fsConfirmCancelRef.current = null;
+
+    // EXIT
+    if (
+      cssFullscreen ||
+      isNativeVideoFullscreen(video) ||
+      (screenfull.isEnabled && screenfull.isFullscreen)
+    ) {
+      void (async () => {
+        await exitPlayerFullscreen(video, container);
+        setIsFullscreen(false);
+        setCssFullscreen(false);
+      })();
       return;
     }
-    setIsFullscreen(true);
-    setCssFullscreen(result.custom);
+
+    // ENTER — WebKit fullscreen MUST stay synchronous with the tap (user gesture)
+    if (tryEnterNativeVideoFullscreen(video)) {
+      fsConfirmCancelRef.current = confirmNativeOrCssFallback(
+        video,
+        container,
+        () => {
+          setIsFullscreen(true);
+          setCssFullscreen(false);
+          fsConfirmCancelRef.current = null;
+        },
+        () => {
+          setIsFullscreen(true);
+          setCssFullscreen(true);
+          fsConfirmCancelRef.current = null;
+        }
+      );
+      return;
+    }
+
+    // Screenfull / CSS fallback (async OK — not iOS native gesture-bound)
+    void (async () => {
+      const result = await togglePlayerFullscreen(video, container, false);
+      if (result.mode === "exit") {
+        setIsFullscreen(false);
+        setCssFullscreen(false);
+        return;
+      }
+      setIsFullscreen(true);
+      setCssFullscreen(result.custom);
+    })();
   }, [cssFullscreen]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -1255,17 +1307,17 @@ export function VideoPlayer({
     "rw-player-fs-root",
     fillContainer
       ? `relative h-full w-full overflow-hidden bg-black ${
-          isFullscreen ? "fixed inset-0 z-[100]" : ""
+          isFullscreen || cssFullscreen ? "fixed inset-0 z-[2147483646]" : ""
         }`
       : isLandscapeSeries
         ? `relative mx-auto w-full overflow-hidden rounded-xl bg-black ${
-            isFullscreen
-              ? "fixed inset-0 z-[100] max-h-none max-w-none rounded-none"
+            isFullscreen || cssFullscreen
+              ? "fixed inset-0 z-[2147483646] max-h-none max-w-none rounded-none"
               : "aspect-video"
           }`
         : `relative mx-auto w-full max-w-md overflow-hidden rounded-xl bg-black ${
-            isFullscreen
-              ? "fixed inset-0 z-[100] max-h-none max-w-none rounded-none"
+            isFullscreen || cssFullscreen
+              ? "fixed inset-0 z-[2147483646] max-h-none max-w-none rounded-none"
               : "max-h-[calc(100dvh-5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] aspect-[9/16]"
           }`,
   ].join(" ");
@@ -1576,7 +1628,13 @@ export function VideoPlayer({
                     </div>
                   )}
 
-                  <ControlButton label="Fullscreen" onClick={() => void toggleFullscreen()}>
+                  <ControlButton
+                    label="Fullscreen"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleFullscreen();
+                    }}
+                  >
                     <svg viewBox="0 0 24 24" className={iconClass}>
                       <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
                     </svg>

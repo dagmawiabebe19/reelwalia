@@ -47,37 +47,54 @@ body {
 }
 
 body.player-fullscreen header,
+body.player-fullscreen [data-site-header],
 body.player-fullscreen [data-subscribe-banner],
-body.player-fullscreen [data-feed-chrome] {
-  display: none !important;
-}
-
-/*
- * CSS-fullscreen fallback (when native FS unavailable / webkit no-ops).
- * Escape overflow/stacking-context traps from the mobile feed scroller by
- * forcing the player root to the true viewport and burying page chrome.
- */
-body.player-css-fullscreen {
-  overflow: hidden !important;
-}
-
-body.player-css-fullscreen [data-subscribe-banner],
-body.player-css-fullscreen [data-feed-chrome],
-body.player-css-fullscreen header,
-body.player-css-fullscreen nav {
+body.player-fullscreen [data-feed-chrome],
+body.player-fullscreen [aria-label="Subscribe to unlock all episodes"] {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
 }
 
-body.player-css-fullscreen .rw-player-fs-root {
+/*
+ * CSS-fullscreen fallback — player is relocated under document.body
+ * (data-rw-fs-portal) so fixed positioning is not trapped by the feed scroller.
+ */
+html.player-css-fullscreen,
+body.player-css-fullscreen {
+  overflow: hidden !important;
+  height: 100% !important;
+  overscroll-behavior: none !important;
+}
+
+body.player-css-fullscreen header,
+body.player-css-fullscreen [data-site-header],
+body.player-css-fullscreen [data-subscribe-banner],
+body.player-css-fullscreen [data-feed-chrome],
+body.player-css-fullscreen [aria-label="Subscribe to unlock all episodes"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+
+/* Fixed bottom paywall strip / floating pill (SubscribeBanner viewport placement) */
+body.player-css-fullscreen .fixed.inset-x-0.bottom-0,
+body.player-css-fullscreen .fixed.bottom-4 {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+body.player-css-fullscreen [data-rw-fs-portal],
+body.player-css-fullscreen .rw-player-fs-root[data-rw-fs-portal] {
   position: fixed !important;
   inset: 0 !important;
   top: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
   left: 0 !important;
-  z-index: 2147483000 !important;
+  z-index: 2147483646 !important;
   width: 100vw !important;
   width: 100dvw !important;
   height: 100vh !important;
@@ -88,6 +105,11 @@ body.player-css-fullscreen .rw-player-fs-root {
   border-radius: 0 !important;
   background: #000 !important;
   transform: none !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 @layer base {
