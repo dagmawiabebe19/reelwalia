@@ -34,6 +34,7 @@ import type { SeriesOrientation } from "@/lib/types/database";
 import {
   applyNativeFullscreenClass,
   canAutoRotateFullscreen,
+  clearFullscreenClasses,
   confirmNativeOrCssFallback,
   enterCssFullscreenPortal,
   enterLandscapeRotateFullscreen,
@@ -44,6 +45,7 @@ import {
   isLandscapeRotateFullscreenActive,
   isMobileViewport,
   isNativeVideoFullscreen,
+  restorePlayerFromBody,
   togglePlayerFullscreen,
   tryEnterNativeVideoFullscreen,
 } from "@/lib/landscape-rotate-fullscreen";
@@ -395,11 +397,13 @@ export function VideoPlayer({
       if (loadError) return;
       setShowControls(true);
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-      if (autoHide && playing) {
+      // Feed mode: keep controls visible so the fullscreen control stays reachable
+      // above the subscribe CTA (do not auto-hide).
+      if (autoHide && playing && !feedMode) {
         hideTimerRef.current = setTimeout(() => setShowControls(false), 3000);
       }
     },
-    [loadError, playing]
+    [feedMode, loadError, playing]
   );
 
   const selectCaptionLang = useCallback((languageCode: string | null) => {
@@ -729,6 +733,7 @@ export function VideoPlayer({
   // Sync isFullscreen with native WebKit video fullscreen (iOS)
   useEffect(() => {
     const video = videoRef.current;
+    const container = containerRef.current;
     if (!video) return;
 
     const onBegin = () => {
@@ -739,10 +744,12 @@ export function VideoPlayer({
       applyNativeFullscreenClass();
     };
     const onEnd = () => {
+      fsConfirmCancelRef.current?.();
+      fsConfirmCancelRef.current = null;
+      if (container) restorePlayerFromBody(container);
+      clearFullscreenClasses();
       setIsFullscreen(false);
       setCssFullscreen(false);
-      document.body.classList.remove("player-fullscreen", "player-css-fullscreen");
-      document.documentElement.classList.remove("player-css-fullscreen");
     };
 
     video.addEventListener("webkitbeginfullscreen", onBegin);
@@ -759,6 +766,13 @@ export function VideoPlayer({
       fsConfirmCancelRef.current = null;
     };
   }, []);
+
+  // Feed: controls stay visible (including fullscreen) for the whole slide.
+  useEffect(() => {
+    if (!feedMode) return;
+    setShowControls(true);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+  }, [feedMode, episodeId]);
   useEffect(() => {
     if (!autoPlay) return;
 
@@ -1271,6 +1285,10 @@ export function VideoPlayer({
 
     lastTapRef.current = now;
     tapTimerRef.current = setTimeout(() => {
+      if (feedMode) {
+        setShowControls(true);
+        return;
+      }
       setShowControls((visible) => {
         const next = !visible;
         if (next && playing) {
@@ -1302,6 +1320,10 @@ export function VideoPlayer({
       : "object-contain";
 
   const iconClass = "h-6 w-6 fill-white md:h-5 md:w-5";
+
+  // Keep controls above the fixed subscribe CTA in normal playback (not during FS).
+  const liftControlsAbovePaywall =
+    !isSubscribed && !isFullscreen && !cssFullscreen;
 
   const containerClassName = [
     "rw-player-fs-root",
@@ -1455,8 +1477,13 @@ export function VideoPlayer({
           )}
 
           <div
-            className={`pointer-events-none absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/95 via-black/60 to-transparent pt-16 transition-opacity duration-300 ${
+            data-player-controls
+            className={`pointer-events-none absolute inset-x-0 z-50 bg-gradient-to-t from-black/95 via-black/60 to-transparent pt-16 transition-opacity duration-300 ${
               showControls ? "opacity-100" : "opacity-0"
+            } ${
+              liftControlsAbovePaywall
+                ? "bottom-24 lg:bottom-0"
+                : "bottom-0"
             }`}
           >
             <div className="pointer-events-auto px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">

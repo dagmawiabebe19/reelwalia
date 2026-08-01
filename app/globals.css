@@ -46,19 +46,10 @@ body {
   @apply antialiased font-sans text-base;
 }
 
-body.player-fullscreen header,
-body.player-fullscreen [data-site-header],
-body.player-fullscreen [data-subscribe-banner],
-body.player-fullscreen [data-feed-chrome],
-body.player-fullscreen [aria-label="Subscribe to unlock all episodes"] {
-  display: none !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-}
-
 /*
- * CSS-fullscreen fallback — player is relocated under document.body
- * (data-rw-fs-portal) so fixed positioning is not trapped by the feed scroller.
+ * Fullscreen chrome hiding — ONLY while CSS-fullscreen fallback is active.
+ * Never hide player controls ([data-player-controls]). Do not use broad
+ * .fixed.bottom-* selectors (those can collide with unrelated UI).
  */
 html.player-css-fullscreen,
 body.player-css-fullscreen {
@@ -67,23 +58,31 @@ body.player-css-fullscreen {
   overscroll-behavior: none !important;
 }
 
-body.player-css-fullscreen header,
 body.player-css-fullscreen [data-site-header],
+body.player-css-fullscreen header[data-site-header],
 body.player-css-fullscreen [data-subscribe-banner],
-body.player-css-fullscreen [data-feed-chrome],
-body.player-css-fullscreen [aria-label="Subscribe to unlock all episodes"] {
+body.player-css-fullscreen [data-feed-chrome] {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
   opacity: 0 !important;
 }
 
-/* Fixed bottom paywall strip / floating pill (SubscribeBanner viewport placement) */
-body.player-css-fullscreen .fixed.inset-x-0.bottom-0,
-body.player-css-fullscreen .fixed.bottom-4 {
+/* Native / rotate fullscreen: hide site chrome only (not player controls). */
+body.player-fullscreen:not(.player-css-fullscreen) [data-site-header],
+body.player-fullscreen:not(.player-css-fullscreen) header[data-site-header],
+body.player-fullscreen:not(.player-css-fullscreen) [data-subscribe-banner],
+body.player-fullscreen:not(.player-css-fullscreen) [data-feed-chrome] {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
+}
+
+/* Player controls must never be targeted by chrome-hide rules. */
+body.player-css-fullscreen [data-player-controls],
+body.player-fullscreen [data-player-controls] {
+  visibility: visible !important;
+  pointer-events: auto !important;
 }
 
 body.player-css-fullscreen [data-rw-fs-portal],
@@ -108,8 +107,6 @@ body.player-css-fullscreen .rw-player-fs-root[data-rw-fs-portal] {
   visibility: visible !important;
   opacity: 1 !important;
   pointer-events: auto !important;
-  display: flex !important;
-  flex-direction: column !important;
 }
 
 @layer base {
