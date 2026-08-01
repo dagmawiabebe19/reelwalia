@@ -22,6 +22,7 @@ import {
   hasLearnedFeedSwipeUp,
   markFeedSwipeUpLearned,
 } from "@/components/watch/FeedSwipeHint";
+import { FeedEpisodeSheet } from "@/components/watch/FeedEpisodeSheet";
 import type { Series } from "@/lib/types/database";
 import {
   consumeUnmutedIntent,
@@ -119,6 +120,17 @@ interface VideoPlayerProps {
    * Returns "paywall" when the step hit a locked episode.
    */
   onFeedStep?: (delta: number) => "ok" | "paywall" | "noop";
+  /** Jump to a specific feed episode index (paywall if locked). */
+  onFeedJumpTo?: (index: number) => "ok" | "paywall" | "noop";
+  /** Episodes for the in-player list (feed mode). */
+  feedEpisodes?: Array<{
+    id: string;
+    episodeNumber: number;
+    title: string;
+    locked: boolean;
+  }>;
+  /** Active index in feedEpisodes. */
+  feedEpisodeIndex?: number;
   /** Fill the parent slide (100% height) instead of aspect-ratio box. */
   fillContainer?: boolean;
 }
@@ -282,6 +294,9 @@ export function VideoPlayer({
   onFeedAdvance,
   onFeedLockedNext,
   onFeedStep,
+  onFeedJumpTo,
+  feedEpisodes = [],
+  feedEpisodeIndex = 0,
   fillContainer = false,
 }: VideoPlayerProps) {
   const isLandscapeSeries = seriesOrientation === "landscape";
@@ -337,7 +352,9 @@ export function VideoPlayer({
   const [mobileCaptionTopPx, setMobileCaptionTopPx] = useState<number | null>(null);
   const [swipeHintVisible, setSwipeHintVisible] = useState(false);
   const [swipeHintLearned, setSwipeHintLearned] = useState(false);
+  const [showFeedEpisodeSheet, setShowFeedEpisodeSheet] = useState(false);
   const swipeIntroTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const swipeSurfaceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fsSessionRef.current =
@@ -889,6 +906,10 @@ export function VideoPlayer({
       fsConfirmCancelRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    setShowFeedEpisodeSheet(false);
+  }, [episodeId]);
 
   // Feed: controls stay visible (including fullscreen) for the whole slide.
   useEffect(() => {
@@ -1470,14 +1491,15 @@ export function VideoPlayer({
       });
     }, 280);
   };
+  const handleSurfaceTapRef = useRef(handleSurfaceTap);
+  handleSurfaceTapRef.current = handleSurfaceTap;
 
-  const handleFeedSwipe = useCallback(
-    async (deltaY: number) => {
-      if (!feedMode || !onFeedStep) return;
-      // Swipe up (negative deltaY) → next; swipe down → previous
-      if (Math.abs(deltaY) < 56) return;
-      const delta = deltaY < 0 ? 1 : -1;
-
+  const requestFeedNavigate = useCallback(
+    async (
+      deltaOrIndex: number,
+      reason: string,
+      mode: "step" | "jump" = "step"
+    ) => {
       const video = videoRef.current;
       if (video && !video.muted) persistAudioPreference(true);
       if (video) void saveProgress(video.currentTime, false);
@@ -1487,26 +1509,50 @@ export function VideoPlayer({
         cssFullscreen ||
         (video ? isNativeVideoFullscreen(video) : false);
 
+      if (mode === "jump") {
+        const target = feedEpisodes[deltaOrIndex];
+        if (!target) return;
+        if (target.locked) {
+          maintainFsAcrossEpisodeRef.current = false;
+          await exitFullscreenForPaywall();
+          onFeedJumpTo?.(deltaOrIndex);
+          setShowFeedEpisodeSheet(false);
+          return;
+        }
+        if (inFs) {
+          maintainFsAcrossEpisodeRef.current = true;
+          fsLog("binge-advance", { reason, episodeId, index: deltaOrIndex });
+        }
+        const result = onFeedJumpTo?.(deltaOrIndex) ?? "noop";
+        if (result === "paywall") {
+          maintainFsAcrossEpisodeRef.current = false;
+          await exitFullscreenForPaywall();
+        }
+        setShowFeedEpisodeSheet(false);
+        return;
+      }
+
+      const delta = deltaOrIndex;
       if (delta > 0 && nextEpisode?.locked) {
         markFeedSwipeUpLearned();
         setSwipeHintLearned(true);
         setSwipeHintVisible(false);
         maintainFsAcrossEpisodeRef.current = false;
         await exitFullscreenForPaywall();
-        onFeedStep(1);
+        onFeedStep?.(1);
         return;
       }
 
       if (inFs) {
         maintainFsAcrossEpisodeRef.current = true;
         fsLog("binge-advance", {
-          reason: delta > 0 ? "swipe-up-keep-fs" : "swipe-down-keep-fs",
+          reason,
           episodeId,
           delta,
         });
       }
 
-      const result = onFeedStep(delta);
+      const result = onFeedStep?.(delta) ?? "noop";
       if (delta > 0 && result !== "noop") {
         markFeedSwipeUpLearned();
         setSwipeHintLearned(true);
@@ -1521,45 +1567,84 @@ export function VideoPlayer({
       cssFullscreen,
       episodeId,
       exitFullscreenForPaywall,
-      feedMode,
+      feedEpisodes,
       isFullscreen,
       nextEpisode?.locked,
+      onFeedJumpTo,
       onFeedStep,
       saveProgress,
     ]
   );
 
+  // Reliable feed swipe: non-passive touchmove + touch-action:none on the surface
+  useEffect(() => {
+    if (!feedMode) return;
+    const el = swipeSurfaceRef.current;
+    if (!el) return;
+
+    let start: { x: number; y: number } | null = null;
+    let tracking = false;
+
+    const onStart = (e: globalThis.TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      start = { x: touch.clientX, y: touch.clientY };
+      tracking = true;
+    };
+
+    const onMove = (e: globalThis.TouchEvent) => {
+      if (!tracking || !start) return;
+      const touch = e.touches[0];
+      if (!touch) return;
+      const dy = touch.clientY - start.y;
+      const dx = touch.clientX - start.x;
+      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) {
+        e.preventDefault();
+      }
+    };
+
+    const onEnd = (e: globalThis.TouchEvent) => {
+      const touch = e.changedTouches[0];
+      const from = start;
+      start = null;
+      tracking = false;
+      if (!touch || !from) return;
+
+      const dx = touch.clientX - from.x;
+      const dy = touch.clientY - from.y;
+      if (Math.abs(dy) > 40 && Math.abs(dy) > Math.abs(dx) * 1.1) {
+        if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+        void requestFeedNavigate(
+          dy < 0 ? 1 : -1,
+          dy < 0 ? "swipe-up" : "swipe-down"
+        );
+        return;
+      }
+
+      const rect = el.getBoundingClientRect();
+      handleSurfaceTapRef.current(touch.clientX, rect.width, rect.left);
+    };
+
+    const onCancel = () => {
+      start = null;
+      tracking = false;
+    };
+
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd, { passive: true });
+    el.addEventListener("touchcancel", onCancel, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onCancel);
+    };
+  }, [feedMode, requestFeedNavigate]);
+
   const onSurfaceClick = (event: MouseEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     handleSurfaceTap(event.clientX, rect.width, rect.left);
-  };
-
-  const onSurfaceTouchStart = (event: TouchEvent<HTMLDivElement>) => {
-    if (!feedMode) return;
-    const touch = event.changedTouches[0] ?? event.touches[0];
-    if (!touch) return;
-    swipeStartRef.current = { x: touch.clientX, y: touch.clientY, t: Date.now() };
-  };
-
-  const onSurfaceTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
-    const touch = event.changedTouches[0];
-    if (!touch) return;
-
-    const start = swipeStartRef.current;
-    swipeStartRef.current = null;
-
-    if (feedMode && start) {
-      const dx = touch.clientX - start.x;
-      const dy = touch.clientY - start.y;
-      if (Math.abs(dy) > 56 && Math.abs(dy) > Math.abs(dx) * 1.2) {
-        if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
-        void handleFeedSwipe(dy);
-        return;
-      }
-    }
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    handleSurfaceTap(touch.clientX, rect.width, rect.left);
   };
 
   const objectFitClass = isLandscapeSeries
@@ -1605,12 +1690,48 @@ export function VideoPlayer({
       ) : (
         <>
           <div
-            className="absolute inset-0 z-10"
+            ref={swipeSurfaceRef}
+            className={`absolute inset-0 z-10 ${feedMode ? "touch-none" : ""}`}
             onClick={onSurfaceClick}
-            onTouchStart={onSurfaceTouchStart}
-            onTouchEnd={onSurfaceTouchEnd}
             aria-hidden
           />
+
+          {feedMode && (
+            <div className="pointer-events-none absolute right-2 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void requestFeedNavigate(-1, "prev-button")}
+                disabled={feedEpisodeIndex <= 0}
+                className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white backdrop-blur-sm transition enabled:active:scale-95 disabled:opacity-30"
+                aria-label="Previous episode"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden>
+                  <path d="M12 8l6 6H6l6-6z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => void requestFeedNavigate(1, "next-button")}
+                disabled={feedEpisodeIndex >= Math.max(feedEpisodes.length - 1, 0)}
+                className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white backdrop-blur-sm transition enabled:active:scale-95 disabled:opacity-30"
+                aria-label="Next episode"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden>
+                  <path d="M12 16l-6-6h12l-6 6z" />
+                </svg>
+              </button>
+              {feedEpisodes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowFeedEpisodeSheet(true)}
+                  className="pointer-events-auto mt-1 flex min-h-11 items-center justify-center rounded-full border border-white/15 bg-black/55 px-3 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm transition active:scale-95"
+                  aria-label="Episodes list"
+                >
+                  Eps
+                </button>
+              )}
+            </div>
+          )}
 
           <video
             ref={videoRef}
@@ -1728,6 +1849,18 @@ export function VideoPlayer({
             <FeedSwipeHint
               visible={swipeHintVisible && !hasLearnedFeedSwipeUp() && !swipeHintLearned}
               lockedNext={!!nextEpisode.locked}
+            />
+          )}
+
+          {feedMode && (
+            <FeedEpisodeSheet
+              open={showFeedEpisodeSheet}
+              episodes={feedEpisodes}
+              currentEpisodeId={episodeId}
+              onClose={() => setShowFeedEpisodeSheet(false)}
+              onSelect={(index) => {
+                void requestFeedNavigate(index, "episode-list", "jump");
+              }}
             />
           )}
 

@@ -181,6 +181,32 @@ export function MobileVerticalFeed({
     [stepEpisode]
   );
 
+  const onFeedJumpTo = useCallback(
+    (index: number): "ok" | "paywall" | "noop" => {
+      if (index < 0 || index >= episodes.length) return "noop";
+      if (index === activeIndex) return "noop";
+      const target = episodes[index];
+      if (target.locked || !target.videoUrl) {
+        goToIndex(index, { binge: true, reason: "episode-list-paywall" });
+        return "paywall";
+      }
+      goToIndex(index, { binge: true, reason: "episode-list" });
+      return "ok";
+    },
+    [activeIndex, episodes, goToIndex]
+  );
+
+  const feedNavEpisodes = useMemo(
+    () =>
+      episodes.map((ep) => ({
+        id: ep.id,
+        episodeNumber: ep.episodeNumber,
+        title: ep.title ?? "",
+        locked: ep.locked || !ep.videoUrl,
+      })),
+    [episodes]
+  );
+
   if (!ready) {
     return (
       <div className="mx-auto aspect-[9/16] w-full max-w-md rounded-xl bg-zinc-950" />
@@ -304,6 +330,9 @@ export function MobileVerticalFeed({
             onFeedAdvance={onFeedAdvance}
             onFeedLockedNext={onFeedLockedNext}
             onFeedStep={onFeedStep}
+            onFeedJumpTo={onFeedJumpTo}
+            feedEpisodes={feedNavEpisodes}
+            feedEpisodeIndex={activeIndex}
           />
         </div>
       )}
