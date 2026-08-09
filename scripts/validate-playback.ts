@@ -59,36 +59,39 @@ assert(getNextEpisode(episodes, "ep6") === null, "Ep6 should have no next");
 assert(getEpisodeByNumber(episodes, 1)?.id === "ep1", "getEpisodeByNumber(1)");
 assert(getEpisodeByNumber(episodes, 3)?.id === "ep3", "getEpisodeByNumber(3)");
 
-// --- Paywall gating (5 free episodes) ---
-const freeCount = resolveFreeEpisodeCount(5);
-assert(freeCount === 5, "resolveFreeEpisodeCount uses series value");
+// --- Paywall gating (1 free episode by default; series can override) ---
+const freeCount = resolveFreeEpisodeCount(1);
+assert(freeCount === 1, "resolveFreeEpisodeCount uses series value");
 assert(
   resolveFreeEpisodeCount(undefined) === DEFAULT_FREE_EPISODE_COUNT,
-  "Default free episode count is 5"
+  "Default free episode count is 1"
 );
+assert(DEFAULT_FREE_EPISODE_COUNT === 1, "Product default is episode 1 free");
 assert(isEpisodeFree(1, freeCount), "Episode 1 is free");
-assert(isEpisodeFree(5, freeCount), "Episode 5 is free");
-assert(!isEpisodeFree(6, freeCount), "Episode 6 is locked");
+assert(!isEpisodeFree(2, freeCount), "Episode 2 is locked");
 assert(
-  canWatchEpisode(6, freeCount, { subscription_status: "active" }),
-  "Subscribers can watch episode 6"
+  canWatchEpisode(2, freeCount, { subscription_status: "active" }),
+  "Subscribers can watch episode 2"
 );
 assert(
-  !canWatchEpisode(6, freeCount, { subscription_status: "none" }),
-  "Guests cannot watch episode 6"
+  !canWatchEpisode(2, freeCount, { subscription_status: "none" }),
+  "Guests cannot watch episode 2"
 );
 assert(
-  !canWatchEpisode(6, freeCount, null),
-  "Logged-out users cannot watch episode 6"
+  !canWatchEpisode(2, freeCount, null),
+  "Logged-out users cannot watch episode 2"
 );
 
-// Binge chain stops at paywall boundary — ep5 next is ep6 (locked for guests)
-const ep5Next = getNextEpisode(episodes, "ep5");
-assert(ep5Next?.id === "ep6", "After ep5 binge targets ep6");
+// Binge chain stops at paywall boundary — ep1 next is ep2 (locked for guests)
+const ep1Next = getNextEpisode(episodes, "ep1");
+assert(ep1Next?.id === "ep2", "After ep1 binge targets ep2");
 assert(
-  !canWatchEpisode(ep5Next!.episode_number, freeCount, null),
-  "Ep6 requires subscription after free tier"
+  !canWatchEpisode(ep1Next!.episode_number, freeCount, null),
+  "Ep2 requires subscription after free tier"
 );
+
+// Series override still respected when free_episode_count is higher
+assert(isEpisodeFree(5, resolveFreeEpisodeCount(5)), "Series can keep a wider free window");
 
 // --- Progress resolution (root-cause fix) ---
 const nearComplete: WatchHistoryProgress = { progress_seconds: 420, completed: false };
@@ -128,6 +131,6 @@ assert(storage.has(WATCH_USER_INITIATED_KEY), "markBingeContinuation sets flag")
 
 console.log("✓ All playback validation checks passed");
 console.log("  Entry: /watch/{id}?autoplay=true");
-console.log("  Chain: ep1–ep5 free → [paywall] → ep6+");
+console.log("  Chain: ep1 free → [paywall] → ep2+");
 console.log(`  Free tier: episodes 1–${DEFAULT_FREE_EPISODE_COUNT}`);
 console.log("  Binge progress: always starts at 0");
