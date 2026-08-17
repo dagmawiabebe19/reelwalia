@@ -32,6 +32,7 @@ export const STRIPE_PLANS: PlanDisplay[] = [
     priceSuffix: "/2 weeks",
     renewalLabel: "Renews every 2 weeks",
     periodLabel: "2 weeks",
+    mostPopular: true,
   },
   {
     key: "1month",
@@ -41,7 +42,6 @@ export const STRIPE_PLANS: PlanDisplay[] = [
     priceSuffix: "/month",
     renewalLabel: "Renews monthly",
     periodLabel: "month",
-    mostPopular: true,
   },
 ];
 
