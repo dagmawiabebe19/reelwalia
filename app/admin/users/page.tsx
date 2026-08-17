@@ -13,6 +13,7 @@ type SearchParams = {
   preset?: string;
   from?: string;
   to?: string;
+  country?: string;
 };
 
 export default async function AdminUsersPage({
@@ -27,9 +28,11 @@ export default async function AdminUsersPage({
   const range = parseAnalyticsRange(searchParams ?? {});
   const { from, to } = formatRangeFormInputs(range, searchParams);
 
+  const country = searchParams?.country?.trim() || "all";
+
   let result;
   try {
-    result = await fetchAdminUsers({ page, search, range });
+    result = await fetchAdminUsers({ page, search, range, country });
   } catch (error) {
     return (
       <div className="space-y-6">

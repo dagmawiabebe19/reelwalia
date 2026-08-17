@@ -4,6 +4,7 @@ import {
   type DateRange,
 } from "@/lib/admin/analytics-range";
 import { buildTimeSeriesBuckets, type TimeSeriesPoint } from "@/lib/admin/chart-buckets";
+import { COUNTRY_UNKNOWN, normalizeCountryCode } from "@/lib/country-geo";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Profile, SubscriptionStatus } from "@/lib/types/database";
 
@@ -18,6 +19,7 @@ export type AdminUserRow = {
   isAdmin: boolean;
   paymentLabel: "Paid" | "No payment";
   activeLabel: "Active" | "Inactive";
+  country: string | null;
 };
 
 export type AdminUsersResult = {
@@ -27,6 +29,7 @@ export type AdminUsersResult = {
   total: number;
   totalPages: number;
   search: string;
+  countryFilter: string;
   range: DateRange;
   signupsInRange: number;
   signupSeries: TimeSeriesPoint[];
@@ -65,7 +68,25 @@ function mapUserRow(
     isAdmin: isAdminEmail(authUser.email),
     paymentLabel: hasPaidPlan && isActive ? "Paid" : "No payment",
     activeLabel: isActive ? "Active" : "Inactive",
+    country: normalizeCountryCode(profile?.country) ?? profile?.country ?? null,
   };
+}
+
+function matchesCountryFilter(country: string | null, filter: string): boolean {
+  if (!filter || filter === "all") return true;
+  const normalized = normalizeCountryCode(country);
+  if (filter === COUNTRY_UNKNOWN) {
+    return !normalized || normalized === COUNTRY_UNKNOWN;
+  }
+  return normalized === filter.toUpperCase();
+}
+
+function profilesInRangeQuery(admin: ReturnType<typeof createAdminClient>, range: DateRange) {
+  return admin
+    .from("profiles")
+    .select("*", { count: "exact" })
+    .gte("created_at", range.from.toISOString())
+    .lt("created_at", range.to.toISOString());
 }
 
 async function loadSignupSeries(
@@ -112,11 +133,13 @@ export async function fetchAdminUsers(options: {
   search?: string;
   perPage?: number;
   range: DateRange;
+  country?: string;
 }): Promise<AdminUsersResult> {
   const admin = createAdminClient();
   const page = Math.max(1, options.page ?? 1);
   const perPage = options.perPage ?? 25;
   const search = (options.search ?? "").trim().toLowerCase();
+  const countryFilter = (options.country ?? "all").trim();
   const range = options.range;
   const chartBucket = chartBucketForRange(range);
   const signupMeta = await loadSignupSeries(range);
@@ -126,6 +149,7 @@ export async function fetchAdminUsers(options: {
     chartBucket,
     signupsInRange: signupMeta.signupsInRange,
     signupSeries: signupMeta.signupSeries,
+    countryFilter,
   };
 
   if (search && isUuid(search)) {
@@ -147,6 +171,9 @@ export async function fetchAdminUsers(options: {
     );
 
     if (!inRange(row.createdAt, range)) {
+      return { users: [], page: 1, perPage, total: 0, totalPages: 0, search, ...baseResult };
+    }
+    if (!matchesCountryFilter(row.country, countryFilter)) {
       return { users: [], page: 1, perPage, total: 0, totalPages: 0, search, ...baseResult };
     }
 
@@ -192,12 +219,13 @@ export async function fetchAdminUsers(options: {
         const emailMatch = email.includes(search);
         if (!idMatch && !emailMatch) continue;
 
-        matched.push(
-          mapUserRow(
-            { id: authUser.id, email: authUser.email, created_at: authUser.created_at },
-            profile
-          )
+        const row = mapUserRow(
+          { id: authUser.id, email: authUser.email, created_at: authUser.created_at },
+          profile
         );
+        if (!matchesCountryFilter(row.country, countryFilter)) continue;
+
+        matched.push(row);
       }
 
       if (authPage.users.length < scanPerPage) break;
@@ -219,13 +247,22 @@ export async function fetchAdminUsers(options: {
   }
 
   const offset = (page - 1) * perPage;
-  const { data: profiles, count, error } = await admin
-    .from("profiles")
-    .select("*", { count: "exact" })
-    .gte("created_at", range.from.toISOString())
-    .lt("created_at", range.to.toISOString())
-    .order("created_at", { ascending: false })
-    .range(offset, offset + perPage - 1);
+  let profileQuery = profilesInRangeQuery(admin, range).order("created_at", {
+    ascending: false,
+  });
+
+  if (countryFilter && countryFilter !== "all") {
+    if (countryFilter === COUNTRY_UNKNOWN) {
+      profileQuery = profileQuery.or("country.is.null,country.eq.unknown");
+    } else {
+      profileQuery = profileQuery.eq("country", countryFilter.toUpperCase());
+    }
+  }
+
+  const { data: profiles, count, error } = await profileQuery.range(
+    offset,
+    offset + perPage - 1
+  );
 
   if (error) {
     throw new Error(error.message);

@@ -1,7 +1,24 @@
 import Link from "next/link";
 import { AdminDateRangeHiddenFields } from "@/components/admin/AdminDateRangeForm";
 import type { DatePreset } from "@/lib/admin/analytics-range";
+import { countryDisplay } from "@/lib/admin/country-display";
 import type { AdminUserRow } from "@/lib/admin/users-list";
+import { COUNTRY_UNKNOWN } from "@/lib/country-geo";
+
+const COUNTRY_FILTER_OPTIONS = [
+  { value: "all", label: "All countries" },
+  { value: COUNTRY_UNKNOWN, label: "Unknown" },
+  { value: "US", label: "US" },
+  { value: "GB", label: "GB" },
+  { value: "CA", label: "CA" },
+  { value: "AU", label: "AU" },
+  { value: "DE", label: "DE" },
+  { value: "FR", label: "FR" },
+  { value: "NG", label: "NG" },
+  { value: "KE", label: "KE" },
+  { value: "ZA", label: "ZA" },
+  { value: "IN", label: "IN" },
+];
 
 function UserAvatar({ row }: { row: AdminUserRow }) {
   const initial = (row.displayName ?? row.email).charAt(0).toUpperCase();
@@ -44,6 +61,7 @@ export function UsersTable({ users }: { users: AdminUserRow[] }) {
             <th>Email</th>
             <th>User ID</th>
             <th>Joined</th>
+            <th>Country</th>
             <th>Role</th>
             <th>Payment</th>
             <th>Status</th>
@@ -66,6 +84,7 @@ export function UsersTable({ users }: { users: AdminUserRow[] }) {
               <td className="max-w-[12rem] truncate text-zinc-300">{row.email}</td>
               <td className="font-mono text-xs text-zinc-500">{row.id.slice(0, 8)}…</td>
               <td className="text-zinc-400">{formatJoinDate(row.createdAt)}</td>
+              <td className="text-zinc-300">{countryDisplay(row.country)}</td>
               <td>
                 {row.isAdmin ? (
                   <span className="rw-admin-pill-red">Admin</span>
@@ -101,12 +120,14 @@ export function UsersSearchForm({
   preset,
   from,
   to,
+  country,
 }: {
   search: string;
   page: number;
   preset: DatePreset;
   from: string;
   to: string;
+  country: string;
 }) {
   return (
     <form className="rw-admin-panel flex flex-wrap items-end gap-3" method="get">
@@ -120,6 +141,20 @@ export function UsersSearchForm({
           className="rw-form-input py-2 text-sm"
         />
       </label>
+      <label className="min-w-[10rem] space-y-1.5">
+        <span className="text-xs uppercase tracking-wide text-zinc-500">Country</span>
+        <select
+          name="country"
+          defaultValue={country || "all"}
+          className="w-full rounded-lg border border-white/[0.12] bg-black px-3 py-2 text-sm text-white"
+        >
+          {COUNTRY_FILTER_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
       <AdminDateRangeHiddenFields preset={preset} from={from} to={to} />
       <input type="hidden" name="page" value="1" />
       <button type="submit" className="rw-btn-primary min-h-10 px-4 py-2 text-sm">
@@ -127,7 +162,7 @@ export function UsersSearchForm({
       </button>
       {search && (
         <Link
-          href={`/admin/users?preset=${encodeURIComponent(preset)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`}
+          href={`/admin/users?preset=${encodeURIComponent(preset)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${country && country !== "all" ? `&country=${encodeURIComponent(country)}` : ""}`}
           className="rw-btn-secondary min-h-10 px-4 py-2 text-sm"
         >
           Clear search
@@ -145,6 +180,7 @@ export function UsersPagination({
   preset,
   from,
   to,
+  country,
 }: {
   page: number;
   totalPages: number;
@@ -152,6 +188,7 @@ export function UsersPagination({
   preset: DatePreset;
   from: string;
   to: string;
+  country: string;
 }) {
   if (totalPages <= 1) return null;
 
@@ -162,6 +199,7 @@ export function UsersPagination({
   base.set("from", from);
   base.set("to", to);
   if (search) base.set("q", search);
+  if (country && country !== "all") base.set("country", country);
 
   const prevParams = new URLSearchParams(base);
   prevParams.set("page", String(prev));

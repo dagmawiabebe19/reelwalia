@@ -3,6 +3,11 @@ import { logBillingEvent, logEpisodeEvent, resolveSeriesIdFromEpisode } from "@/
 import { resolveVariantForUserId } from "@/lib/paywall-ab-persist";
 import { resolveTrafficSourceForUserId } from "@/lib/traffic-source-persist";
 import { isTrafficSource, type TrafficSource } from "@/lib/traffic-source";
+import { COUNTRY_UNKNOWN, normalizeCountryCode } from "@/lib/country-geo";
+import {
+  resolveCountryForUserId,
+  writeProfileCountry,
+} from "@/lib/country-geo-persist";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { unwrapStripeResponse } from "@/lib/stripe/helpers";
 import { getStripe } from "@/lib/stripe/server";
@@ -62,6 +67,37 @@ async function processingFeeCents(chargeId: string | null): Promise<number> {
     console.error("[analytics] balance_transaction fee lookup failed:", err);
   }
   return 0;
+}
+
+async function stripeBillingCountry(params: {
+  customerId: string | null;
+  chargeId: string | null;
+}): Promise<string | null> {
+  const stripe = getStripe();
+
+  if (params.chargeId) {
+    try {
+      const charge = await stripe.charges.retrieve(params.chargeId);
+      const country = normalizeCountryCode(charge.billing_details?.address?.country);
+      if (country && country !== COUNTRY_UNKNOWN) return country;
+    } catch (err) {
+      console.error("[analytics] charge country lookup failed:", err);
+    }
+  }
+
+  if (params.customerId) {
+    try {
+      const customer = await stripe.customers.retrieve(params.customerId);
+      if (!customer.deleted) {
+        const country = normalizeCountryCode(customer.address?.country);
+        if (country && country !== COUNTRY_UNKNOWN) return country;
+      }
+    } catch (err) {
+      console.error("[analytics] customer country lookup failed:", err);
+    }
+  }
+
+  return null;
 }
 
 async function metadataAttribution(params: {
@@ -148,6 +184,18 @@ export async function recordInvoicePayment(invoice: Stripe.Invoice): Promise<voi
         ? profileTraffic
         : null;
 
+  const stripeCountry = await stripeBillingCountry({
+    customerId,
+    chargeId: invoiceChargeId(inv),
+  });
+  if (stripeCountry && userId) {
+    await writeProfileCountry(userId, stripeCountry);
+  }
+  const profileCountry = await resolveCountryForUserId(userId);
+  const country =
+    stripeCountry ??
+    (profileCountry && profileCountry !== COUNTRY_UNKNOWN ? profileCountry : null);
+
   const chargeId = invoiceChargeId(inv);
   const fee = await processingFeeCents(chargeId);
 
@@ -168,6 +216,7 @@ export async function recordInvoicePayment(invoice: Stripe.Invoice): Promise<voi
       ? new Date(invoice.created * 1000).toISOString()
       : undefined,
     trafficSource,
+    country,
   });
 
   if (invoice.billing_reason === "subscription_create" && seriesId) {
@@ -179,6 +228,7 @@ export async function recordInvoicePayment(invoice: Stripe.Invoice): Promise<voi
       eventType: "purchase",
       paywallVariant: variant,
       trafficSource,
+      country,
     });
   }
 }

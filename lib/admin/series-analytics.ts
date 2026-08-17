@@ -16,6 +16,8 @@ import {
   type PaywallVariant,
 } from "@/lib/paywall-ab";
 import { type TrafficSourceFilter } from "@/lib/traffic-source";
+import { COUNTRY_UNKNOWN, normalizeCountryCode } from "@/lib/country-geo";
+import { countryFlag, countryLabel } from "@/lib/admin/country-display";
 
 const PAYWALL_AB_ARMS: PaywallVariant[] = [PAYWALL_VARIANT_AFTER_1, PAYWALL_VARIANT_AFTER_2];
 
@@ -56,12 +58,27 @@ export type RevenueBreakdown = {
   note: string;
 };
 
+export type CountryRankRow = {
+  country: string;
+  label: string;
+  flag: string;
+  count: number;
+};
+
+export type TopCountriesAnalytics = {
+  tracked: boolean;
+  note: string;
+  byViews: CountryRankRow[];
+  byPurchases: CountryRankRow[];
+};
+
 export type SeriesAnalytics = {
   series: SeriesOption;
   range: DateRange;
   sourceFilter: TrafficSourceFilter;
   tablesReady: boolean;
   trafficSourceReady: boolean;
+  countryGeoReady: boolean;
   views: { value: number | null; source: MetricSource; note: string };
   uniqueViewers: { value: number | null; source: MetricSource; note: string };
   fullSeriesCompletion: { value: number | null; completers: number | null; source: MetricSource; note: string };
@@ -75,6 +92,7 @@ export type SeriesAnalytics = {
   dropOff: EpisodeDropOff[];
   revenue: RevenueBreakdown;
   paywallAb: PaywallAbAnalytics;
+  topCountries: TopCountriesAnalytics;
   /** Signed-in completions in watch_history missing from episode_events (this range). */
   historyCompletionsRecovered: number | null;
 };
@@ -171,7 +189,7 @@ export async function loadSeriesAnalytics(
   let eventsQuery = await admin
     .from("episode_events")
     .select(
-      "user_id, episode_id, event_type, created_at, paywall_variant, visitor_id, traffic_source"
+      "user_id, episode_id, event_type, created_at, paywall_variant, visitor_id, traffic_source, country"
     )
     .eq("series_id", seriesId)
     .gte("created_at", fromIso)
@@ -193,6 +211,10 @@ export async function loadSeriesAnalytics(
     !eventsQuery.error &&
     (eventsQuery.data?.length === 0 ||
       eventsQuery.data?.some((row) => "traffic_source" in row));
+  const countryGeoReady =
+    tablesReady &&
+    !eventsQuery.error &&
+    (eventsQuery.data?.length === 0 || eventsQuery.data?.some((row) => "country" in row));
   let events = tablesReady ? eventsQuery.data ?? [] : [];
   if (sourceFilter !== "all") {
     events = events.filter((row) =>
@@ -372,6 +394,12 @@ export async function loadSeriesAnalytics(
     tablesReady,
     sourceFilter
   );
+  const topCountries = buildTopCountries({
+    startEvents,
+    purchaseEvents,
+    countryGeoReady,
+    sourceFilter,
+  });
 
   return {
     series,
@@ -379,6 +407,7 @@ export async function loadSeriesAnalytics(
     sourceFilter,
     tablesReady,
     trafficSourceReady,
+    countryGeoReady,
     views,
     uniqueViewers,
     fullSeriesCompletion,
@@ -386,7 +415,57 @@ export async function loadSeriesAnalytics(
     dropOff,
     revenue,
     paywallAb,
+    topCountries,
     historyCompletionsRecovered,
+  };
+}
+
+function rankCountryRows(
+  rows: Array<{ country?: string | null }>,
+  limit = 10
+): CountryRankRow[] {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const code = normalizeCountryCode(row.country) ?? COUNTRY_UNKNOWN;
+    counts.set(code, (counts.get(code) ?? 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([country, count]) => ({
+      country,
+      label: countryLabel(country),
+      flag: countryFlag(country),
+      count,
+    }));
+}
+
+function buildTopCountries(params: {
+  startEvents: Array<{ country?: string | null }>;
+  purchaseEvents: Array<{ country?: string | null }>;
+  countryGeoReady: boolean;
+  sourceFilter: TrafficSourceFilter;
+}): TopCountriesAnalytics {
+  const sourceNote =
+    params.sourceFilter === "all"
+      ? ""
+      : ` Filtered to ${params.sourceFilter} traffic only.`;
+  const note = `Ranked by event count in the selected range.${sourceNote} Payer countries prefer Stripe billing address when available. Legacy events without country show as Unknown — never estimated.`;
+
+  if (!params.countryGeoReady) {
+    return {
+      tracked: false,
+      note: "Requires migration 030_country_geo.sql and traffic after deploy.",
+      byViews: [],
+      byPurchases: [],
+    };
+  }
+
+  return {
+    tracked: true,
+    note,
+    byViews: rankCountryRows(params.startEvents),
+    byPurchases: rankCountryRows(params.purchaseEvents),
   };
 }
 

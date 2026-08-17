@@ -1,11 +1,13 @@
 import { type NextRequest } from "next/server";
 import { applyPaywallAbCookie } from "@/lib/paywall-ab-middleware";
+import { applyCountryGeoCookie } from "@/lib/country-geo-middleware";
 import { applyTrafficSourceCookie } from "@/lib/traffic-source-middleware";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
   const { response, userId } = await updateSession(request);
-  const withTraffic = applyTrafficSourceCookie(request, response, userId);
+  const withCountry = applyCountryGeoCookie(request, response, userId);
+  const withTraffic = applyTrafficSourceCookie(request, withCountry, userId);
   return applyPaywallAbCookie(request, withTraffic, userId);
 }
 

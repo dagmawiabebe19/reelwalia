@@ -7,6 +7,8 @@ import { PAYWALL_AB_COOKIE, parsePaywallAbCookie } from "@/lib/paywall-ab";
 import { adoptCookieOntoNewAccount } from "@/lib/paywall-ab-persist";
 import { TRAFFIC_SOURCE_COOKIE, parseTrafficSourceCookie } from "@/lib/traffic-source";
 import { adoptTrafficCookieOntoNewAccount } from "@/lib/traffic-source-persist";
+import { COUNTRY_GEO_COOKIE, parseCountryGeoCookie } from "@/lib/country-geo";
+import { adoptCountryCookieOntoNewAccount } from "@/lib/country-geo-persist";
 
 function safeRedirectPath(next: string | null): string {
   if (!next || !next.startsWith("/") || next.startsWith("//")) return "/";
@@ -62,6 +64,10 @@ export async function GET(request: NextRequest) {
       await adoptTrafficCookieOntoNewAccount({
         userId: user.id,
         cookie: parseTrafficSourceCookie(cookieStore.get(TRAFFIC_SOURCE_COOKIE)?.value ?? null),
+      });
+      await adoptCountryCookieOntoNewAccount({
+        userId: user.id,
+        cookie: parseCountryGeoCookie(cookieStore.get(COUNTRY_GEO_COOKIE)?.value ?? null),
       });
     } catch (err) {
       console.error("[auth] attribution adopt on callback failed:", err);

@@ -14,6 +14,8 @@ import {
   TRAFFIC_SOURCE_LABELS,
   type TrafficSourceFilter,
 } from "@/lib/traffic-source";
+import { COUNTRY_GEO_ATTRIBUTION_START } from "@/lib/country-geo";
+import { countryDisplay } from "@/lib/admin/country-display";
 
 function StatCard({
   label,
@@ -125,6 +127,23 @@ export function AnalyticsDashboardView({
                 Migration <code>029_traffic_source.sql</code> is not applied on Platform yet.
                 Source filtering and per-event attribution stay unavailable until you run it in the
                 SQL editor.
+              </p>
+            </div>
+          )}
+
+          <div className="rw-admin-panel border-sky-500/20 bg-sky-500/[0.04]">
+            <p className="text-sm text-sky-100/90">
+              Country attribution (ISO code only — no IP, city, age, or gender) starts from{" "}
+              <strong>{COUNTRY_GEO_ATTRIBUTION_START}</strong>. Payer country prefers Stripe billing
+              address. Legacy events without country show as <strong>Unknown</strong>.
+            </p>
+          </div>
+
+          {!data.countryGeoReady && data.tablesReady && (
+            <div className="rw-admin-panel border-amber-500/20 bg-amber-500/[0.04]">
+              <p className="text-sm text-amber-200/90">
+                Migration <code>030_country_geo.sql</code> is not applied on Platform yet. Country
+                breakdowns stay unavailable until you run it in the SQL editor.
               </p>
             </div>
           )}
@@ -325,6 +344,65 @@ export function AnalyticsDashboardView({
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-2">
+            <div className="rw-admin-panel space-y-4">
+              <AdminPanelHeading
+                title="Top countries by views"
+                subtitle="Play starts in range. Respects traffic source filter."
+              />
+              {!data.topCountries.tracked ? (
+                <p className="text-sm text-zinc-500">{data.topCountries.note}</p>
+              ) : data.topCountries.byViews.length === 0 ? (
+                <p className="text-sm text-zinc-500">No view events with country in this range.</p>
+              ) : (
+                <ol className="space-y-2 text-sm">
+                  {data.topCountries.byViews.map((row, index) => (
+                    <li
+                      key={row.country}
+                      className="flex items-center justify-between gap-3 border-b border-white/[0.04] pb-2"
+                    >
+                      <span className="text-zinc-300">
+                        {index + 1}. {countryDisplay(row.country)}
+                      </span>
+                      <span className="font-medium text-white">{row.count.toLocaleString()}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+
+            <div className="rw-admin-panel space-y-4">
+              <AdminPanelHeading
+                title="Top countries by subscribers"
+                subtitle="Purchase events — payer geo from Stripe billing when available."
+              />
+              {!data.topCountries.tracked ? (
+                <p className="text-sm text-zinc-500">{data.topCountries.note}</p>
+              ) : data.topCountries.byPurchases.length === 0 ? (
+                <p className="text-sm text-zinc-500">
+                  No purchase events with country in this range.
+                </p>
+              ) : (
+                <ol className="space-y-2 text-sm">
+                  {data.topCountries.byPurchases.map((row, index) => (
+                    <li
+                      key={row.country}
+                      className="flex items-center justify-between gap-3 border-b border-white/[0.04] pb-2"
+                    >
+                      <span className="text-zinc-300">
+                        {index + 1}. {countryDisplay(row.country)}
+                      </span>
+                      <span className="font-medium text-obsidian-red">
+                        {row.count.toLocaleString()}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              <p className="text-xs text-zinc-500">{data.topCountries.note}</p>
             </div>
           </div>
 

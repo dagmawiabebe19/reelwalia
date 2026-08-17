@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { PaywallVariant } from "@/lib/paywall-ab";
 import type { TrafficSource } from "@/lib/traffic-source";
+import { COUNTRY_UNKNOWN, normalizeCountryCode } from "@/lib/country-geo";
 
 export type EpisodeEventType =
   | "start"
@@ -30,6 +31,7 @@ export async function logEpisodeEvent(params: {
   paywallVariant?: PaywallVariant | null;
   visitorId?: string | null;
   trafficSource?: TrafficSource | null;
+  country?: string | null;
 }): Promise<void> {
   try {
     const admin = createAdminClient();
@@ -42,12 +44,15 @@ export async function logEpisodeEvent(params: {
     if (params.paywallVariant) row.paywall_variant = params.paywallVariant;
     if (params.visitorId) row.visitor_id = params.visitorId;
     if (params.trafficSource) row.traffic_source = params.trafficSource;
+    const country = normalizeCountryCode(params.country) ?? params.country;
+    if (country && country !== COUNTRY_UNKNOWN) row.country = country;
+    else if (params.country === COUNTRY_UNKNOWN) row.country = COUNTRY_UNKNOWN;
 
     const { error } = await admin.from("episode_events").insert(row);
     if (
       error &&
       isMissingRelation(error) &&
-      (params.paywallVariant || params.visitorId || params.trafficSource)
+      (params.paywallVariant || params.visitorId || params.trafficSource || params.country)
     ) {
       const { error: retryError } = await admin.from("episode_events").insert({
         user_id: params.userId ?? null,
@@ -85,9 +90,11 @@ export async function logBillingEvent(params: {
   currency?: string;
   createdAt?: string;
   trafficSource?: TrafficSource | null;
+  country?: string | null;
 }): Promise<void> {
   try {
     const admin = createAdminClient();
+    const country = normalizeCountryCode(params.country) ?? params.country;
     const { error } = await admin.from("billing_events").upsert(
       {
         user_id: params.userId ?? null,
@@ -104,6 +111,8 @@ export async function logBillingEvent(params: {
         currency: params.currency ?? "usd",
         created_at: params.createdAt ?? new Date().toISOString(),
         ...(params.trafficSource ? { traffic_source: params.trafficSource } : {}),
+        ...(country && country !== COUNTRY_UNKNOWN ? { country } : {}),
+        ...(params.country === COUNTRY_UNKNOWN ? { country: COUNTRY_UNKNOWN } : {}),
       },
       { onConflict: "stripe_invoice_id,event_type" }
     );

@@ -78,6 +78,27 @@ export function buildSeriesAnalyticsPdf(data: SeriesAnalytics): Uint8Array {
   }
   push("");
 
+  if (data.topCountries.tracked) {
+    push("TOP COUNTRIES (ISO code — aggregate only)", 13, [0.88, 0.24, 0.18]);
+    push("By views (play starts):", 11);
+    if (data.topCountries.byViews.length === 0) {
+      push("  No view events with country in this range.", 10, [0.5, 0.5, 0.5]);
+    } else {
+      for (const row of data.topCountries.byViews) {
+        push(`  ${row.country}: ${row.count.toLocaleString()}`, 10);
+      }
+    }
+    push("By subscribers (purchases):", 11);
+    if (data.topCountries.byPurchases.length === 0) {
+      push("  No purchase events with country in this range.", 10, [0.5, 0.5, 0.5]);
+    } else {
+      for (const row of data.topCountries.byPurchases) {
+        push(`  ${row.country}: ${row.count.toLocaleString()}`, 10);
+      }
+    }
+    push("");
+  }
+
   push("PAYWALL FUNNEL", 13, [0.88, 0.24, 0.18]);
   push(`Reached paywall: ${formatCount(data.paywallConversion.reached)}`);
   push(`Purchased / subscribed: ${formatCount(data.paywallConversion.purchased)}`);

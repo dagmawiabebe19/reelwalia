@@ -39,6 +39,14 @@ export function UsersDashboardView({
 
       <AdminDateRangeForm preset={preset} from={from} to={to} />
 
+      <div className="rw-admin-panel border-sky-500/20 bg-sky-500/[0.04]">
+        <p className="text-sm text-sky-100/90">
+          Country is derived from Vercel geo headers (first visit) or Stripe billing on
+          payment — ISO code only, never IP or city. Legacy accounts show Unknown until migration{" "}
+          <code>030_country_geo.sql</code> is applied and new traffic arrives.
+        </p>
+      </div>
+
       <div className="rw-admin-stat-grid">
         <StatCard
           label="Signups in range"
@@ -69,6 +77,7 @@ export function UsersDashboardView({
         preset={preset}
         from={from}
         to={to}
+        country={result.countryFilter}
       />
 
       {!result.users.length ? (
@@ -89,6 +98,7 @@ export function UsersDashboardView({
             preset={preset}
             from={from}
             to={to}
+            country={result.countryFilter}
           />
         </>
       )}
