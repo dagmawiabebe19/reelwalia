@@ -25,6 +25,8 @@ import {
 import { reportAnalyticsEvent } from "@/lib/analytics/client-event";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
+import { usePaywallOpen } from "@/components/watch/PaywallOpenContext";
+import type { PaywallCatalogPoster } from "@/lib/paywall-catalog";
 
 interface PaywallModalProps {
   open: boolean;
@@ -61,6 +63,13 @@ function BenefitIcon({ id }: { id: string }) {
       </svg>
     );
   }
+  if (id === "no-ads") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+        <path d="M3.28 2.22L2.22 3.28l4.4 4.4L3 12v2h3.5L12 20v-5.59l6.72 6.72 1.06-1.06L3.28 2.22zM14 8.83V4l-3.17 3.17L14 8.83zM16.5 12.67L19 10h2v4h-2l-.5-.4-2-1.6z" />
+      </svg>
+    );
+  }
   return (
     <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
       <path d="M12 3l2.1 6.4H21l-5.4 3.9 2.1 6.4L12 16.8 6.3 19.7l2.1-6.4L3 9.4h6.9L12 3z" />
@@ -79,8 +88,11 @@ export function PaywallModal({
   const [selected, setSelected] = useState<StripePlanKey>(DEFAULT_PLAN);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [catalogPosters, setCatalogPosters] = useState<PaywallCatalogPoster[]>([]);
   const paywallViewedRef = useRef(false);
   const checkoutStartedRef = useRef(false);
+  const catalogFetchedRef = useRef(false);
+  const { catalogPosters: contextPosters } = usePaywallOpen();
 
   useEffect(() => {
     if (!open) {
@@ -115,6 +127,24 @@ export function PaywallModal({
     });
     reportAnalyticsEvent({ eventType: "paywall_hit", episodeId });
   }, [open, trigger, episodeId, seriesSlug]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (contextPosters.length > 0) {
+      setCatalogPosters(contextPosters);
+      return;
+    }
+    if (catalogFetchedRef.current) return;
+    catalogFetchedRef.current = true;
+    void fetch("/api/paywall/catalog")
+      .then((res) => (res.ok ? res.json() : { posters: [] }))
+      .then((data: { posters?: PaywallCatalogPoster[] }) => {
+        setCatalogPosters(Array.isArray(data.posters) ? data.posters : []);
+      })
+      .catch(() => {
+        catalogFetchedRef.current = false;
+      });
+  }, [open, contextPosters]);
 
   if (!open) return null;
 
@@ -255,6 +285,29 @@ export function PaywallModal({
             ))}
           </ul>
         </div>
+
+        {catalogPosters.length >= 2 && (
+          <div className="mt-6 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+              Your catalog
+            </p>
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+              {catalogPosters.map((item) => (
+                <div
+                  key={item.id}
+                  className="aspect-[2/3] overflow-hidden rounded-md border border-white/[0.08] bg-zinc-950"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={item.posterUrl}
+                    alt={item.title}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {showSocial && (
           <div className="mt-6 rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">

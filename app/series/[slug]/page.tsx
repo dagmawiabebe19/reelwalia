@@ -15,6 +15,7 @@ import {
   listActiveCharactersForSeries,
 } from "@/lib/chat/server";
 import { resolvePaywallAb } from "@/lib/paywall-ab-server";
+import { listPaywallCatalogPosters } from "@/lib/paywall-catalog-server";
 import { isComingSoonSeries } from "@/lib/coming-soon";
 import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
 import { normalizeSeriesOrientation } from "@/lib/series-orientation";
@@ -112,7 +113,10 @@ async function getSeries(slug: string) {
 
 export default async function SeriesPage({ params }: SeriesPageProps) {
   const { slug } = params;
-  const data = await getSeries(slug);
+  const [data, catalogPosters] = await Promise.all([
+    getSeries(slug),
+    listPaywallCatalogPosters(),
+  ]);
 
   if (!data) notFound();
 
@@ -143,7 +147,7 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
     : "aspect-[9/16]";
 
   return (
-    <PaywallOpenProvider>
+    <PaywallOpenProvider catalogPosters={catalogPosters}>
       <div className="flex min-h-screen flex-col">
       <TopNav />
       <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-4 py-8 sm:px-6">

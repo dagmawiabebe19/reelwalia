@@ -19,6 +19,10 @@ export const PAYWALL_INCLUDED = [
     label: "Stream in HD",
   },
   {
+    id: "no-ads",
+    label: "No ads, no interruptions",
+  },
+  {
     id: "new",
     label: "New episodes and series added regularly",
   },

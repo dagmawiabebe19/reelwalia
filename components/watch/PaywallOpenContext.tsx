@@ -9,15 +9,23 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { PaywallCatalogPoster } from "@/lib/paywall-catalog";
 
 interface PaywallOpenContextValue {
   isPaywallOpen: boolean;
   setPaywallOpen: (open: boolean) => void;
+  catalogPosters: PaywallCatalogPoster[];
 }
 
 const PaywallOpenContext = createContext<PaywallOpenContextValue | null>(null);
 
-export function PaywallOpenProvider({ children }: { children: ReactNode }) {
+export function PaywallOpenProvider({
+  children,
+  catalogPosters = [],
+}: {
+  children: ReactNode;
+  catalogPosters?: PaywallCatalogPoster[];
+}) {
   const openCountRef = useRef(0);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
 
@@ -31,7 +39,9 @@ export function PaywallOpenProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <PaywallOpenContext.Provider value={{ isPaywallOpen, setPaywallOpen }}>
+    <PaywallOpenContext.Provider
+      value={{ isPaywallOpen, setPaywallOpen, catalogPosters }}
+    >
       {children}
     </PaywallOpenContext.Provider>
   );
@@ -43,6 +53,7 @@ export function usePaywallOpen() {
     return {
       isPaywallOpen: false,
       setPaywallOpen: () => {},
+      catalogPosters: [] as PaywallCatalogPoster[],
     };
   }
   return ctx;

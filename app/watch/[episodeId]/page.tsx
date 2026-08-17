@@ -18,6 +18,7 @@ import { normalizeSeriesOrientation } from "@/lib/series-orientation";
 import { resolveInitialProgress } from "@/lib/watch-progress";
 import { shouldAutoStartWatch } from "@/lib/watch-playback";
 import { resolvePaywallAb } from "@/lib/paywall-ab-server";
+import { listPaywallCatalogPosters } from "@/lib/paywall-catalog-server";
 import { verifyCheckoutSession } from "@/lib/stripe/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -113,6 +114,8 @@ async function getWatchData(
     .order("created_at", { ascending: false })
     .limit(10);
 
+  const catalogPosters = await listPaywallCatalogPosters();
+
   const pickerEpisodes = (allEpisodes ?? []).map((ep) => ({
     id: ep.id,
     episode_number: ep.episode_number,
@@ -178,6 +181,7 @@ async function getWatchData(
     initialProgress,
     captionTracks,
     characters,
+    catalogPosters,
   };
 }
 
@@ -205,6 +209,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
     initialProgress,
     captionTracks,
     characters,
+    catalogPosters,
   } = data;
 
   const seriesOrientation = normalizeSeriesOrientation(series.orientation);
@@ -224,7 +229,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
 
   if (seriesOrientation === "landscape") {
     return (
-      <PaywallOpenProvider>
+      <PaywallOpenProvider catalogPosters={catalogPosters}>
         <div
           className={`min-h-screen overflow-x-hidden bg-black ${
             !isSubscribed ? "pb-28 lg:pb-0" : ""
@@ -339,7 +344,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
   }
 
   return (
-    <PaywallOpenProvider>
+    <PaywallOpenProvider catalogPosters={catalogPosters}>
       <div
         className="min-h-screen overflow-x-hidden bg-black max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:overflow-hidden md:h-auto md:overflow-x-hidden"
       >
