@@ -4,37 +4,59 @@ export type PaywallCatalogPoster = {
   posterUrl: string;
 };
 
-export const PAYWALL_CATALOG_LIMIT = 8;
+/**
+ * Paywall poster showcase — only these published titles, in this order.
+ * Matched against live series rows (title or slug); never invents posters.
+ */
+export const PAYWALL_CATALOG_TITLES = [
+  "Wedded to the Enemy",
+  "The Algorithm Matched Me with My Ex",
+  "Flying with My Boss",
+] as const;
+
+const PAYWALL_CATALOG_SLUGS = [
+  "wedded-to-the-enemy",
+  "the-algorithm-matched-me-with-my-ex",
+  "flying-with-my-boss",
+] as const;
 
 type CatalogRow = {
   id: string;
   title: string;
+  slug?: string | null;
   poster_url: string | null;
   status?: string | null;
-  is_featured?: boolean | null;
-  featured_order?: number | null;
-  view_count?: number | null;
 };
+
+function normalizeCatalogKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function catalogOrderIndex(row: CatalogRow): number {
+  const titleKey = normalizeCatalogKey(row.title);
+  const slugKey = (row.slug ?? "").toLowerCase();
+  const titleIndex = PAYWALL_CATALOG_TITLES.findIndex(
+    (title) => normalizeCatalogKey(title) === titleKey
+  );
+  if (titleIndex >= 0) return titleIndex;
+  const slugIndex = PAYWALL_CATALOG_SLUGS.findIndex((slug) => slug === slugKey);
+  return slugIndex;
+}
 
 /** Published titles with artwork only — never invents posters or unpublished shows. */
 export function mapPaywallCatalogPosters(rows: CatalogRow[]): PaywallCatalogPoster[] {
-  const published = rows.filter(
-    (row) => row.status === "published" && typeof row.poster_url === "string" && row.poster_url.length > 0
-  );
-
-  published.sort((a, b) => {
-    const aFeat = a.is_featured ? 1 : 0;
-    const bFeat = b.is_featured ? 1 : 0;
-    if (aFeat !== bFeat) return bFeat - aFeat;
-    const aOrder = a.featured_order ?? Number.MAX_SAFE_INTEGER;
-    const bOrder = b.featured_order ?? Number.MAX_SAFE_INTEGER;
-    if (aOrder !== bOrder) return aOrder - bOrder;
-    return (b.view_count ?? 0) - (a.view_count ?? 0);
-  });
-
-  return published.slice(0, PAYWALL_CATALOG_LIMIT).map((row) => ({
-    id: row.id,
-    title: row.title,
-    posterUrl: row.poster_url as string,
-  }));
+  return rows
+    .filter(
+      (row) =>
+        row.status === "published" &&
+        typeof row.poster_url === "string" &&
+        row.poster_url.length > 0 &&
+        catalogOrderIndex(row) >= 0
+    )
+    .sort((a, b) => catalogOrderIndex(a) - catalogOrderIndex(b))
+    .map((row) => ({
+      id: row.id,
+      title: row.title,
+      posterUrl: row.poster_url as string,
+    }));
 }

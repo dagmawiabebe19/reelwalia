@@ -4,6 +4,7 @@
 
 export const PAYWALL_HEADLINE = "Get Full Access to Every Episode";
 export const PAYWALL_SUBHEAD = "Watch the full series. Pick a plan that fits.";
+export const PAYWALL_CATALOG_HEADING = "Popular Drama Series";
 
 export const PAYWALL_INCLUDED = [
   {

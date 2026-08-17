@@ -15,6 +15,7 @@ import {
   PAYWALL_INCLUDED,
   PAYWALL_SOCIAL_PROOF,
   PAYWALL_SUBHEAD,
+  PAYWALL_CATALOG_HEADING,
   publishedPaywallTestimonials,
 } from "@/lib/paywall-copy";
 import {
@@ -289,9 +290,9 @@ export function PaywallModal({
         {catalogPosters.length >= 2 && (
           <div className="mt-6 space-y-3">
             <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
-              Your catalog
+              {PAYWALL_CATALOG_HEADING}
             </p>
-            <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               {catalogPosters.map((item) => (
                 <div
                   key={item.id}

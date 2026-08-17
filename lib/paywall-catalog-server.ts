@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import {
-  PAYWALL_CATALOG_LIMIT,
   mapPaywallCatalogPosters,
   type PaywallCatalogPoster,
 } from "@/lib/paywall-catalog";
@@ -10,13 +9,12 @@ export async function listPaywallCatalogPosters(): Promise<PaywallCatalogPoster[
     const supabase = createClient();
     const { data, error } = await supabase
       .from("series")
-      .select("id, title, poster_url, status, is_featured, featured_order, view_count")
+      .select("id, title, slug, poster_url, status")
       .eq("status", "published")
-      .not("poster_url", "is", null)
-      .limit(24);
+      .not("poster_url", "is", null);
 
     if (error || !data) return [];
-    return mapPaywallCatalogPosters(data).slice(0, PAYWALL_CATALOG_LIMIT);
+    return mapPaywallCatalogPosters(data);
   } catch (err) {
     console.error("[paywall-catalog] list failed:", err);
     return [];
