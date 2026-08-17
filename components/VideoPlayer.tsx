@@ -35,6 +35,7 @@ import {
   trackEpisodeCompleted,
   trackEpisodeStarted,
 } from "@/lib/analytics/funnel";
+import { reportAnalyticsEvent } from "@/lib/analytics/client-event";
 import type { SeriesOrientation } from "@/lib/types/database";
 import {
   applyNativeFullscreenClass,
@@ -770,6 +771,7 @@ export function VideoPlayer({
         is_authenticated: isAuthenticated,
         is_subscribed: isSubscribed,
       });
+      reportAnalyticsEvent({ eventType: "start", episodeId, seriesId });
     };
 
     video.addEventListener("playing", onPlaying);
@@ -780,6 +782,7 @@ export function VideoPlayer({
     isAuthenticated,
     isFreeEpisode,
     isSubscribed,
+    seriesId,
     seriesSlug,
   ]);
 
@@ -1363,6 +1366,7 @@ export function VideoPlayer({
         total_duration_seconds: Math.floor(total),
         completion_percentage: Math.min(100, Math.round((time / total) * 100)),
       });
+      reportAnalyticsEvent({ eventType: "complete", episodeId, seriesId });
     }
 
     if (

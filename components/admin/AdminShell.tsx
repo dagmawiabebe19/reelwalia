@@ -34,6 +34,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: "Revenue",
     items: [
+      { href: "/admin/analytics", label: "Analytics" },
       { href: "/admin/sales", label: "Sales" },
       { href: "/admin/users", label: "Users" },
     ],
@@ -55,6 +56,9 @@ function isActiveRoute(pathname: string, href: string): boolean {
   }
   if (href === "/admin/world") {
     return pathname === href || pathname.startsWith("/admin/world/");
+  }
+  if (href === "/admin/analytics") {
+    return pathname === href || pathname.startsWith("/admin/analytics/");
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

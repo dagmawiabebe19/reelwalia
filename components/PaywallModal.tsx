@@ -14,6 +14,7 @@ import {
   trackSubscriptionCheckoutStarted,
   type PaywallTrigger,
 } from "@/lib/analytics/funnel";
+import { reportAnalyticsEvent } from "@/lib/analytics/client-event";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
 
@@ -71,6 +72,7 @@ export function PaywallModal({
       series_slug: seriesSlug,
       trigger,
     });
+    reportAnalyticsEvent({ eventType: "paywall_hit", episodeId });
   }, [open, trigger, episodeId, seriesSlug]);
 
   if (!open) return null;

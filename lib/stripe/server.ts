@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { resolveSeriesIdFromEpisode } from "@/lib/analytics/log-event";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { StripePlanKey } from "@/lib/stripe/plans";
 import { getPlanPriceIds } from "@/lib/stripe/prices";
@@ -62,6 +63,11 @@ export async function createCheckoutSession(params: {
   const stripe = getStripe();
   const { introPriceId } = getPlanPriceIds(params.plan);
   const customerId = await getOrCreateCustomer(params.userId, params.email);
+  const resolved = await resolveSeriesIdFromEpisode(params.episodeId);
+  const titleMeta = {
+    ...(params.episodeId ? { episode_id: params.episodeId } : {}),
+    ...(resolved?.seriesId ? { series_id: resolved.seriesId } : {}),
+  };
 
   const successUrl = params.episodeId
     ? `${params.baseUrl}/watch/${params.episodeId}?subscribed=true`
@@ -79,6 +85,7 @@ export async function createCheckoutSession(params: {
         app: "reelwalia",
         user_id: params.userId,
         plan: params.plan,
+        ...titleMeta,
       },
     },
     success_url: successUrl,
@@ -88,7 +95,7 @@ export async function createCheckoutSession(params: {
       app: "reelwalia",
       user_id: params.userId,
       plan: params.plan,
-      ...(params.episodeId ? { episode_id: params.episodeId } : {}),
+      ...titleMeta,
     },
   });
 }
@@ -100,6 +107,11 @@ export async function createGuestCheckoutSession(params: {
 }): Promise<Stripe.Checkout.Session> {
   const stripe = getStripe();
   const { introPriceId } = getPlanPriceIds(params.plan);
+  const resolved = await resolveSeriesIdFromEpisode(params.episodeId);
+  const titleMeta = {
+    ...(params.episodeId ? { episode_id: params.episodeId } : {}),
+    ...(resolved?.seriesId ? { series_id: resolved.seriesId } : {}),
+  };
 
   const episodeQuery = params.episodeId
     ? `&episodeId=${encodeURIComponent(params.episodeId)}`
@@ -116,6 +128,7 @@ export async function createGuestCheckoutSession(params: {
       metadata: {
         app: "reelwalia",
         plan: params.plan,
+        ...titleMeta,
       },
     },
     success_url: successUrl,
@@ -124,7 +137,7 @@ export async function createGuestCheckoutSession(params: {
     metadata: {
       app: "reelwalia",
       plan: params.plan,
-      ...(params.episodeId ? { episode_id: params.episodeId } : {}),
+      ...titleMeta,
     },
   });
 }

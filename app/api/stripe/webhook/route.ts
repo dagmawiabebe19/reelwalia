@@ -6,6 +6,7 @@ import {
   getStripe,
 } from "@/lib/stripe/server";
 import { trackSubscriptionCompleted } from "@/lib/analytics/funnel-server";
+import { recordChargeRefund, recordInvoicePayment } from "@/lib/analytics/stripe-ledger";
 import { unwrapStripeResponse } from "@/lib/stripe/helpers";
 import { isForThisApp } from "@/lib/stripe/webhook-filter";
 import {
@@ -41,6 +42,14 @@ export async function POST(request: Request) {
   }
 
   if (!isForThisApp(event)) {
+    // Charges often lack app=reelwalia metadata. Match against our ledger instead.
+    if (event.type === "charge.refunded") {
+      try {
+        await recordChargeRefund(event.data.object as Stripe.Charge);
+      } catch (err) {
+        console.error("[analytics] refund ledger failed:", err);
+      }
+    }
     return new Response("OK - not for this app", { status: 200 });
   }
 
@@ -95,6 +104,7 @@ export async function POST(request: Request) {
               user_id: userId,
               plan: plan ?? "",
               episode_id: session.metadata?.episode_id ?? "",
+              series_id: session.metadata?.series_id ?? "",
             },
           });
         }
@@ -179,6 +189,8 @@ export async function POST(request: Request) {
 
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice;
+        await recordInvoicePayment(invoice);
+
         if (invoice.billing_reason !== "subscription_create") break;
 
         const subscriptionRef = (
@@ -223,6 +235,11 @@ export async function POST(request: Request) {
           plan,
           stripe_subscription_id: subscriptionId,
         });
+        break;
+      }
+
+      case "charge.refunded": {
+        await recordChargeRefund(event.data.object as Stripe.Charge);
         break;
       }
 
