@@ -1,32 +1,37 @@
-/** Paywall position A/B test — Group A after ep 1, Group B after ep 2 (current default). */
+/** Paywall position A/B test — Group A after ep 1, B after ep 2, C after ep 3. */
 
 export const PAYWALL_VARIANT_AFTER_1 = "paywall_after_1";
 export const PAYWALL_VARIANT_AFTER_2 = "paywall_after_2";
+export const PAYWALL_VARIANT_AFTER_3 = "paywall_after_3";
 
 export type PaywallVariant =
   | typeof PAYWALL_VARIANT_AFTER_1
-  | typeof PAYWALL_VARIANT_AFTER_2;
+  | typeof PAYWALL_VARIANT_AFTER_2
+  | typeof PAYWALL_VARIANT_AFTER_3;
 
 export const PAYWALL_AB_COOKIE = "rw_paywall_ab";
 
 /**
  * Flip `enabled` to stop assigning NEW visitors. Existing buckets stay sticky.
- * `weightA` is the share of new users in Group A (after episode 1).
- * 0.5 = 50/50, 0 = all B, 1 = all A.
+ * `weightA` / `weightB` are shares for Groups A and B; Group C gets the remainder.
+ * Default 1/3 each.
  */
 export const PAYWALL_AB_CONFIG = {
   enabled: true,
-  weightA: 0.5,
+  weightA: 1 / 3,
+  weightB: 1 / 3,
 } as const;
 
 export const VARIANT_FREE_EPISODE_COUNT: Record<PaywallVariant, number> = {
   [PAYWALL_VARIANT_AFTER_1]: 1,
   [PAYWALL_VARIANT_AFTER_2]: 2,
+  [PAYWALL_VARIANT_AFTER_3]: 3,
 };
 
 export const VARIANT_LABELS: Record<PaywallVariant, string> = {
   [PAYWALL_VARIANT_AFTER_1]: "Group A — paywall after episode 1",
   [PAYWALL_VARIANT_AFTER_2]: "Group B — paywall after episode 2",
+  [PAYWALL_VARIANT_AFTER_3]: "Group C — paywall after episode 3",
 };
 
 const COOKIE_PREFIX = "v1";
@@ -37,12 +42,19 @@ export type PaywallAbCookie = {
 };
 
 export function isPaywallVariant(value: string | null | undefined): value is PaywallVariant {
-  return value === PAYWALL_VARIANT_AFTER_1 || value === PAYWALL_VARIANT_AFTER_2;
+  return (
+    value === PAYWALL_VARIANT_AFTER_1 ||
+    value === PAYWALL_VARIANT_AFTER_2 ||
+    value === PAYWALL_VARIANT_AFTER_3
+  );
 }
 
 export function pickPaywallVariant(random = Math.random()): PaywallVariant {
-  const weight = Math.min(1, Math.max(0, PAYWALL_AB_CONFIG.weightA));
-  return random < weight ? PAYWALL_VARIANT_AFTER_1 : PAYWALL_VARIANT_AFTER_2;
+  const weightA = Math.min(1, Math.max(0, PAYWALL_AB_CONFIG.weightA));
+  const weightB = Math.min(1 - weightA, Math.max(0, PAYWALL_AB_CONFIG.weightB));
+  if (random < weightA) return PAYWALL_VARIANT_AFTER_1;
+  if (random < weightA + weightB) return PAYWALL_VARIANT_AFTER_2;
+  return PAYWALL_VARIANT_AFTER_3;
 }
 
 export function freeEpisodeCountForVariant(variant: PaywallVariant): number {

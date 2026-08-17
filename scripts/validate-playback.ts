@@ -22,6 +22,7 @@ import {
 import {
   PAYWALL_VARIANT_AFTER_1,
   PAYWALL_VARIANT_AFTER_2,
+  PAYWALL_VARIANT_AFTER_3,
   freeEpisodeCountForVariant,
   parsePaywallAbCookie,
   pickPaywallVariant,
@@ -122,6 +123,7 @@ assert(isEpisodeFree(5, resolveFreeEpisodeCount(5)), "Series can keep a wider fr
 // --- Paywall A/B variants ---
 assert(freeEpisodeCountForVariant(PAYWALL_VARIANT_AFTER_1) === 1, "Group A: 1 free episode");
 assert(freeEpisodeCountForVariant(PAYWALL_VARIANT_AFTER_2) === 2, "Group B: 2 free episodes");
+assert(freeEpisodeCountForVariant(PAYWALL_VARIANT_AFTER_3) === 3, "Group C: 3 free episodes");
 assert(
   resolveViewerFreeEpisodeCount(5, PAYWALL_VARIANT_AFTER_1) === 1,
   "Assigned variant overrides series free count"
@@ -142,6 +144,14 @@ assert(
   isEpisodeFree(3, resolveViewerFreeEpisodeCount(2, PAYWALL_VARIANT_AFTER_2)) === false,
   "Group B locks episode 3"
 );
+assert(
+  isEpisodeFree(3, resolveViewerFreeEpisodeCount(2, PAYWALL_VARIANT_AFTER_3)) === true,
+  "Group C unlocks episode 3"
+);
+assert(
+  isEpisodeFree(4, resolveViewerFreeEpisodeCount(2, PAYWALL_VARIANT_AFTER_3)) === false,
+  "Group C locks episode 4"
+);
 
 const cookie = serializePaywallAbCookie({
   visitorId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
@@ -152,12 +162,14 @@ assert(parsePaywallAbCookie("tampered") === null, "Reject bad cookie");
 
 let seenA = false;
 let seenB = false;
+let seenC = false;
 for (let i = 0; i < 40; i++) {
   const picked = pickPaywallVariant(i / 40);
   if (picked === PAYWALL_VARIANT_AFTER_1) seenA = true;
   if (picked === PAYWALL_VARIANT_AFTER_2) seenB = true;
+  if (picked === PAYWALL_VARIANT_AFTER_3) seenC = true;
 }
-assert(seenA && seenB, "50/50 picker can emit both groups");
+assert(seenA && seenB && seenC, "Three-way picker can emit all groups");
 
 // --- Episode completion threshold ---
 assert(EPISODE_COMPLETE_THRESHOLD === 0.9, "Complete at 90% of duration");
@@ -249,6 +261,6 @@ assert(
 console.log("✓ All playback validation checks passed");
 console.log("  Entry: /watch/{id}?autoplay=true");
 console.log("  Chain: ep1–ep2 free → [paywall] → ep3+ (Group B / unassigned default)");
-console.log("  A/B: Group A wall after ep1; Group B wall after ep2");
+console.log("  A/B: Group A wall after ep1; Group B after ep2; Group C after ep3");
 console.log(`  Free tier: episodes 1–${DEFAULT_FREE_EPISODE_COUNT}`);
 console.log("  Binge progress: always starts at 0");

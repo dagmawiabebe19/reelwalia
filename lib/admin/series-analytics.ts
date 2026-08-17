@@ -12,6 +12,7 @@ import {
 import {
   PAYWALL_VARIANT_AFTER_1,
   PAYWALL_VARIANT_AFTER_2,
+  PAYWALL_VARIANT_AFTER_3,
   VARIANT_LABELS,
   type PaywallVariant,
 } from "@/lib/paywall-ab";
@@ -19,7 +20,11 @@ import { type TrafficSourceFilter } from "@/lib/traffic-source";
 import { COUNTRY_UNKNOWN, normalizeCountryCode } from "@/lib/country-geo";
 import { countryFlag, countryLabel } from "@/lib/admin/country-display";
 
-const PAYWALL_AB_ARMS: PaywallVariant[] = [PAYWALL_VARIANT_AFTER_1, PAYWALL_VARIANT_AFTER_2];
+const PAYWALL_AB_ARMS: PaywallVariant[] = [
+  PAYWALL_VARIANT_AFTER_1,
+  PAYWALL_VARIANT_AFTER_2,
+  PAYWALL_VARIANT_AFTER_3,
+];
 
 export type MetricSource = "events" | "watch_history" | "combined" | "untracked";
 
@@ -560,7 +565,7 @@ async function loadPaywallAb(
   }
 
   const note =
-    "Decision metric is total subscribers and subscribers per assigned user — not conversion rate. Group A hits the wall sooner, so its rate will look higher even if it produces fewer paying subscribers. Users = new assignments in this date range; subscribers = first purchases in this range (platform-wide).";
+    "Decision metric is total subscribers and subscribers per assigned user — not conversion rate. Earlier groups hit the wall sooner, so their conversion rate will look higher even if they produce fewer paying subscribers. Users = new assignments in this date range; subscribers = first purchases in this range (platform-wide).";
 
   const arms: PaywallAbArm[] = PAYWALL_AB_ARMS.map(
     (variant) => {

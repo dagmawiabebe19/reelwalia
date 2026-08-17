@@ -227,11 +227,11 @@ export function AnalyticsDashboardView({
           <div className="rw-admin-panel space-y-4">
             <AdminPanelHeading
               title="Paywall position A/B"
-              subtitle="Group A = wall after episode 1. Group B = wall after episode 2 (current default). Platform-wide for the selected date range."
+              subtitle="Group A = wall after episode 1. Group B = after episode 2. Group C = after episode 3. Platform-wide for the selected date range."
             />
             <p className="text-sm text-amber-200/80">
-              Conversion rate is misleading here: Group A sees the wall sooner, so a higher
-              percentage will convert even if it produces fewer paying subscribers. Decide with
+              Conversion rate is misleading here: earlier groups see the wall sooner, so a higher
+              percentage will convert even if they produce fewer paying subscribers. Decide with
               total subscribers and subscribers per user.
             </p>
             {!data.paywallAb.tracked ? (
@@ -275,16 +275,37 @@ export function AnalyticsDashboardView({
                   </table>
                 </div>
                 {(() => {
-                  const a = data.paywallAb.arms[0]?.purchased;
-                  const b = data.paywallAb.arms[1]?.purchased;
-                  if (a == null || b == null) return null;
-                  const lead =
-                    a === b
-                      ? "Tied on total subscribers in this range."
-                      : a > b
-                        ? `Group A produced ${a - b} more subscriber${a - b === 1 ? "" : "s"} in this range.`
-                        : `Group B produced ${b - a} more subscriber${b - a === 1 ? "" : "s"} in this range.`;
-                  return <p className="text-sm text-zinc-300">{lead}</p>;
+                  const arms = data.paywallAb.arms.filter((arm) => arm.purchased != null);
+                  if (arms.length < 2) return null;
+                  const max = Math.max(...arms.map((arm) => arm.purchased ?? 0));
+                  const leaders = arms.filter((arm) => (arm.purchased ?? 0) === max);
+                  if (leaders.length > 1) {
+                    return (
+                      <p className="text-sm text-zinc-300">
+                        Tied on total subscribers in this range.
+                      </p>
+                    );
+                  }
+                  const leader = leaders[0]!;
+                  const runnerUp = Math.max(
+                    ...arms
+                      .filter((arm) => arm.variant !== leader.variant)
+                      .map((arm) => arm.purchased ?? 0)
+                  );
+                  const diff = (leader.purchased ?? 0) - runnerUp;
+                  if (diff === 0) {
+                    return (
+                      <p className="text-sm text-zinc-300">
+                        Tied on total subscribers in this range.
+                      </p>
+                    );
+                  }
+                  return (
+                    <p className="text-sm text-zinc-300">
+                      {leader.label} produced {diff} more subscriber{diff === 1 ? "" : "s"} in
+                      this range.
+                    </p>
+                  );
                 })()}
                 <p className="text-xs text-zinc-500">{data.paywallAb.note}</p>
               </>
