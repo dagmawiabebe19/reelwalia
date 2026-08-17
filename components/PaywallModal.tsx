@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   STRIPE_PLANS,
   formatDailyPrice,
@@ -93,6 +93,7 @@ export function PaywallModal({
   const paywallViewedRef = useRef(false);
   const checkoutStartedRef = useRef(false);
   const catalogFetchedRef = useRef(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { catalogPosters: contextPosters } = usePaywallOpen();
 
   useEffect(() => {
@@ -147,6 +148,14 @@ export function PaywallModal({
       });
   }, [open, contextPosters]);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+    const panel = scrollRef.current;
+    if (!panel) return;
+    panel.scrollTop = 0;
+    panel.focus({ preventScroll: true });
+  }, [open]);
+
   if (!open) return null;
 
   const selectedPlan = getPlanDisplay(selected);
@@ -189,7 +198,7 @@ export function PaywallModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-hidden px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))] sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="paywall-title"
@@ -201,8 +210,12 @@ export function PaywallModal({
         onClick={onClose}
       />
 
-      <div className="relative max-h-[92vh] w-full max-w-[480px] overflow-y-auto rounded-2xl border border-white/[0.08] bg-black p-5 shadow-2xl sm:p-6">
-        <div className="mb-5 flex items-start justify-between">
+      <div
+        ref={scrollRef}
+        tabIndex={-1}
+        className="relative max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] min-h-0 w-full max-w-[480px] overflow-y-auto overscroll-contain rounded-2xl border border-white/[0.08] bg-black px-5 pb-5 pt-0 shadow-2xl outline-none sm:max-h-[92vh] sm:p-6"
+      >
+        <div className="sticky top-0 z-10 -mx-5 mb-5 flex items-start justify-between bg-black px-5 pb-2 pt-5 sm:static sm:mx-0 sm:mb-5 sm:bg-transparent sm:p-0">
           <ReelWaliaLogo variant="lockup" scale="nav" />
           <button
             type="button"
