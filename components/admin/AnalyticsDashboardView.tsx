@@ -178,9 +178,9 @@ export function AnalyticsDashboardView({
               untracked={data.views.value == null}
             />
             <StatCard
-              label="Unique viewers"
+              label="Unique viewers (signed-in)"
               value={formatCount(data.uniqueViewers.value)}
-              meta={data.uniqueViewers.source}
+              meta={data.uniqueViewers.note}
               untracked={data.uniqueViewers.value == null}
             />
             <StatCard
@@ -277,8 +277,15 @@ export function AnalyticsDashboardView({
           <div className="rw-admin-panel space-y-4">
             <AdminPanelHeading
               title="Episode drop-off"
-              subtitle="Started vs finished. Event plays after 027; otherwise authenticated watch_history."
+              subtitle="Distinct viewers per episode. Finished = episode_events + watch_history (deduped). Not yet tracked when no completion data exists."
             />
+            {data.historyCompletionsRecovered != null && data.historyCompletionsRecovered > 0 && (
+              <p className="text-sm text-zinc-400">
+                Recovered {data.historyCompletionsRecovered.toLocaleString()} historical completion
+                {data.historyCompletionsRecovered === 1 ? "" : "s"} from watch_history that were
+                missing in episode_events.
+              </p>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full min-w-[36rem] text-left text-sm">
                 <thead>

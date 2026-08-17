@@ -49,8 +49,8 @@ export function buildSeriesAnalyticsPdf(data: SeriesAnalytics): Uint8Array {
   push("TOP LINE", 13, [0.88, 0.24, 0.18]);
   push(`Total views / plays: ${formatCount(data.views.value)}`);
   push(`  Source: ${data.views.source} — ${data.views.note}`, 9, [0.5, 0.5, 0.5]);
-  push(`Unique viewers: ${formatCount(data.uniqueViewers.value)}`);
-  push(`  Source: ${data.uniqueViewers.source} — ${data.uniqueViewers.note}`, 9, [0.5, 0.5, 0.5]);
+  push(`Unique viewers (signed-in): ${formatCount(data.uniqueViewers.value)}`);
+  push(`  ${data.uniqueViewers.note}`, 9, [0.5, 0.5, 0.5]);
   push(
     `Full-series completion: ${formatPercent(data.fullSeriesCompletion.value)} (${formatCount(data.fullSeriesCompletion.completers)} viewers finished every episode)`
   );
@@ -63,6 +63,14 @@ export function buildSeriesAnalyticsPdf(data: SeriesAnalytics): Uint8Array {
   push("");
 
   push("PER-EPISODE DROP-OFF", 13, [0.88, 0.24, 0.18]);
+  push("Distinct viewers per episode. Finished merges episode_events + watch_history.", 9, [0.5, 0.5, 0.5]);
+  if (data.historyCompletionsRecovered != null && data.historyCompletionsRecovered > 0) {
+    push(
+      `Recovered ${data.historyCompletionsRecovered} completion(s) from watch_history not present in episode_events.`,
+      9,
+      [0.5, 0.5, 0.5]
+    );
+  }
   push("Episode     Started     Finished     Completion", 10);
   for (const ep of data.dropOff) {
     const row = `Ep ${String(ep.episodeNumber).padEnd(4)}  ${formatCount(ep.started).padEnd(10)}  ${formatCount(ep.finished).padEnd(11)}  ${formatPercent(ep.completionRate)}`;

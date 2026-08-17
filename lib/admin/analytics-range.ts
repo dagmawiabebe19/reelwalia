@@ -77,11 +77,11 @@ export const ANALYTICS_METRIC_NOTES = {
   views:
     "Play starts from episode_events. Not yet tracked until migration 027 is applied and viewers watch.",
   uniqueViewers:
-    "Distinct signed-in users with watch_history (and episode_events when present). Guests are not uniquely counted.",
+    "Distinct signed-in users only. Guests are counted in Total views but cannot be deduplicated.",
   completion:
-    "Authenticated watch_history.completed, plus episode_events.complete after migration 027.",
+    "Per signed-in user: episode_events.complete when present, else watch_history.completed. Deduplicated — never double-counted.",
   dropOff:
-    "Per-episode started vs finished among signed-in users. Event-based play counts appear after 027.",
+    "Distinct viewers per episode (signed-in user or guest visitor_id). Finished merges episode_events + watch_history; shows Not yet tracked when no completion source exists.",
   paywall:
     "Requires episode_events.paywall_hit and purchase (migration 027 + live traffic).",
   revenue:

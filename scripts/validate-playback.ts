@@ -10,6 +10,16 @@ import {
   resolveViewerFreeEpisodeCount,
 } from "../lib/access";
 import {
+  analyticsActorId,
+  computeEpisodeDropOff,
+  countHistoryCompletionsRecovered,
+} from "../lib/admin/analytics-dropoff";
+import {
+  EPISODE_COMPLETE_THRESHOLD,
+  isEpisodeWatchComplete,
+  resolvePlaybackDuration,
+} from "../lib/analytics/episode-complete";
+import {
   PAYWALL_VARIANT_AFTER_1,
   PAYWALL_VARIANT_AFTER_2,
   freeEpisodeCountForVariant,
@@ -142,6 +152,33 @@ for (let i = 0; i < 40; i++) {
   if (picked === PAYWALL_VARIANT_AFTER_2) seenB = true;
 }
 assert(seenA && seenB, "50/50 picker can emit both groups");
+
+// --- Episode completion threshold ---
+assert(EPISODE_COMPLETE_THRESHOLD === 0.9, "Complete at 90% of duration");
+assert(isEpisodeWatchComplete(54, 60), "54/60s counts as complete");
+assert(!isEpisodeWatchComplete(53, 60), "53/60s is not complete");
+assert(resolvePlaybackDuration(NaN, 60) === 60, "Fall back to state duration when live is NaN");
+
+const dropOff = computeEpisodeDropOff({
+  episodeId: "ep1",
+  startEvents: [
+    { episode_id: "ep1", event_type: "start", user_id: "u1" },
+    { episode_id: "ep1", event_type: "start", user_id: "u1" },
+    { episode_id: "ep1", event_type: "start", visitor_id: "v1" },
+  ],
+  completeEvents: [],
+  history: [{ user_id: "u2", episode_id: "ep1", completed: true }],
+  canTrackCompletions: true,
+});
+assert(dropOff.started === 3, "Distinct starts: u1 + v1 + u2 from history");
+assert(dropOff.finished === 1, "History completion for u2");
+assert(
+  countHistoryCompletionsRecovered({
+    history: [{ user_id: "u2", episode_id: "ep1", completed: true }],
+    completeEvents: [],
+  }) === 1,
+  "Recovered count from watch_history"
+);
 
 // --- Progress resolution (root-cause fix) ---
 const nearComplete: WatchHistoryProgress = { progress_seconds: 420, completed: false };

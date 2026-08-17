@@ -5,6 +5,11 @@ import {
   type DateRange,
 } from "@/lib/admin/analytics-range";
 import {
+  analyticsActorId,
+  computeEpisodeDropOff,
+  countHistoryCompletionsRecovered,
+} from "@/lib/admin/analytics-dropoff";
+import {
   PAYWALL_VARIANT_AFTER_1,
   PAYWALL_VARIANT_AFTER_2,
   VARIANT_LABELS,
@@ -13,7 +18,7 @@ import {
 
 const PAYWALL_AB_ARMS: PaywallVariant[] = [PAYWALL_VARIANT_AFTER_1, PAYWALL_VARIANT_AFTER_2];
 
-export type MetricSource = "events" | "watch_history" | "untracked";
+export type MetricSource = "events" | "watch_history" | "combined" | "untracked";
 
 export type SeriesOption = {
   id: string;
@@ -67,6 +72,8 @@ export type SeriesAnalytics = {
   dropOff: EpisodeDropOff[];
   revenue: RevenueBreakdown;
   paywallAb: PaywallAbAnalytics;
+  /** Signed-in completions in watch_history missing from episode_events (this range). */
+  historyCompletionsRecovered: number | null;
 };
 
 export type PaywallAbArm = {
@@ -96,10 +103,6 @@ function isMissingRelation(error: { message?: string; code?: string } | null | u
   );
 }
 
-function rate(finished: number, started: number): number | null {
-  if (started <= 0) return null;
-  return (finished / started) * 100;
-}
 
 export async function listAnalyticsSeries(): Promise<SeriesOption[]> {
   const admin = createAdminClient();
@@ -181,6 +184,14 @@ export async function loadSeriesAnalytics(
   ).size;
   const uniqueFromHistory = new Set(history.map((h) => h.user_id)).size;
 
+  const canTrackCompletions =
+    completeEvents.length > 0 || history.some((row) => row.completed);
+  const historyCompletionsRecovered = tablesReady
+    ? countHistoryCompletionsRecovered({ history, completeEvents })
+    : history.some((row) => row.completed)
+      ? countHistoryCompletionsRecovered({ history, completeEvents: [] })
+      : null;
+
   const views = tablesReady
     ? {
         value: viewsFromEvents,
@@ -198,7 +209,7 @@ export async function loadSeriesAnalytics(
     ? {
         value: uniqueFromEvents,
         source: "events" as MetricSource,
-        note: "Distinct signed-in users who started or completed an episode. Guests appear in views but are not uniquely identified.",
+        note: "Signed-in users only. Guests are included in Total views but cannot be deduplicated without an account.",
       }
     : historyQuery.error
       ? {
@@ -209,38 +220,25 @@ export async function loadSeriesAnalytics(
       : {
           value: uniqueFromHistory,
           source: "watch_history" as MetricSource,
-          note: "Distinct signed-in users with watch_history in range (last_watched_at). Guests excluded.",
+          note: "Signed-in users only (watch_history). Guests are included in Total views when event tracking is on.",
         };
 
   const dropOff: EpisodeDropOff[] = episodeList.map((ep) => {
-    const eventStarts = startEvents.filter((e) => e.episode_id === ep.id).length;
-    const eventFinishes = new Set(
-      completeEvents.filter((e) => e.episode_id === ep.id && e.user_id).map((e) => e.user_id)
-    ).size;
-    const histStarts = history.filter((h) => h.episode_id === ep.id).length;
-    const histFinishes = history.filter((h) => h.episode_id === ep.id && h.completed).length;
-
-    if (tablesReady && (eventStarts > 0 || eventFinishes > 0)) {
-      const started = Math.max(eventStarts, eventFinishes);
-      return {
-        episodeId: ep.id,
-        episodeNumber: ep.episode_number,
-        title: ep.title,
-        started,
-        finished: eventFinishes,
-        completionRate: rate(eventFinishes, started),
-        source: "events",
-      };
-    }
-
+    const computed = computeEpisodeDropOff({
+      episodeId: ep.id,
+      startEvents,
+      completeEvents,
+      history,
+      canTrackCompletions,
+    });
     return {
       episodeId: ep.id,
       episodeNumber: ep.episode_number,
       title: ep.title,
-      started: histStarts,
-      finished: histFinishes,
-      completionRate: rate(histFinishes, histStarts),
-      source: "watch_history",
+      started: computed.started,
+      finished: computed.finished,
+      completionRate: computed.completionRate,
+      source: computed.source,
     };
   });
 
@@ -257,21 +255,36 @@ export async function loadSeriesAnalytics(
       finishedByUser.set(row.user_id, set);
     }
     for (const row of completeEvents) {
-      if (!row.user_id || !row.episode_id) continue;
-      const set = finishedByUser.get(row.user_id) ?? new Set();
+      if (!row.episode_id) continue;
+      const actor = analyticsActorId(row);
+      if (!actor || !actor.startsWith("u:")) continue;
+      const userId = row.user_id!;
+      const set = finishedByUser.get(userId) ?? new Set();
       set.add(row.episode_id);
-      finishedByUser.set(row.user_id, set);
+      finishedByUser.set(userId, set);
     }
     completers = Array.from(finishedByUser.values()).filter(
       (set) => set.size >= episodeCount
     ).length;
-    completionSource = completeEvents.length > 0 ? "events" : "watch_history";
+    completionSource =
+      completeEvents.length > 0 && history.some((row) => row.completed)
+        ? "combined"
+        : completeEvents.length > 0
+          ? "events"
+          : "watch_history";
   }
 
   const uniqueBase = uniqueViewers.value ?? 0;
   const fullSeriesCompletion = {
-    value: uniqueBase > 0 && completers != null ? (completers / uniqueBase) * 100 : completers === 0 ? 0 : null,
-    completers,
+    value:
+      !canTrackCompletions
+        ? null
+        : uniqueBase > 0 && completers != null
+          ? (completers / uniqueBase) * 100
+          : completers === 0
+            ? 0
+            : null,
+    completers: canTrackCompletions ? completers : null,
     source: completionSource,
     note:
       episodeCount === 0
@@ -310,6 +323,7 @@ export async function loadSeriesAnalytics(
     dropOff,
     revenue,
     paywallAb,
+    historyCompletionsRecovered,
   };
 }
 
