@@ -2,12 +2,14 @@ import { AnalyticsDashboardView } from "@/components/admin/AnalyticsDashboardVie
 import { requireAdmin } from "@/lib/admin";
 import { formatRangeFormInputs, parseAnalyticsRange, type DatePreset } from "@/lib/admin/analytics-range";
 import { listAnalyticsSeries, loadSeriesAnalytics } from "@/lib/admin/series-analytics";
+import { parseTrafficSourceFilter } from "@/lib/traffic-source";
 
 type SearchParams = {
   seriesId?: string;
   preset?: string;
   from?: string;
   to?: string;
+  source?: string;
 };
 
 export default async function AdminAnalyticsPage({
@@ -24,8 +26,11 @@ export default async function AdminAnalyticsPage({
     from: searchParams.from,
     to: searchParams.to,
   });
+  const sourceFilter = parseTrafficSourceFilter(searchParams.source);
 
-  const data = selectedId ? await loadSeriesAnalytics(selectedId, range) : null;
+  const data = selectedId
+    ? await loadSeriesAnalytics(selectedId, range, { sourceFilter })
+    : null;
 
   const fromInput = formatRangeFormInputs(range, searchParams).from;
   const toInput = formatRangeFormInputs(range, searchParams).to;
@@ -37,6 +42,7 @@ export default async function AdminAnalyticsPage({
       preset={range.preset as DatePreset}
       from={fromInput}
       to={toInput}
+      sourceFilter={sourceFilter}
       data={data}
     />
   );

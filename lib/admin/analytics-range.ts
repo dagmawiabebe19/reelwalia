@@ -194,6 +194,8 @@ export const ANALYTICS_METRIC_NOTES = {
     "Requires episode_events.paywall_hit and purchase (migration 027 + live traffic).",
   revenue:
     "Requires billing_events from Stripe webhooks (migration 027). Amounts were not stored historically.",
+  trafficSource:
+    "Requires migration 029 and first-touch capture from deploy date. Legacy events have unknown source.",
 } as const;
 
 /** Serialize range params for pagination / query links. */

@@ -7,6 +7,7 @@ import {
 import type { StripePlanKey } from "@/lib/stripe/plans";
 import { getStripePriceEnvKeys } from "@/lib/stripe/prices";
 import { resolveBaseUrl } from "@/lib/site-url";
+import { resolveTrafficSource } from "@/lib/traffic-source-server";
 
 const VALID_PLANS: StripePlanKey[] = ["1week", "2week", "1month"];
 
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
+    const traffic = await resolveTrafficSource({ userId: user?.id ?? null });
 
     if (user?.id && user.email) {
       const session = await createCheckoutSession({
@@ -42,6 +44,7 @@ export async function POST(request: Request) {
         plan: body.plan,
         baseUrl,
         episodeId: body.episodeId,
+        trafficSource: traffic.source,
       });
 
       if (!session.url) {
@@ -56,6 +59,7 @@ export async function POST(request: Request) {
       plan: body.plan,
       baseUrl,
       episodeId: body.episodeId,
+      trafficSource: traffic.source,
     });
 
     if (!session.url) {

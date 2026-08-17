@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { PAYWALL_AB_COOKIE, parsePaywallAbCookie } from "@/lib/paywall-ab";
 import { adoptCookieOntoNewAccount } from "@/lib/paywall-ab-persist";
+import { TRAFFIC_SOURCE_COOKIE, parseTrafficSourceCookie } from "@/lib/traffic-source";
+import { adoptTrafficCookieOntoNewAccount } from "@/lib/traffic-source-persist";
 
 function safeRedirectPath(next: string | null): string {
   if (!next || !next.startsWith("/") || next.startsWith("//")) return "/";
@@ -57,8 +59,12 @@ export async function GET(request: NextRequest) {
         userId: user.id,
         cookie: parsePaywallAbCookie(cookieStore.get(PAYWALL_AB_COOKIE)?.value ?? null),
       });
+      await adoptTrafficCookieOntoNewAccount({
+        userId: user.id,
+        cookie: parseTrafficSourceCookie(cookieStore.get(TRAFFIC_SOURCE_COOKIE)?.value ?? null),
+      });
     } catch (err) {
-      console.error("[paywall-ab] adopt on auth callback failed:", err);
+      console.error("[auth] attribution adopt on callback failed:", err);
     }
 
     return NextResponse.redirect(new URL(redirectPath, requestUrl.origin));

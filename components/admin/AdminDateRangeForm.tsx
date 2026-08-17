@@ -1,9 +1,11 @@
 import { ADMIN_DATE_PRESETS, type DatePreset } from "@/lib/admin/analytics-range";
+import { TRAFFIC_SOURCE_FILTERS, type TrafficSourceFilter } from "@/lib/traffic-source";
 
 type AdminDateRangeFormProps = {
   preset: DatePreset;
   from: string;
   to: string;
+  sourceFilter?: TrafficSourceFilter;
   action?: string;
   method?: "get" | "post";
   submitLabel?: string;
@@ -15,6 +17,7 @@ export function AdminDateRangeForm({
   preset,
   from,
   to,
+  sourceFilter,
   action,
   method = "get",
   submitLabel = "Apply",
@@ -23,8 +26,24 @@ export function AdminDateRangeForm({
 }: AdminDateRangeFormProps) {
   return (
     <form method={method} action={action} className="rw-admin-panel space-y-4">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {children}
+        {sourceFilter != null && (
+          <label className="block space-y-1.5">
+            <span className="rw-form-label">Traffic source</span>
+            <select
+              name="source"
+              defaultValue={sourceFilter}
+              className="w-full rounded-lg border border-white/[0.12] bg-black px-3 py-2 text-sm text-white"
+            >
+              {TRAFFIC_SOURCE_FILTERS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="block space-y-1.5">
           <span className="rw-form-label">Date range</span>
           <select

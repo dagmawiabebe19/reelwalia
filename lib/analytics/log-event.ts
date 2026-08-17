@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { PaywallVariant } from "@/lib/paywall-ab";
+import type { TrafficSource } from "@/lib/traffic-source";
 
 export type EpisodeEventType =
   | "start"
@@ -28,6 +29,7 @@ export async function logEpisodeEvent(params: {
   eventType: EpisodeEventType;
   paywallVariant?: PaywallVariant | null;
   visitorId?: string | null;
+  trafficSource?: TrafficSource | null;
 }): Promise<void> {
   try {
     const admin = createAdminClient();
@@ -39,14 +41,21 @@ export async function logEpisodeEvent(params: {
     };
     if (params.paywallVariant) row.paywall_variant = params.paywallVariant;
     if (params.visitorId) row.visitor_id = params.visitorId;
+    if (params.trafficSource) row.traffic_source = params.trafficSource;
 
     const { error } = await admin.from("episode_events").insert(row);
-    if (error && isMissingRelation(error) && (params.paywallVariant || params.visitorId)) {
+    if (
+      error &&
+      isMissingRelation(error) &&
+      (params.paywallVariant || params.visitorId || params.trafficSource)
+    ) {
       const { error: retryError } = await admin.from("episode_events").insert({
         user_id: params.userId ?? null,
         series_id: params.seriesId,
         episode_id: params.episodeId ?? null,
         event_type: params.eventType,
+        ...(params.paywallVariant ? { paywall_variant: params.paywallVariant } : {}),
+        ...(params.visitorId ? { visitor_id: params.visitorId } : {}),
       });
       if (retryError && !isMissingRelation(retryError)) {
         console.error("[analytics] episode_events insert failed:", retryError.message);
@@ -75,6 +84,7 @@ export async function logBillingEvent(params: {
   deliveryCents?: number;
   currency?: string;
   createdAt?: string;
+  trafficSource?: TrafficSource | null;
 }): Promise<void> {
   try {
     const admin = createAdminClient();
@@ -93,6 +103,7 @@ export async function logBillingEvent(params: {
         delivery_cents: params.deliveryCents ?? 0,
         currency: params.currency ?? "usd",
         created_at: params.createdAt ?? new Date().toISOString(),
+        ...(params.trafficSource ? { traffic_source: params.trafficSource } : {}),
       },
       { onConflict: "stripe_invoice_id,event_type" }
     );

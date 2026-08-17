@@ -15,6 +15,7 @@ import {
   VARIANT_LABELS,
   type PaywallVariant,
 } from "@/lib/paywall-ab";
+import { type TrafficSourceFilter } from "@/lib/traffic-source";
 
 const PAYWALL_AB_ARMS: PaywallVariant[] = [PAYWALL_VARIANT_AFTER_1, PAYWALL_VARIANT_AFTER_2];
 
@@ -58,7 +59,9 @@ export type RevenueBreakdown = {
 export type SeriesAnalytics = {
   series: SeriesOption;
   range: DateRange;
+  sourceFilter: TrafficSourceFilter;
   tablesReady: boolean;
+  trafficSourceReady: boolean;
   views: { value: number | null; source: MetricSource; note: string };
   uniqueViewers: { value: number | null; source: MetricSource; note: string };
   fullSeriesCompletion: { value: number | null; completers: number | null; source: MetricSource; note: string };
@@ -113,10 +116,33 @@ export async function listAnalyticsSeries(): Promise<SeriesOption[]> {
   return (data ?? []) as SeriesOption[];
 }
 
+function matchesTrafficFilter(
+  trafficSource: string | null | undefined,
+  filter: TrafficSourceFilter
+): boolean {
+  if (filter === "all") return true;
+  return trafficSource === filter;
+}
+
+async function loadProfileIdsForTrafficFilter(
+  admin: ReturnType<typeof createAdminClient>,
+  filter: TrafficSourceFilter
+): Promise<Set<string> | null> {
+  if (filter === "all") return null;
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("traffic_source", filter);
+  if (error) return new Set();
+  return new Set((data ?? []).map((row) => row.id as string));
+}
+
 export async function loadSeriesAnalytics(
   seriesId: string,
-  range: DateRange
+  range: DateRange,
+  options?: { sourceFilter?: TrafficSourceFilter }
 ): Promise<SeriesAnalytics | null> {
+  const sourceFilter = options?.sourceFilter ?? "all";
   const admin = createAdminClient();
   const fromIso = range.from.toISOString();
   const toIso = range.to.toISOString();
@@ -144,7 +170,9 @@ export async function loadSeriesAnalytics(
 
   let eventsQuery = await admin
     .from("episode_events")
-    .select("user_id, episode_id, event_type, created_at, paywall_variant, visitor_id")
+    .select(
+      "user_id, episode_id, event_type, created_at, paywall_variant, visitor_id, traffic_source"
+    )
     .eq("series_id", seriesId)
     .gte("created_at", fromIso)
     .lt("created_at", toIso);
@@ -160,7 +188,22 @@ export async function loadSeriesAnalytics(
   }
 
   const tablesReady = !isMissingRelation(eventsQuery.error);
-  const events = tablesReady ? eventsQuery.data ?? [] : [];
+  const trafficSourceReady =
+    tablesReady &&
+    !eventsQuery.error &&
+    (eventsQuery.data?.length === 0 ||
+      eventsQuery.data?.some((row) => "traffic_source" in row));
+  let events = tablesReady ? eventsQuery.data ?? [] : [];
+  if (sourceFilter !== "all") {
+    events = events.filter((row) =>
+      matchesTrafficFilter(
+        "traffic_source" in row ? (row.traffic_source as string | null) : null,
+        sourceFilter
+      )
+    );
+  }
+
+  const profileIds = await loadProfileIdsForTrafficFilter(admin, sourceFilter);
 
   const historyQuery = await admin
     .from("watch_history")
@@ -169,7 +212,10 @@ export async function loadSeriesAnalytics(
     .gte("last_watched_at", fromIso)
     .lt("last_watched_at", toIso);
 
-  const history = historyQuery.data ?? [];
+  let history = historyQuery.data ?? [];
+  if (profileIds) {
+    history = history.filter((row) => profileIds.has(row.user_id));
+  }
 
   const startEvents = events.filter((e) => e.event_type === "start");
   const completeEvents = events.filter((e) => e.event_type === "complete");
@@ -309,13 +355,30 @@ export async function loadSeriesAnalytics(
       : ANALYTICS_METRIC_NOTES.paywall,
   };
 
-  const revenue = await loadRevenue(admin, seriesId, fromIso, toIso, tablesReady);
-  const paywallAb = await loadPaywallAb(admin, seriesId, fromIso, toIso, tablesReady);
+  const revenue = await loadRevenue(
+    admin,
+    seriesId,
+    fromIso,
+    toIso,
+    tablesReady,
+    sourceFilter,
+    profileIds
+  );
+  const paywallAb = await loadPaywallAb(
+    admin,
+    seriesId,
+    fromIso,
+    toIso,
+    tablesReady,
+    sourceFilter
+  );
 
   return {
     series,
     range,
+    sourceFilter,
     tablesReady,
+    trafficSourceReady,
     views,
     uniqueViewers,
     fullSeriesCompletion,
@@ -358,7 +421,8 @@ async function loadPaywallAb(
   _seriesId: string,
   fromIso: string,
   toIso: string,
-  tablesReady: boolean
+  tablesReady: boolean,
+  sourceFilter: TrafficSourceFilter
 ): Promise<PaywallAbAnalytics> {
   if (!tablesReady) {
     return emptyAb(
@@ -368,9 +432,7 @@ async function loadPaywallAb(
 
   const assignments = await admin
     .from("paywall_assignments")
-    .select("variant, visitor_id, user_id, created_at")
-    .gte("created_at", fromIso)
-    .lt("created_at", toIso);
+    .select("variant, visitor_id, user_id, created_at");
 
   if (assignments.error && isMissingRelation(assignments.error)) {
     return emptyAb(
@@ -378,15 +440,45 @@ async function loadPaywallAb(
     );
   }
 
+  let assigned = (assignments.data ?? []).filter(
+    (row) => row.created_at >= fromIso && row.created_at < toIso
+  );
+
+  if (sourceFilter !== "all") {
+    const trafficAssignments = await admin
+      .from("traffic_assignments")
+      .select("visitor_id, user_id, source")
+      .eq("source", sourceFilter);
+    const trafficRows = trafficAssignments.error ? [] : trafficAssignments.data ?? [];
+    const visitorIds = new Set(trafficRows.map((row) => row.visitor_id));
+    const userIds = new Set(
+      trafficRows.map((row) => row.user_id).filter((id): id is string => Boolean(id))
+    );
+    assigned = assigned.filter(
+      (row) =>
+        visitorIds.has(row.visitor_id) ||
+        (row.user_id != null && userIds.has(row.user_id))
+    );
+  }
+
   const platformEvents = await admin
     .from("episode_events")
-    .select("user_id, visitor_id, paywall_variant, event_type, series_id, created_at")
+    .select(
+      "user_id, visitor_id, paywall_variant, event_type, series_id, created_at, traffic_source"
+    )
     .gte("created_at", fromIso)
     .lt("created_at", toIso)
     .in("event_type", ["paywall_hit", "purchase"]);
 
-  const events = platformEvents.error ? [] : platformEvents.data ?? [];
-  const assigned = assignments.data ?? [];
+  let events = platformEvents.error ? [] : platformEvents.data ?? [];
+  if (sourceFilter !== "all") {
+    events = events.filter((row) =>
+      matchesTrafficFilter(
+        "traffic_source" in row ? (row.traffic_source as string | null) : null,
+        sourceFilter
+      )
+    );
+  }
 
   const note =
     "Decision metric is total subscribers and subscribers per assigned user — not conversion rate. Group A hits the wall sooner, so its rate will look higher even if it produces fewer paying subscribers. Users = new assignments in this date range; subscribers = first purchases in this range (platform-wide).";
@@ -422,7 +514,9 @@ async function loadRevenue(
   seriesId: string,
   fromIso: string,
   toIso: string,
-  tablesReady: boolean
+  tablesReady: boolean,
+  sourceFilter: TrafficSourceFilter,
+  profileIds: Set<string> | null
 ): Promise<RevenueBreakdown> {
   const untracked: RevenueBreakdown = {
     tracked: false,
@@ -445,7 +539,7 @@ async function loadRevenue(
   const billing = await admin
     .from("billing_events")
     .select(
-      "series_id, event_type, amount_gross_cents, processing_fee_cents, tax_cents, app_store_cents, delivery_cents, created_at"
+      "series_id, event_type, amount_gross_cents, processing_fee_cents, tax_cents, app_store_cents, delivery_cents, created_at, traffic_source, user_id"
     )
     .gte("created_at", fromIso)
     .lt("created_at", toIso);
@@ -454,7 +548,15 @@ async function loadRevenue(
     return untracked;
   }
 
-  const rows = billing.data;
+  let rows = billing.data;
+  if (sourceFilter !== "all") {
+    rows = rows.filter((row) =>
+      matchesTrafficFilter(
+        "traffic_source" in row ? (row.traffic_source as string | null) : null,
+        sourceFilter
+      )
+    );
+  }
   if (!rows.length) {
     return {
       ...untracked,
@@ -478,13 +580,14 @@ async function loadRevenue(
 
   const watchTime = await admin
     .from("watch_history")
-    .select("series_id, progress_seconds")
+    .select("series_id, progress_seconds, user_id")
     .gte("last_watched_at", fromIso)
     .lt("last_watched_at", toIso);
 
   const secondsBySeries = new Map<string, number>();
   let totalSeconds = 0;
   for (const row of watchTime.data ?? []) {
+    if (profileIds && !profileIds.has(row.user_id)) continue;
     const seconds = Math.max(0, row.progress_seconds ?? 0);
     totalSeconds += seconds;
     secondsBySeries.set(row.series_id, (secondsBySeries.get(row.series_id) ?? 0) + seconds);

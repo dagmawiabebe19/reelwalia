@@ -9,6 +9,11 @@ import {
   type DatePreset,
 } from "@/lib/admin/analytics-range";
 import type { SeriesAnalytics, SeriesOption } from "@/lib/admin/series-analytics";
+import {
+  TRAFFIC_SOURCE_ATTRIBUTION_START,
+  TRAFFIC_SOURCE_LABELS,
+  type TrafficSourceFilter,
+} from "@/lib/traffic-source";
 
 function StatCard({
   label,
@@ -51,6 +56,7 @@ export function AnalyticsDashboardView({
   preset,
   from,
   to,
+  sourceFilter,
   data,
 }: {
   seriesList: SeriesOption[];
@@ -58,6 +64,7 @@ export function AnalyticsDashboardView({
   preset: DatePreset;
   from: string;
   to: string;
+  sourceFilter: TrafficSourceFilter;
   data: SeriesAnalytics | null;
 }) {
   const customFrom = from;
@@ -70,7 +77,7 @@ export function AnalyticsDashboardView({
         subtitle="Per-series performance for licensor reports. Metrics that are not in the database are labeled Not yet tracked — never estimated."
       />
 
-      <AdminDateRangeForm preset={preset} from={from} to={to}>
+      <AdminDateRangeForm preset={preset} from={from} to={to} sourceFilter={sourceFilter}>
         <label className="block space-y-1.5 md:col-span-2 xl:col-span-1">
           <span className="rw-form-label">Series</span>
           <select
@@ -102,6 +109,26 @@ export function AnalyticsDashboardView({
 
       {data && (
         <>
+          <div className="rw-admin-panel border-sky-500/20 bg-sky-500/[0.04]">
+            <p className="text-sm text-sky-100/90">
+              Traffic source attribution (ad vs organic) starts from{" "}
+              <strong>{TRAFFIC_SOURCE_ATTRIBUTION_START}</strong>. Events before that date, or
+              before migration <code>029_traffic_source.sql</code> is applied, have no source and
+              appear as <strong>unknown</strong> — never guessed. Use the Traffic source filter to
+              isolate ad-campaign conversion.
+            </p>
+          </div>
+
+          {!data.trafficSourceReady && data.tablesReady && (
+            <div className="rw-admin-panel border-amber-500/20 bg-amber-500/[0.04]">
+              <p className="text-sm text-amber-200/90">
+                Migration <code>029_traffic_source.sql</code> is not applied on Platform yet.
+                Source filtering and per-event attribution stay unavailable until you run it in the
+                SQL editor.
+              </p>
+            </div>
+          )}
+
           {!data.tablesReady && (
             <div className="rw-admin-panel border-amber-500/20 bg-amber-500/[0.04]">
               <p className="text-sm text-amber-200/90">
@@ -126,7 +153,12 @@ export function AnalyticsDashboardView({
               <h2 className="font-display text-xl uppercase tracking-wide text-white">
                 {data.series.title}
               </h2>
-              <p className="text-xs text-zinc-500">{data.range.label} · UTC</p>
+              <p className="text-xs text-zinc-500">
+                {data.range.label} · UTC
+                {data.sourceFilter !== "all"
+                  ? ` · ${TRAFFIC_SOURCE_LABELS[data.sourceFilter === "ad" ? "ad" : "organic"]} only`
+                  : ""}
+              </p>
             </div>
             <a
               href={`/admin/analytics/report?seriesId=${encodeURIComponent(data.series.id)}&preset=${encodeURIComponent(data.range.preset)}&from=${encodeURIComponent(customFrom)}&to=${encodeURIComponent(customTo)}`}

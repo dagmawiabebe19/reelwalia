@@ -6,6 +6,7 @@ import {
   type EpisodeEventType,
 } from "@/lib/analytics/log-event";
 import { resolvePaywallAb } from "@/lib/paywall-ab-server";
+import { resolveTrafficSource } from "@/lib/traffic-source-server";
 
 const CLIENT_EVENT_TYPES = new Set<EpisodeEventType>([
   "start",
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
 
     const ab = await resolvePaywallAb({ userId: user?.id ?? null });
+    const traffic = await resolveTrafficSource({ userId: user?.id ?? null });
 
     await logEpisodeEvent({
       userId: user?.id ?? null,
@@ -53,6 +55,7 @@ export async function POST(request: Request) {
       eventType,
       paywallVariant: ab.variant,
       visitorId: ab.visitorId,
+      trafficSource: traffic.source,
     });
 
     return NextResponse.json({ ok: true });

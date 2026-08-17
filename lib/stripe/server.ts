@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { resolveSeriesIdFromEpisode } from "@/lib/analytics/log-event";
+import type { TrafficSource } from "@/lib/traffic-source";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { StripePlanKey } from "@/lib/stripe/plans";
 import { getPlanPriceIds } from "@/lib/stripe/prices";
@@ -59,6 +60,7 @@ export async function createCheckoutSession(params: {
   plan: StripePlanKey;
   baseUrl: string;
   episodeId?: string;
+  trafficSource?: TrafficSource | null;
 }): Promise<Stripe.Checkout.Session> {
   const stripe = getStripe();
   const { introPriceId } = getPlanPriceIds(params.plan);
@@ -68,6 +70,10 @@ export async function createCheckoutSession(params: {
     ...(params.episodeId ? { episode_id: params.episodeId } : {}),
     ...(resolved?.seriesId ? { series_id: resolved.seriesId } : {}),
   };
+  const trafficMeta: Record<string, string> =
+    params.trafficSource && params.trafficSource !== "unknown"
+      ? { traffic_source: params.trafficSource }
+      : {};
 
   const successUrl = params.episodeId
     ? `${params.baseUrl}/watch/${params.episodeId}?subscribed=true`
@@ -86,6 +92,7 @@ export async function createCheckoutSession(params: {
         user_id: params.userId,
         plan: params.plan,
         ...titleMeta,
+        ...trafficMeta,
       },
     },
     success_url: successUrl,
@@ -96,6 +103,7 @@ export async function createCheckoutSession(params: {
       user_id: params.userId,
       plan: params.plan,
       ...titleMeta,
+      ...trafficMeta,
     },
   });
 }
@@ -104,6 +112,7 @@ export async function createGuestCheckoutSession(params: {
   plan: StripePlanKey;
   baseUrl: string;
   episodeId?: string;
+  trafficSource?: TrafficSource | null;
 }): Promise<Stripe.Checkout.Session> {
   const stripe = getStripe();
   const { introPriceId } = getPlanPriceIds(params.plan);
@@ -112,6 +121,10 @@ export async function createGuestCheckoutSession(params: {
     ...(params.episodeId ? { episode_id: params.episodeId } : {}),
     ...(resolved?.seriesId ? { series_id: resolved.seriesId } : {}),
   };
+  const trafficMeta: Record<string, string> =
+    params.trafficSource && params.trafficSource !== "unknown"
+      ? { traffic_source: params.trafficSource }
+      : {};
 
   const episodeQuery = params.episodeId
     ? `&episodeId=${encodeURIComponent(params.episodeId)}`
@@ -129,6 +142,7 @@ export async function createGuestCheckoutSession(params: {
         app: "reelwalia",
         plan: params.plan,
         ...titleMeta,
+        ...trafficMeta,
       },
     },
     success_url: successUrl,
@@ -138,6 +152,7 @@ export async function createGuestCheckoutSession(params: {
       app: "reelwalia",
       plan: params.plan,
       ...titleMeta,
+      ...trafficMeta,
     },
   });
 }

@@ -91,6 +91,7 @@ export interface Profile {
   subscription_plan: SubscriptionPlan;
   current_period_end: string | null;
   paywall_variant: "paywall_after_1" | "paywall_after_2" | null;
+  traffic_source: "ad" | "organic" | "unknown" | null;
   created_at: string;
   updated_at: string;
 }

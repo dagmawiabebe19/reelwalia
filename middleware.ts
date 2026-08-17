@@ -1,10 +1,12 @@
 import { type NextRequest } from "next/server";
 import { applyPaywallAbCookie } from "@/lib/paywall-ab-middleware";
+import { applyTrafficSourceCookie } from "@/lib/traffic-source-middleware";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
   const { response, userId } = await updateSession(request);
-  return applyPaywallAbCookie(request, response, userId);
+  const withTraffic = applyTrafficSourceCookie(request, response, userId);
+  return applyPaywallAbCookie(request, withTraffic, userId);
 }
 
 export const config = {

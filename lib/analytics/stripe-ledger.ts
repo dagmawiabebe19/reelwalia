@@ -1,6 +1,8 @@
 import type Stripe from "stripe";
 import { logBillingEvent, logEpisodeEvent, resolveSeriesIdFromEpisode } from "@/lib/analytics/log-event";
 import { resolveVariantForUserId } from "@/lib/paywall-ab-persist";
+import { resolveTrafficSourceForUserId } from "@/lib/traffic-source-persist";
+import { isTrafficSource, type TrafficSource } from "@/lib/traffic-source";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { unwrapStripeResponse } from "@/lib/stripe/helpers";
 import { getStripe } from "@/lib/stripe/server";
@@ -66,11 +68,11 @@ async function metadataAttribution(params: {
   billingReason: string | null;
   invoice: InvoiceWithLegacyFields;
   subscription: Stripe.Subscription | null;
-}): Promise<{ seriesId: string | null; episodeId: string | null }> {
+}): Promise<{ seriesId: string | null; episodeId: string | null; trafficSource: TrafficSource | null }> {
   // Only the first paid invoice of a checkout is title-attributed.
   // Renewals stay unattributed and enter the watch-time pro-rata pool.
   if (params.billingReason !== "subscription_create") {
-    return { seriesId: null, episodeId: null };
+    return { seriesId: null, episodeId: null, trafficSource: null };
   }
 
   const episodeId =
@@ -85,14 +87,22 @@ async function metadataAttribution(params: {
     params.invoice.parent?.subscription_details?.metadata?.series_id ||
     null;
 
+  const rawTraffic =
+    params.subscription?.metadata?.traffic_source ||
+    params.invoice.metadata?.traffic_source ||
+    params.invoice.parent?.subscription_details?.metadata?.traffic_source ||
+    null;
+  const trafficSource = isTrafficSource(rawTraffic) ? rawTraffic : null;
+
   if (seriesFromMeta) {
-    return { seriesId: seriesFromMeta, episodeId: episodeId || null };
+    return { seriesId: seriesFromMeta, episodeId: episodeId || null, trafficSource };
   }
 
   const resolved = await resolveSeriesIdFromEpisode(episodeId);
   return {
     seriesId: resolved?.seriesId ?? null,
     episodeId: resolved?.episodeId ?? episodeId,
+    trafficSource,
   };
 }
 
@@ -124,11 +134,19 @@ export async function recordInvoicePayment(invoice: Stripe.Invoice): Promise<voi
     (customerId ? await findUserIdByCustomerId(customerId) : null) ||
     null;
 
-  const { seriesId, episodeId } = await metadataAttribution({
+  const { seriesId, episodeId, trafficSource: metaTraffic } = await metadataAttribution({
     billingReason: invoice.billing_reason ?? null,
     invoice: inv,
     subscription,
   });
+
+  const profileTraffic = await resolveTrafficSourceForUserId(userId);
+  const trafficSource =
+    metaTraffic && metaTraffic !== "unknown"
+      ? metaTraffic
+      : profileTraffic && profileTraffic !== "unknown"
+        ? profileTraffic
+        : null;
 
   const chargeId = invoiceChargeId(inv);
   const fee = await processingFeeCents(chargeId);
@@ -149,6 +167,7 @@ export async function recordInvoicePayment(invoice: Stripe.Invoice): Promise<voi
     createdAt: invoice.created
       ? new Date(invoice.created * 1000).toISOString()
       : undefined,
+    trafficSource,
   });
 
   if (invoice.billing_reason === "subscription_create" && seriesId) {
@@ -159,6 +178,7 @@ export async function recordInvoicePayment(invoice: Stripe.Invoice): Promise<voi
       episodeId,
       eventType: "purchase",
       paywallVariant: variant,
+      trafficSource,
     });
   }
 }
