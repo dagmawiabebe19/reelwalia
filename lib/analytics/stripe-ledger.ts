@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import { logBillingEvent, logEpisodeEvent, resolveSeriesIdFromEpisode } from "@/lib/analytics/log-event";
+import { resolveVariantForUserId } from "@/lib/paywall-ab-persist";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { unwrapStripeResponse } from "@/lib/stripe/helpers";
 import { getStripe } from "@/lib/stripe/server";
@@ -151,11 +152,13 @@ export async function recordInvoicePayment(invoice: Stripe.Invoice): Promise<voi
   });
 
   if (invoice.billing_reason === "subscription_create" && seriesId) {
+    const variant = await resolveVariantForUserId(userId);
     await logEpisodeEvent({
       userId,
       seriesId,
       episodeId,
       eventType: "purchase",
+      paywallVariant: variant,
     });
   }
 }

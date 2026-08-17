@@ -4,6 +4,14 @@ import {
   LICENSOR_SHARE,
   type DateRange,
 } from "@/lib/admin/analytics-range";
+import {
+  PAYWALL_VARIANT_AFTER_1,
+  PAYWALL_VARIANT_AFTER_2,
+  VARIANT_LABELS,
+  type PaywallVariant,
+} from "@/lib/paywall-ab";
+
+const PAYWALL_AB_ARMS: PaywallVariant[] = [PAYWALL_VARIANT_AFTER_1, PAYWALL_VARIANT_AFTER_2];
 
 export type MetricSource = "events" | "watch_history" | "untracked";
 
@@ -58,6 +66,23 @@ export type SeriesAnalytics = {
   };
   dropOff: EpisodeDropOff[];
   revenue: RevenueBreakdown;
+  paywallAb: PaywallAbAnalytics;
+};
+
+export type PaywallAbArm = {
+  variant: PaywallVariant;
+  label: string;
+  users: number | null;
+  paywallReached: number | null;
+  purchased: number | null;
+  conversionRate: number | null;
+  subsPerUser: number | null;
+};
+
+export type PaywallAbAnalytics = {
+  tracked: boolean;
+  note: string;
+  arms: PaywallAbArm[];
 };
 
 function isMissingRelation(error: { message?: string; code?: string } | null | undefined): boolean {
@@ -65,6 +90,7 @@ function isMissingRelation(error: { message?: string; code?: string } | null | u
   const message = (error.message ?? "").toLowerCase();
   return (
     error.code === "42P01" ||
+    error.code === "42703" ||
     message.includes("does not exist") ||
     message.includes("schema cache")
   );
@@ -113,12 +139,22 @@ export async function loadSeriesAnalytics(
     title: string;
   }[];
 
-  const eventsQuery = await admin
+  let eventsQuery = await admin
     .from("episode_events")
-    .select("user_id, episode_id, event_type, created_at")
+    .select("user_id, episode_id, event_type, created_at, paywall_variant, visitor_id")
     .eq("series_id", seriesId)
     .gte("created_at", fromIso)
     .lt("created_at", toIso);
+
+  if (eventsQuery.error && isMissingRelation(eventsQuery.error)) {
+    const fallback = await admin
+      .from("episode_events")
+      .select("user_id, episode_id, event_type, created_at")
+      .eq("series_id", seriesId)
+      .gte("created_at", fromIso)
+      .lt("created_at", toIso);
+    eventsQuery = fallback as typeof eventsQuery;
+  }
 
   const tablesReady = !isMissingRelation(eventsQuery.error);
   const events = tablesReady ? eventsQuery.data ?? [] : [];
@@ -261,6 +297,7 @@ export async function loadSeriesAnalytics(
   };
 
   const revenue = await loadRevenue(admin, seriesId, fromIso, toIso, tablesReady);
+  const paywallAb = await loadPaywallAb(admin, seriesId, fromIso, toIso, tablesReady);
 
   return {
     series,
@@ -272,7 +309,98 @@ export async function loadSeriesAnalytics(
     paywallConversion,
     dropOff,
     revenue,
+    paywallAb,
   };
+}
+
+function eventIdentity(row: {
+  user_id?: string | null;
+  visitor_id?: string | null;
+  created_at?: string;
+}): string {
+  if (row.user_id) return `u:${row.user_id}`;
+  if (row.visitor_id) return `v:${row.visitor_id}`;
+  return `t:${row.created_at ?? "unknown"}`;
+}
+
+function emptyAb(note: string): PaywallAbAnalytics {
+  return {
+    tracked: false,
+    note,
+    arms: PAYWALL_AB_ARMS.map((variant) => ({
+      variant,
+      label: VARIANT_LABELS[variant],
+      users: null,
+      paywallReached: null,
+      purchased: null,
+      conversionRate: null,
+      subsPerUser: null,
+    })),
+  };
+}
+
+async function loadPaywallAb(
+  admin: ReturnType<typeof createAdminClient>,
+  _seriesId: string,
+  fromIso: string,
+  toIso: string,
+  tablesReady: boolean
+): Promise<PaywallAbAnalytics> {
+  if (!tablesReady) {
+    return emptyAb(
+      "Requires migrations 027 and 028. A/B results appear after those are applied and new visitors are assigned."
+    );
+  }
+
+  const assignments = await admin
+    .from("paywall_assignments")
+    .select("variant, visitor_id, user_id, created_at")
+    .gte("created_at", fromIso)
+    .lt("created_at", toIso);
+
+  if (assignments.error && isMissingRelation(assignments.error)) {
+    return emptyAb(
+      "Migration 028 is not applied yet. Assignments and per-variant event columns are missing."
+    );
+  }
+
+  const platformEvents = await admin
+    .from("episode_events")
+    .select("user_id, visitor_id, paywall_variant, event_type, series_id, created_at")
+    .gte("created_at", fromIso)
+    .lt("created_at", toIso)
+    .in("event_type", ["paywall_hit", "purchase"]);
+
+  const events = platformEvents.error ? [] : platformEvents.data ?? [];
+  const assigned = assignments.data ?? [];
+
+  const note =
+    "Decision metric is total subscribers and subscribers per assigned user — not conversion rate. Group A hits the wall sooner, so its rate will look higher even if it produces fewer paying subscribers. Users = new assignments in this date range; subscribers = first purchases in this range (platform-wide).";
+
+  const arms: PaywallAbArm[] = PAYWALL_AB_ARMS.map(
+    (variant) => {
+      const users = assigned.filter((row) => row.variant === variant).length;
+      const hits = events.filter(
+        (row) => row.event_type === "paywall_hit" && row.paywall_variant === variant
+      );
+      const platformPurchases = events.filter(
+        (row) => row.event_type === "purchase" && row.paywall_variant === variant
+      );
+      const paywallReached = new Set(hits.map((row) => eventIdentity(row))).size;
+      const purchased = platformPurchases.length;
+      return {
+        variant,
+        label: VARIANT_LABELS[variant],
+        users,
+        paywallReached,
+        purchased,
+        conversionRate: paywallReached > 0 ? (purchased / paywallReached) * 100 : 0,
+        subsPerUser: users > 0 ? purchased / users : purchased === 0 ? 0 : null,
+      };
+    }
+  );
+
+  return { tracked: true, note, arms };
 }
 
 async function loadRevenue(

@@ -10,7 +10,7 @@ import { WatchSeriesInfo } from "@/components/watch/WatchSeriesInfo";
 import { PaywallOpenProvider } from "@/components/watch/PaywallOpenContext";
 import { SubscribeBanner } from "@/components/watch/SubscribeBanner";
 import { MeetTheCharacters } from "@/components/chat/MeetTheCharacters";
-import { canWatchEpisode, hasActiveSubscription, isEpisodeFree, resolveFreeEpisodeCount } from "@/lib/access";
+import { canWatchEpisode, hasActiveSubscription, isEpisodeFree, resolveViewerFreeEpisodeCount } from "@/lib/access";
 import { listActiveCharactersForSeries } from "@/lib/chat/server";
 import { getSignedCaptionTracksForEpisode } from "@/lib/captions/server";
 import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
@@ -18,6 +18,7 @@ import { getNextEpisode } from "@/lib/episodes";
 import { normalizeSeriesOrientation } from "@/lib/series-orientation";
 import { resolveInitialProgress } from "@/lib/watch-progress";
 import { shouldAutoStartWatch } from "@/lib/watch-playback";
+import { resolvePaywallAb } from "@/lib/paywall-ab-server";
 import { verifyCheckoutSession } from "@/lib/stripe/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -85,7 +86,8 @@ async function getWatchData(
     initialProgress = resolveInitialProgress(history, isBingeNavigation);
   }
 
-  const freeCount = resolveFreeEpisodeCount(series.free_episode_count);
+  const ab = await resolvePaywallAb({ userId: user?.id ?? null });
+  const freeCount = resolveViewerFreeEpisodeCount(series.free_episode_count, ab.variant);
   const isFreeEpisode = isEpisodeFree(episode.episode_number, freeCount);
 
   let guestSessionUnlock = false;

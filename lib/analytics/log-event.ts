@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { PaywallVariant } from "@/lib/paywall-ab";
 
 export type EpisodeEventType =
   | "start"
@@ -14,6 +15,7 @@ function isMissingRelation(error: { message?: string; code?: string } | null): b
   const message = (error.message ?? "").toLowerCase();
   return (
     error.code === "42P01" ||
+    error.code === "42703" ||
     message.includes("does not exist") ||
     message.includes("schema cache")
   );
@@ -24,15 +26,33 @@ export async function logEpisodeEvent(params: {
   seriesId: string;
   episodeId?: string | null;
   eventType: EpisodeEventType;
+  paywallVariant?: PaywallVariant | null;
+  visitorId?: string | null;
 }): Promise<void> {
   try {
     const admin = createAdminClient();
-    const { error } = await admin.from("episode_events").insert({
+    const row: Record<string, unknown> = {
       user_id: params.userId ?? null,
       series_id: params.seriesId,
       episode_id: params.episodeId ?? null,
       event_type: params.eventType,
-    });
+    };
+    if (params.paywallVariant) row.paywall_variant = params.paywallVariant;
+    if (params.visitorId) row.visitor_id = params.visitorId;
+
+    const { error } = await admin.from("episode_events").insert(row);
+    if (error && isMissingRelation(error) && (params.paywallVariant || params.visitorId)) {
+      const { error: retryError } = await admin.from("episode_events").insert({
+        user_id: params.userId ?? null,
+        series_id: params.seriesId,
+        episode_id: params.episodeId ?? null,
+        event_type: params.eventType,
+      });
+      if (retryError && !isMissingRelation(retryError)) {
+        console.error("[analytics] episode_events insert failed:", retryError.message);
+      }
+      return;
+    }
     if (error && !isMissingRelation(error)) {
       console.error("[analytics] episode_events insert failed:", error.message);
     }

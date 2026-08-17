@@ -7,7 +7,16 @@ import {
   DEFAULT_FREE_EPISODE_COUNT,
   isEpisodeFree,
   resolveFreeEpisodeCount,
+  resolveViewerFreeEpisodeCount,
 } from "../lib/access";
+import {
+  PAYWALL_VARIANT_AFTER_1,
+  PAYWALL_VARIANT_AFTER_2,
+  freeEpisodeCountForVariant,
+  parsePaywallAbCookie,
+  pickPaywallVariant,
+  serializePaywallAbCookie,
+} from "../lib/paywall-ab";
 import { getNextEpisode, getEpisodeByNumber } from "../lib/episodes";
 import {
   resolveInitialProgress,
@@ -91,8 +100,48 @@ assert(
   "Ep3 requires subscription after free tier"
 );
 
-// Series override still respected when free_episode_count is higher
+// Series override still respected when free_episode_count is higher (unassigned viewers)
 assert(isEpisodeFree(5, resolveFreeEpisodeCount(5)), "Series can keep a wider free window");
+
+// --- Paywall A/B variants ---
+assert(freeEpisodeCountForVariant(PAYWALL_VARIANT_AFTER_1) === 1, "Group A: 1 free episode");
+assert(freeEpisodeCountForVariant(PAYWALL_VARIANT_AFTER_2) === 2, "Group B: 2 free episodes");
+assert(
+  resolveViewerFreeEpisodeCount(5, PAYWALL_VARIANT_AFTER_1) === 1,
+  "Assigned variant overrides series free count"
+);
+assert(
+  resolveViewerFreeEpisodeCount(5, null) === 5,
+  "Unassigned viewers keep series free count"
+);
+assert(
+  isEpisodeFree(2, resolveViewerFreeEpisodeCount(2, PAYWALL_VARIANT_AFTER_1)) === false,
+  "Group A locks episode 2"
+);
+assert(
+  isEpisodeFree(2, resolveViewerFreeEpisodeCount(2, PAYWALL_VARIANT_AFTER_2)) === true,
+  "Group B unlocks episode 2"
+);
+assert(
+  isEpisodeFree(3, resolveViewerFreeEpisodeCount(2, PAYWALL_VARIANT_AFTER_2)) === false,
+  "Group B locks episode 3"
+);
+
+const cookie = serializePaywallAbCookie({
+  visitorId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  variant: PAYWALL_VARIANT_AFTER_1,
+});
+assert(parsePaywallAbCookie(cookie)?.variant === PAYWALL_VARIANT_AFTER_1, "Cookie round-trip");
+assert(parsePaywallAbCookie("tampered") === null, "Reject bad cookie");
+
+let seenA = false;
+let seenB = false;
+for (let i = 0; i < 40; i++) {
+  const picked = pickPaywallVariant(i / 40);
+  if (picked === PAYWALL_VARIANT_AFTER_1) seenA = true;
+  if (picked === PAYWALL_VARIANT_AFTER_2) seenB = true;
+}
+assert(seenA && seenB, "50/50 picker can emit both groups");
 
 // --- Progress resolution (root-cause fix) ---
 const nearComplete: WatchHistoryProgress = { progress_seconds: 420, completed: false };
@@ -132,6 +181,7 @@ assert(storage.has(WATCH_USER_INITIATED_KEY), "markBingeContinuation sets flag")
 
 console.log("✓ All playback validation checks passed");
 console.log("  Entry: /watch/{id}?autoplay=true");
-console.log("  Chain: ep1–ep2 free → [paywall] → ep3+");
+console.log("  Chain: ep1–ep2 free → [paywall] → ep3+ (Group B / unassigned default)");
+console.log("  A/B: Group A wall after ep1; Group B wall after ep2");
 console.log(`  Free tier: episodes 1–${DEFAULT_FREE_EPISODE_COUNT}`);
 console.log("  Binge progress: always starts at 0");

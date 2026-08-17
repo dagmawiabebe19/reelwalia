@@ -2,7 +2,10 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isAdminEmail } from "@/lib/admin";
 
-export async function updateSession(request: NextRequest) {
+export async function updateSession(request: NextRequest): Promise<{
+  response: NextResponse;
+  userId: string | null;
+}> {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -29,6 +32,7 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const userId = user?.id ?? null;
 
   const pathname = request.nextUrl.pathname;
   // /watch/* is public — free episodes play without auth; premium shows paywall in-page
@@ -39,20 +43,23 @@ export async function updateSession(request: NextRequest) {
   if (isAccountRoute && !user) {
     const signIn = new URL("/auth/sign-in", request.url);
     signIn.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(signIn);
+    return { response: NextResponse.redirect(signIn), userId: null };
   }
 
   if (isAdminRoute) {
     if (!user) {
       const signIn = new URL("/auth/sign-in", request.url);
       signIn.searchParams.set("next", pathname);
-      return NextResponse.redirect(signIn);
+      return { response: NextResponse.redirect(signIn), userId: null };
     }
 
     if (!isAdminEmail(user.email)) {
-      return NextResponse.redirect(new URL("/not-authorized", request.url));
+      return {
+        response: NextResponse.redirect(new URL("/not-authorized", request.url)),
+        userId,
+      };
     }
   }
 
-  return supabaseResponse;
+  return { response: supabaseResponse, userId };
 }

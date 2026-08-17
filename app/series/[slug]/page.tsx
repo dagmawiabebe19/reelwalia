@@ -9,11 +9,12 @@ import { WatchlistButton } from "@/components/series/WatchlistButton";
 import { SeriesComingSoonView } from "@/components/series/SeriesComingSoonView";
 import { Card } from "@/components/ui/Card";
 import { ViewCount } from "@/components/ui/ViewCount";
-import { canWatchEpisode, hasActiveSubscription, resolveFreeEpisodeCount } from "@/lib/access";
+import { canWatchEpisode, hasActiveSubscription, resolveViewerFreeEpisodeCount } from "@/lib/access";
 import {
   getHighestUnlockedEpisode,
   listActiveCharactersForSeries,
 } from "@/lib/chat/server";
+import { resolvePaywallAb } from "@/lib/paywall-ab-server";
 import { isComingSoonSeries } from "@/lib/coming-soon";
 import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
 import { normalizeSeriesOrientation } from "@/lib/series-orientation";
@@ -89,7 +90,8 @@ async function getSeries(slug: string) {
 
   const characters = await listActiveCharactersForSeries(supabase, series.id);
 
-  const freeCount = resolveFreeEpisodeCount(series.free_episode_count);
+  const ab = await resolvePaywallAb({ userId: user?.id ?? null });
+  const freeCount = resolveViewerFreeEpisodeCount(series.free_episode_count, ab.variant);
   const episodesWithLock = (episodes ?? []).map((ep) => ({
     ...ep,
     locked: !canWatchEpisode(ep.episode_number, freeCount, profile),

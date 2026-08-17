@@ -145,6 +145,15 @@ export function AnalyticsDashboardView({
               </p>
             </div>
           )}
+          {data.tablesReady && !data.paywallAb.tracked && (
+            <div className="rw-admin-panel border-amber-500/20 bg-amber-500/[0.04]">
+              <p className="text-sm text-amber-200/90">
+                Migration <code>028_paywall_ab_variant.sql</code> is not applied yet. Paywall A/B
+                assignment and per-variant results stay Not yet tracked until you run it in the SQL
+                editor.
+              </p>
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -196,6 +205,73 @@ export function AnalyticsDashboardView({
               meta={data.revenue.tracked ? "50% licensor share below" : "Not yet tracked"}
               untracked={!data.revenue.tracked}
             />
+          </div>
+
+          <div className="rw-admin-panel space-y-4">
+            <AdminPanelHeading
+              title="Paywall position A/B"
+              subtitle="Group A = wall after episode 1. Group B = wall after episode 2 (current default). Platform-wide for the selected date range."
+            />
+            <p className="text-sm text-amber-200/80">
+              Conversion rate is misleading here: Group A sees the wall sooner, so a higher
+              percentage will convert even if it produces fewer paying subscribers. Decide with
+              total subscribers and subscribers per user.
+            </p>
+            {!data.paywallAb.tracked ? (
+              <p className="text-sm text-zinc-500">{data.paywallAb.note}</p>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[40rem] text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-white/[0.08] text-xs uppercase tracking-wide text-zinc-500">
+                        <th className="py-2 pr-3 font-medium">Group</th>
+                        <th className="py-2 pr-3 font-medium">Users</th>
+                        <th className="py-2 pr-3 font-medium">Reached paywall</th>
+                        <th className="py-2 pr-3 font-medium">Subscribers</th>
+                        <th className="py-2 pr-3 font-medium">Conv. rate</th>
+                        <th className="py-2 font-medium">Subs per user</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.paywallAb.arms.map((arm) => (
+                        <tr key={arm.variant} className="border-b border-white/[0.04]">
+                          <td className="py-2.5 pr-3 text-white">{arm.label}</td>
+                          <td className="py-2.5 pr-3 text-zinc-300">{formatCount(arm.users)}</td>
+                          <td className="py-2.5 pr-3 text-zinc-300">
+                            {formatCount(arm.paywallReached)}
+                          </td>
+                          <td className="py-2.5 pr-3 font-medium text-white">
+                            {formatCount(arm.purchased)}
+                          </td>
+                          <td className="py-2.5 pr-3 text-zinc-500">
+                            {formatPercent(arm.conversionRate)}
+                          </td>
+                          <td className="py-2.5 font-medium text-obsidian-red">
+                            {arm.subsPerUser == null
+                              ? "Not yet tracked"
+                              : arm.subsPerUser.toFixed(3)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {(() => {
+                  const a = data.paywallAb.arms[0]?.purchased;
+                  const b = data.paywallAb.arms[1]?.purchased;
+                  if (a == null || b == null) return null;
+                  const lead =
+                    a === b
+                      ? "Tied on total subscribers in this range."
+                      : a > b
+                        ? `Group A produced ${a - b} more subscriber${a - b === 1 ? "" : "s"} in this range.`
+                        : `Group B produced ${b - a} more subscriber${b - a === 1 ? "" : "s"} in this range.`;
+                  return <p className="text-sm text-zinc-300">{lead}</p>;
+                })()}
+                <p className="text-xs text-zinc-500">{data.paywallAb.note}</p>
+              </>
+            )}
           </div>
 
           <div className="rw-admin-panel space-y-4">

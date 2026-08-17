@@ -11,7 +11,8 @@ Manual-apply migrations to eyeball carefully:
 - `023_ai_character_chat.sql` — AI character chat tables + RLS (Phase 1)
 - `022_featured_order_backfill.sql` — featured_order backfill
 - `021_episode_captions.sql` — captions
-- `020_series_unlock_and_paywall.sql` — series unlock (if/when used)
+- `027_series_analytics_events.sql` — episode_events + billing_events (admin analytics)
+- `028_paywall_ab_variant.sql` — paywall A/B variant column + assignments (after 027)
 
 ## Production workflow (required)
 

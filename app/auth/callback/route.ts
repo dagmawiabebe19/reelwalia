@@ -1,8 +1,10 @@
-import { createServerClient } from "@supabase/ssr";
-import type { EmailOtpType } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import type { NextRequest } from "next/server";
+import type { EmailOtpType } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { PAYWALL_AB_COOKIE, parsePaywallAbCookie } from "@/lib/paywall-ab";
+import { adoptCookieOntoNewAccount } from "@/lib/paywall-ab-persist";
 
 function safeRedirectPath(next: string | null): string {
   if (!next || !next.startsWith("/") || next.startsWith("//")) return "/";
@@ -48,6 +50,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(
         new URL("/auth/sign-in?error=callback_failed", requestUrl.origin)
       );
+    }
+
+    try {
+      await adoptCookieOntoNewAccount({
+        userId: user.id,
+        cookie: parsePaywallAbCookie(cookieStore.get(PAYWALL_AB_COOKIE)?.value ?? null),
+      });
+    } catch (err) {
+      console.error("[paywall-ab] adopt on auth callback failed:", err);
     }
 
     return NextResponse.redirect(new URL(redirectPath, requestUrl.origin));
