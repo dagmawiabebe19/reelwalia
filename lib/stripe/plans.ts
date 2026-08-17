@@ -65,22 +65,40 @@ export function dailyRate(amount: number, days: number): number {
   return amount / days;
 }
 
-/** e.g. "Only $0.57/day" */
+/** e.g. "$0.57/day" — uses the listed Stripe amount, never a made-up price. */
 export function formatDailyPrice(plan: PlanDisplay): string {
-  return `Only $${dailyRate(plan.amount, plan.days).toFixed(2)}/day`;
+  return `$${dailyRate(plan.amount, plan.days).toFixed(2)}/day`;
 }
 
-/** Daily-cost savings vs the 1-week plan — honest comparison, not a fake list price. */
-export function savingsBadge(plan: PlanDisplay): string | null {
+export function formatPeriodPrice(plan: PlanDisplay): string {
+  return `${formatUsd(plan.amount)} ${plan.priceSuffix.replace(/^\//, "/ ")}`;
+}
+
+/**
+ * Per-day savings vs the 1-week plan, using displayed (2-decimal) daily rates
+ * so the badge matches what the user sees. Null when there is no honest savings.
+ */
+export function dailySavingsPercentVsWeekly(plan: PlanDisplay): number | null {
   if (plan.key === BASELINE_PLAN_KEY) return null;
 
   const baseline = getPlanDisplay(BASELINE_PLAN_KEY);
-  const baseDaily = dailyRate(baseline.amount, baseline.days);
-  const daily = dailyRate(plan.amount, plan.days);
-  const pct = Math.round(((baseDaily - daily) / baseDaily) * 100);
+  const baseDaily = Number(dailyRate(baseline.amount, baseline.days).toFixed(2));
+  const daily = Number(dailyRate(plan.amount, plan.days).toFixed(2));
+  if (baseDaily <= 0 || daily >= baseDaily) return null;
 
-  if (pct <= 0) return null;
-  return `SAVE ${pct}%`;
+  const exact = ((baseDaily - daily) / baseDaily) * 100;
+  const rounded = Math.round(exact);
+  if (rounded <= 0) return null;
+  // Drop if rounding would stretch the truth (e.g. 12.4% → 12 is fine; 12.6% → 13 is fine).
+  if (Math.abs(exact - rounded) > 0.5) return null;
+  return rounded;
+}
+
+/** Honest per-day comparison to weekly — never a fake list-price discount. */
+export function savingsBadge(plan: PlanDisplay): string | null {
+  const pct = dailySavingsPercentVsWeekly(plan);
+  if (pct == null) return null;
+  return `${pct}% less per day than weekly`;
 }
 
 export function mapPlanToDbPlan(plan: StripePlanKey): string {

@@ -492,7 +492,7 @@ export function VideoPlayer({
       setShowControls(true);
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       // Feed mode: keep controls visible so the fullscreen control stays reachable
-      // above the subscribe CTA (do not auto-hide).
+      // (do not auto-hide).
       if (autoHide && playing && !feedMode) {
         hideTimerRef.current = setTimeout(() => setShowControls(false), 3000);
       }

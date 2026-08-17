@@ -8,7 +8,6 @@ import { WatchPaywall } from "@/components/watch/WatchPaywall";
 import { WatchPostCheckout } from "@/components/watch/WatchPostCheckout";
 import { WatchSeriesInfo } from "@/components/watch/WatchSeriesInfo";
 import { PaywallOpenProvider } from "@/components/watch/PaywallOpenContext";
-import { SubscribeBanner } from "@/components/watch/SubscribeBanner";
 import { MeetTheCharacters } from "@/components/chat/MeetTheCharacters";
 import { canWatchEpisode, hasActiveSubscription, isEpisodeFree, resolveViewerFreeEpisodeCount } from "@/lib/access";
 import { listActiveCharactersForSeries } from "@/lib/chat/server";
@@ -307,14 +306,6 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
                       autoPlay={autoPlay}
                       isAuthenticated={isAuthenticated}
                     />
-                    {!isSubscribed && (
-                      <SubscribeBanner
-                        episodeId={episode.id}
-                        seriesSlug={series.slug}
-                        isAuthenticated={isAuthenticated}
-                        placement="below-player"
-                      />
-                    )}
                   </div>
                 </>
               ) : (
@@ -355,7 +346,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
         <div className="max-md:hidden">
           <TopNav />
         </div>
-        {/* Mobile vertical feed — full-bleed slide; banner sits below when present */}
+        {/* Mobile vertical feed — full-bleed slide */}
         <div className="relative overflow-hidden bg-black md:hidden">
           <MobileVerticalFeed
             episodes={feedEpisodes}
@@ -457,13 +448,6 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
             />
           </div>
         </main>
-        {!isSubscribed && (
-          <SubscribeBanner
-            episodeId={episode.id}
-            seriesSlug={series.slug}
-            isAuthenticated={isAuthenticated}
-          />
-        )}
       </div>
     </PaywallOpenProvider>
   );

@@ -4,11 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import {
   STRIPE_PLANS,
   formatDailyPrice,
+  formatPeriodPrice,
   formatUsd,
   getPlanDisplay,
   savingsBadge,
   type StripePlanKey,
 } from "@/lib/stripe/plans";
+import {
+  PAYWALL_HEADLINE,
+  PAYWALL_INCLUDED,
+  PAYWALL_SOCIAL_PROOF,
+  PAYWALL_SUBHEAD,
+  publishedPaywallTestimonials,
+} from "@/lib/paywall-copy";
 import {
   trackPaywallViewed,
   trackSubscriptionCheckoutStarted,
@@ -27,6 +35,39 @@ interface PaywallModalProps {
   isAuthenticated?: boolean;
 }
 
+const DEFAULT_PLAN: StripePlanKey =
+  STRIPE_PLANS.find((p) => p.mostPopular)?.key ?? STRIPE_PLANS[0]!.key;
+
+function BenefitIcon({ id }: { id: string }) {
+  const className = "h-5 w-5 shrink-0 text-obsidian-red";
+  if (id === "unlimited") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+        <path d="M4 6a2 2 0 012-2h12a2 2 0 012 2v9a2 2 0 01-2 2h-5l-3 3v-3H6a2 2 0 01-2-2V6zm3 3v2h10V9H7z" />
+      </svg>
+    );
+  }
+  if (id === "devices") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+        <path d="M4 5a2 2 0 012-2h8a2 2 0 012 2v10H4V5zm14 2h2a2 2 0 012 2v8a2 2 0 01-2 2h-6v-2h6V9h-2V7z" />
+      </svg>
+    );
+  }
+  if (id === "hd") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+        <path d="M3 6a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-5v2h2v2H8v-2h2v-2H5a2 2 0 01-2-2V6zm4 3v4h2V9H7zm4 0v4h1.5a1.5 1.5 0 000-3H13V9h-2zm2 2.5h.5a.5.5 0 000-1H13v1z" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <path d="M12 3l2.1 6.4H21l-5.4 3.9 2.1 6.4L12 16.8 6.3 19.7l2.1-6.4L3 9.4h6.9L12 3z" />
+    </svg>
+  );
+}
+
 export function PaywallModal({
   open,
   onClose,
@@ -35,7 +76,7 @@ export function PaywallModal({
   trigger,
   isAuthenticated = false,
 }: PaywallModalProps) {
-  const [selected, setSelected] = useState<StripePlanKey>("1month");
+  const [selected, setSelected] = useState<StripePlanKey>(DEFAULT_PLAN);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const paywallViewedRef = useRef(false);
@@ -76,6 +117,12 @@ export function PaywallModal({
   }, [open, trigger, episodeId, seriesSlug]);
 
   if (!open) return null;
+
+  const selectedPlan = getPlanDisplay(selected);
+  const testimonials = publishedPaywallTestimonials();
+  const showSocial =
+    PAYWALL_SOCIAL_PROOF.enabled &&
+    (PAYWALL_SOCIAL_PROOF.rating != null || testimonials.length > 0);
 
   const handleCheckout = async () => {
     if (checkoutStartedRef.current) return;
@@ -137,9 +184,9 @@ export function PaywallModal({
         </div>
 
         <h2 id="paywall-title" className="font-display text-2xl font-black leading-tight">
-          Get Full Access Pass to Exclusive Drama Collections
+          {PAYWALL_HEADLINE}
         </h2>
-        <p className="mt-2 text-sm text-gray-400">Choose your perfect plan:</p>
+        <p className="mt-2 text-sm text-gray-400">{PAYWALL_SUBHEAD}</p>
 
         <div className="mt-5 space-y-3">
           {STRIPE_PLANS.map((p) => {
@@ -175,21 +222,18 @@ export function PaywallModal({
                       {p.label}
                     </p>
                     {badge && (
-                      <span className="mt-1.5 inline-flex rounded bg-amber-400/95 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">
+                      <span className="mt-1.5 inline-flex max-w-full rounded bg-amber-400/95 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-tight tracking-wide text-black">
                         {badge}
                       </span>
                     )}
                   </div>
 
                   <div className="shrink-0 text-right leading-none">
-                    <p className="whitespace-nowrap font-display text-lg font-bold tabular-nums text-white">
-                      {formatUsd(p.amount)}
-                    </p>
-                    <p className="mt-1.5 whitespace-nowrap text-sm font-bold tabular-nums text-obsidian-red">
+                    <p className="whitespace-nowrap font-display text-xl font-bold tabular-nums text-white">
                       {formatDailyPrice(p)}
                     </p>
-                    <p className="mt-1 whitespace-nowrap text-[10px] text-zinc-500">
-                      {p.renewalLabel}
+                    <p className="mt-1.5 whitespace-nowrap text-sm tabular-nums text-zinc-400">
+                      {formatPeriodPrice(p)}
                     </p>
                   </div>
                 </button>
@@ -198,13 +242,55 @@ export function PaywallModal({
           })}
         </div>
 
+        <div className="mt-6 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+            What&apos;s included
+          </p>
+          <ul className="space-y-2.5">
+            {PAYWALL_INCLUDED.map((row) => (
+              <li key={row.id} className="flex items-center gap-3 text-sm text-zinc-200">
+                <BenefitIcon id={row.id} />
+                <span>{row.label}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {showSocial && (
+          <div className="mt-6 rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+            {PAYWALL_SOCIAL_PROOF.rating != null && (
+              <p className="text-sm font-medium text-white">
+                <span className="text-obsidian-red" aria-hidden>
+                  ★★★★★
+                </span>{" "}
+                {PAYWALL_SOCIAL_PROOF.rating.toFixed(1)}
+                {PAYWALL_SOCIAL_PROOF.ratingCaption
+                  ? ` · ${PAYWALL_SOCIAL_PROOF.ratingCaption}`
+                  : ""}
+              </p>
+            )}
+            {testimonials.length > 0 && (
+              <ul className={`space-y-3 ${PAYWALL_SOCIAL_PROOF.rating != null ? "mt-3" : ""}`}>
+                {testimonials.map((t) => (
+                  <li key={t.quote} className="text-sm text-zinc-300">
+                    <p>&ldquo;{t.quote}&rdquo;</p>
+                    {t.attribution.trim() && (
+                      <p className="mt-1 text-xs text-zinc-500">{t.attribution}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
 
         <button
           type="button"
           disabled={loading}
           onClick={() => void handleCheckout()}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-obsidian-red py-3.5 text-base font-bold text-white transition hover:bg-obsidian-red-hover disabled:opacity-50"
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-obsidian-red py-3.5 text-base font-bold text-white transition hover:bg-obsidian-red-hover disabled:opacity-50"
         >
           {loading ? (
             <>
@@ -216,12 +302,14 @@ export function PaywallModal({
           )}
         </button>
 
-        <p className="mt-3 text-center text-[11px] leading-relaxed text-gray-500">
-          Subscriptions renew automatically. Cancel anytime in your account.
+        <p className="mt-3 text-center text-sm leading-relaxed text-zinc-300">
+          Auto-renews at {formatUsd(selectedPlan.amount)}
+          {selectedPlan.priceSuffix} ({selectedPlan.renewalLabel.toLowerCase()}). Cancel anytime in
+          your account.
         </p>
 
         {!isAuthenticated && (
-          <p className="mt-2 text-center text-[11px] text-gray-500">
+          <p className="mt-2 text-center text-sm text-zinc-400">
             Enter your email in Stripe Checkout — we&apos;ll create your account automatically.
           </p>
         )}

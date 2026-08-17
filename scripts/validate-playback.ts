@@ -39,6 +39,12 @@ import {
   WATCH_USER_INITIATED_KEY,
   AUDIO_UNMUTED_KEY,
 } from "../lib/watch-playback";
+import {
+  dailySavingsPercentVsWeekly,
+  formatDailyPrice,
+  getPlanDisplay,
+  savingsBadge,
+} from "../lib/stripe/plans";
 
 const episodes = [
   { id: "ep6", episode_number: 6, title: "Episode 6" },
@@ -215,6 +221,30 @@ assert(storage.has(WATCH_USER_INITIATED_KEY), "markWatchNavigation sets flag");
 storage.clear();
 markBingeContinuation();
 assert(storage.has(WATCH_USER_INITIATED_KEY), "markBingeContinuation sets flag");
+
+const week = getPlanDisplay("1week");
+const twoWeek = getPlanDisplay("2week");
+const month = getPlanDisplay("1month");
+assert(formatDailyPrice(week) === "$0.57/day", "1-week per-day is $0.57");
+assert(formatDailyPrice(twoWeek) === "$0.30/day", "2-week per-day is $0.30");
+assert(formatDailyPrice(month) === "$0.25/day", "1-month per-day is $0.25");
+assert(savingsBadge(week) === null, "weekly plan has no savings badge");
+assert(
+  dailySavingsPercentVsWeekly(twoWeek) === 47,
+  "2-week is 47% less per day than weekly"
+);
+assert(
+  savingsBadge(twoWeek) === "47% less per day than weekly",
+  "2-week badge names the per-day basis"
+);
+assert(
+  dailySavingsPercentVsWeekly(month) === 56,
+  "1-month is 56% less per day than weekly"
+);
+assert(
+  savingsBadge(month) === "56% less per day than weekly",
+  "1-month badge names the per-day basis"
+);
 
 console.log("✓ All playback validation checks passed");
 console.log("  Entry: /watch/{id}?autoplay=true");

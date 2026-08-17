@@ -268,12 +268,7 @@ export function MobileVerticalFeed({
   const activeLocked = !active || active.locked || !active.videoUrl;
   const playerCaptions =
     active && active.id === captionEpisodeIdRef.current ? captionTracks : [];
-  // Leave a bottom slot for the fixed subscribe CTA so controls stay flush
-  // at the slide bottom — not floating mid-frame above the banner.
-  const reserveBanner = !isSubscribed;
-  const slideHeightClass = reserveBanner
-    ? "h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom))] max-h-[calc(100dvh-4.75rem-env(safe-area-inset-bottom))]"
-    : "h-[100dvh] max-h-[100dvh]";
+  const slideHeightClass = "h-[100dvh] max-h-[100dvh]";
 
   return (
     <div
