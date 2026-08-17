@@ -1,11 +1,28 @@
 import { SalesDashboardView } from "@/components/admin/SalesDashboardView";
 import { buildSalesDashboardData, type SubscriptionRow } from "@/lib/admin/sales-stats";
 import { requireAdmin } from "@/lib/admin";
+import {
+  formatRangeFormInputs,
+  parseAnalyticsRange,
+  type DatePreset,
+} from "@/lib/admin/analytics-range";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export default async function AdminSalesPage() {
+type SearchParams = {
+  preset?: string;
+  from?: string;
+  to?: string;
+};
+
+export default async function AdminSalesPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   await requireAdmin();
   const admin = createAdminClient();
+  const range = parseAnalyticsRange(searchParams);
+  const { from, to } = formatRangeFormInputs(range, searchParams);
 
   const { data: subscriptions, error } = await admin
     .from("subscriptions")
@@ -20,7 +37,14 @@ export default async function AdminSalesPage() {
     );
   }
 
-  const dashboard = buildSalesDashboardData((subscriptions ?? []) as SubscriptionRow[]);
+  const dashboard = buildSalesDashboardData((subscriptions ?? []) as SubscriptionRow[], range);
 
-  return <SalesDashboardView data={dashboard} />;
+  return (
+    <SalesDashboardView
+      data={dashboard}
+      preset={range.preset as DatePreset}
+      from={from}
+      to={to}
+    />
+  );
 }

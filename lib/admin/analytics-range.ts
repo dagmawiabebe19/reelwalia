@@ -1,4 +1,11 @@
-export type DatePreset = "30d" | "quarter" | "custom";
+export type DatePreset =
+  | "today"
+  | "2d"
+  | "7d"
+  | "30d"
+  | "quarter"
+  | "12m"
+  | "custom";
 
 export type DateRange = {
   from: Date;
@@ -7,8 +14,24 @@ export type DateRange = {
   label: string;
 };
 
+export type ChartBucket = "day" | "week" | "month";
+
+export const ADMIN_DATE_PRESETS: { value: DatePreset; label: string }[] = [
+  { value: "today", label: "Today" },
+  { value: "2d", label: "Last 2 days" },
+  { value: "7d", label: "Last 7 days" },
+  { value: "30d", label: "Last 30 days" },
+  { value: "quarter", label: "This quarter" },
+  { value: "12m", label: "Last 12 months" },
+  { value: "custom", label: "Custom" },
+];
+
 function startOfUtcDay(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function startOfUtcMonth(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }
 
 export function currentUtcQuarter(now = new Date()): { from: Date; to: Date; label: string } {
@@ -19,6 +42,10 @@ export function currentUtcQuarter(now = new Date()): { from: Date; to: Date; lab
   return { from, to, label: `Q${quarter + 1} ${year}` };
 }
 
+function isValidPreset(value: string | null | undefined): value is DatePreset {
+  return ADMIN_DATE_PRESETS.some((p) => p.value === value);
+}
+
 export function parseAnalyticsRange(params: {
   preset?: string | null;
   from?: string | null;
@@ -26,12 +53,7 @@ export function parseAnalyticsRange(params: {
   now?: Date;
 }): DateRange {
   const now = params.now ?? new Date();
-  const preset = (params.preset as DatePreset) || "30d";
-
-  if (preset === "quarter") {
-    const q = currentUtcQuarter(now);
-    return { from: q.from, to: q.to, preset: "quarter", label: q.label };
-  }
+  const preset = isValidPreset(params.preset) ? params.preset : "30d";
 
   if (preset === "custom" && params.from && params.to) {
     const from = startOfUtcDay(new Date(`${params.from}T00:00:00.000Z`));
@@ -47,9 +69,95 @@ export function parseAnalyticsRange(params: {
     }
   }
 
-  const to = now;
-  const from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  return { from, to, preset: "30d", label: "Last 30 days" };
+  if (preset === "today") {
+    return {
+      from: startOfUtcDay(now),
+      to: now,
+      preset: "today",
+      label: "Today",
+    };
+  }
+
+  if (preset === "2d") {
+    return {
+      from: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
+      to: now,
+      preset: "2d",
+      label: "Last 2 days",
+    };
+  }
+
+  if (preset === "7d") {
+    return {
+      from: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+      to: now,
+      preset: "7d",
+      label: "Last 7 days",
+    };
+  }
+
+  if (preset === "quarter") {
+    const q = currentUtcQuarter(now);
+    return { from: q.from, to: q.to, preset: "quarter", label: q.label };
+  }
+
+  if (preset === "12m") {
+    const from = startOfUtcMonth(now);
+    from.setUTCMonth(from.getUTCMonth() - 11);
+    return {
+      from,
+      to: now,
+      preset: "12m",
+      label: "Last 12 months",
+    };
+  }
+
+  // Default: last 30 days (preset "30d" or invalid custom fallback)
+  return {
+    from: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+    to: now,
+    preset: "30d",
+    label: "Last 30 days",
+  };
+}
+
+/** Inclusive calendar dates for custom range form inputs. */
+export function formatRangeFormInputs(
+  range: DateRange,
+  params?: { from?: string | null; to?: string | null }
+): { from: string; to: string } {
+  const from = params?.from ?? range.from.toISOString().slice(0, 10);
+  const toInclusive = new Date(range.to.getTime() - 1);
+  const to = params?.to ?? toInclusive.toISOString().slice(0, 10);
+  return { from, to };
+}
+
+export function chartBucketForRange(range: DateRange): ChartBucket {
+  if (range.preset === "today" || range.preset === "2d" || range.preset === "7d") {
+    return "day";
+  }
+  if (range.preset === "30d" || range.preset === "quarter") {
+    return "week";
+  }
+  if (range.preset === "12m") {
+    return "month";
+  }
+
+  const days = (range.to.getTime() - range.from.getTime()) / (24 * 60 * 60 * 1000);
+  if (days <= 8) return "day";
+  if (days <= 95) return "week";
+  return "month";
+}
+
+export function chartBucketLabel(bucket: ChartBucket): string {
+  switch (bucket) {
+    case "day":
+      return "Daily";
+    case "week":
+      return "Weekly";
+    case "month":
+      return "Monthly";
+  }
 }
 
 export function formatUsdCents(cents: number | null): string {
@@ -87,3 +195,14 @@ export const ANALYTICS_METRIC_NOTES = {
   revenue:
     "Requires billing_events from Stripe webhooks (migration 027). Amounts were not stored historically.",
 } as const;
+
+/** Serialize range params for pagination / query links. */
+export function adminRangeSearchParams(range: DateRange, inputs: { from: string; to: string }): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set("preset", range.preset);
+  if (range.preset === "custom") {
+    params.set("from", inputs.from);
+    params.set("to", inputs.to);
+  }
+  return params;
+}

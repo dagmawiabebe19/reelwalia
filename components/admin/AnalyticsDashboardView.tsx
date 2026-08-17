@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminPageHeader, AdminPanelHeading } from "@/components/admin/admin-ui";
+import { AdminDateRangeForm } from "@/components/admin/AdminDateRangeForm";
 import {
   formatCount,
   formatPercent,
@@ -69,58 +70,23 @@ export function AnalyticsDashboardView({
         subtitle="Per-series performance for licensor reports. Metrics that are not in the database are labeled Not yet tracked — never estimated."
       />
 
-      <form method="get" className="rw-admin-panel space-y-4">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <label className="block space-y-1.5">
-            <span className="rw-form-label">Series</span>
-            <select
-              name="seriesId"
-              defaultValue={selectedId ?? ""}
-              className="w-full rounded-lg border border-white/[0.12] bg-black px-3 py-2 text-sm text-white"
-            >
-              <option value="">Select a series…</option>
-              {seriesList.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block space-y-1.5">
-            <span className="rw-form-label">Date range</span>
-            <select
-              name="preset"
-              defaultValue={preset}
-              className="w-full rounded-lg border border-white/[0.12] bg-black px-3 py-2 text-sm text-white"
-            >
-              <option value="30d">Last 30 days</option>
-              <option value="quarter">This quarter</option>
-              <option value="custom">Custom</option>
-            </select>
-          </label>
-          <label className="block space-y-1.5">
-            <span className="rw-form-label">From (custom)</span>
-            <input
-              type="date"
-              name="from"
-              defaultValue={customFrom}
-              className="w-full rounded-lg border border-white/[0.12] bg-black px-3 py-2 text-sm text-white"
-            />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="rw-form-label">To (custom)</span>
-            <input
-              type="date"
-              name="to"
-              defaultValue={customTo}
-              className="w-full rounded-lg border border-white/[0.12] bg-black px-3 py-2 text-sm text-white"
-            />
-          </label>
-        </div>
-        <button type="submit" className="rw-btn-primary">
-          Apply
-        </button>
-      </form>
+      <AdminDateRangeForm preset={preset} from={from} to={to}>
+        <label className="block space-y-1.5 md:col-span-2 xl:col-span-1">
+          <span className="rw-form-label">Series</span>
+          <select
+            name="seriesId"
+            defaultValue={selectedId ?? ""}
+            className="w-full rounded-lg border border-white/[0.12] bg-black px-3 py-2 text-sm text-white"
+          >
+            <option value="">Select a series…</option>
+            {seriesList.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      </AdminDateRangeForm>
 
       {!selectedId && (
         <div className="rw-admin-panel">

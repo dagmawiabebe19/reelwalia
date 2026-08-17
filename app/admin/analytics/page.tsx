@@ -1,6 +1,6 @@
 import { AnalyticsDashboardView } from "@/components/admin/AnalyticsDashboardView";
 import { requireAdmin } from "@/lib/admin";
-import { parseAnalyticsRange, type DatePreset } from "@/lib/admin/analytics-range";
+import { formatRangeFormInputs, parseAnalyticsRange, type DatePreset } from "@/lib/admin/analytics-range";
 import { listAnalyticsSeries, loadSeriesAnalytics } from "@/lib/admin/series-analytics";
 
 type SearchParams = {
@@ -27,9 +27,8 @@ export default async function AdminAnalyticsPage({
 
   const data = selectedId ? await loadSeriesAnalytics(selectedId, range) : null;
 
-  const fromInput = searchParams.from ?? range.from.toISOString().slice(0, 10);
-  const toInclusive = new Date(range.to.getTime() - 1);
-  const toInput = searchParams.to ?? toInclusive.toISOString().slice(0, 10);
+  const fromInput = formatRangeFormInputs(range, searchParams).from;
+  const toInput = formatRangeFormInputs(range, searchParams).to;
 
   return (
     <AnalyticsDashboardView

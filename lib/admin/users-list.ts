@@ -1,4 +1,9 @@
 import { getAdminEmails, isAdminEmail } from "@/lib/admin";
+import {
+  chartBucketForRange,
+  type DateRange,
+} from "@/lib/admin/analytics-range";
+import { buildTimeSeriesBuckets, type TimeSeriesPoint } from "@/lib/admin/chart-buckets";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Profile, SubscriptionStatus } from "@/lib/types/database";
 
@@ -22,6 +27,10 @@ export type AdminUsersResult = {
   total: number;
   totalPages: number;
   search: string;
+  range: DateRange;
+  signupsInRange: number;
+  signupSeries: TimeSeriesPoint[];
+  chartBucket: ReturnType<typeof chartBucketForRange>;
 };
 
 const ACTIVE_STATUSES = new Set(["active", "trialing"]);
@@ -30,6 +39,11 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
   );
+}
+
+function inRange(iso: string, range: DateRange): boolean {
+  const created = new Date(iso);
+  return created >= range.from && created < range.to;
 }
 
 function mapUserRow(
@@ -54,21 +68,71 @@ function mapUserRow(
   };
 }
 
+async function loadSignupSeries(
+  range: DateRange
+): Promise<{ signupsInRange: number; signupSeries: TimeSeriesPoint[] }> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("profiles")
+    .select("created_at")
+    .gte("created_at", range.from.toISOString())
+    .lt("created_at", range.to.toISOString());
+
+  const timestamps = (data ?? []).map((row) => new Date(row.created_at));
+  const chartBucket = chartBucketForRange(range);
+  return {
+    signupsInRange: timestamps.length,
+    signupSeries: buildTimeSeriesBuckets(timestamps, range, chartBucket),
+  };
+}
+
+async function authUserForProfile(profileId: string) {
+  const admin = createAdminClient();
+  const { data } = await admin.auth.admin.getUserById(profileId);
+  return data.user;
+}
+
+async function rowsFromProfiles(profiles: Profile[]): Promise<AdminUserRow[]> {
+  const rows: AdminUserRow[] = [];
+  for (const profile of profiles) {
+    const authUser = await authUserForProfile(profile.id);
+    if (!authUser) continue;
+    rows.push(
+      mapUserRow(
+        { id: authUser.id, email: authUser.email, created_at: authUser.created_at },
+        profile
+      )
+    );
+  }
+  return rows;
+}
+
 export async function fetchAdminUsers(options: {
   page?: number;
   search?: string;
   perPage?: number;
+  range: DateRange;
 }): Promise<AdminUsersResult> {
   const admin = createAdminClient();
   const page = Math.max(1, options.page ?? 1);
   const perPage = options.perPage ?? 25;
   const search = (options.search ?? "").trim().toLowerCase();
+  const range = options.range;
+  const chartBucket = chartBucketForRange(range);
+  const signupMeta = await loadSignupSeries(range);
+
+  const baseResult = {
+    range,
+    chartBucket,
+    signupsInRange: signupMeta.signupsInRange,
+    signupSeries: signupMeta.signupSeries,
+  };
 
   if (search && isUuid(search)) {
     const { data: authData } = await admin.auth.admin.getUserById(search);
     const authUser = authData.user;
     if (!authUser) {
-      return { users: [], page: 1, perPage, total: 0, totalPages: 0, search };
+      return { users: [], page: 1, perPage, total: 0, totalPages: 0, search, ...baseResult };
     }
 
     const { data: profile } = await admin
@@ -82,6 +146,10 @@ export async function fetchAdminUsers(options: {
       profile ?? undefined
     );
 
+    if (!inRange(row.createdAt, range)) {
+      return { users: [], page: 1, perPage, total: 0, totalPages: 0, search, ...baseResult };
+    }
+
     return {
       users: [row],
       page: 1,
@@ -89,6 +157,7 @@ export async function fetchAdminUsers(options: {
       total: 1,
       totalPages: 1,
       search,
+      ...baseResult,
     };
   }
 
@@ -98,7 +167,7 @@ export async function fetchAdminUsers(options: {
     const scanPerPage = 200;
     const maxPages = 10;
 
-    while (scanPage <= maxPages && matched.length < perPage) {
+    while (scanPage <= maxPages && matched.length < perPage * 3) {
       const { data: authPage, error } = await admin.auth.admin.listUsers({
         page: scanPage,
         perPage: scanPerPage,
@@ -106,10 +175,18 @@ export async function fetchAdminUsers(options: {
       if (error || !authPage.users.length) break;
 
       const ids = authPage.users.map((user) => user.id);
-      const { data: profiles } = await admin.from("profiles").select("*").in("id", ids);
+      const { data: profiles } = await admin
+        .from("profiles")
+        .select("*")
+        .in("id", ids)
+        .gte("created_at", range.from.toISOString())
+        .lt("created_at", range.to.toISOString());
       const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
 
       for (const authUser of authPage.users) {
+        const profile = profileMap.get(authUser.id);
+        if (!profile) continue;
+
         const email = authUser.email?.toLowerCase() ?? "";
         const idMatch = authUser.id.toLowerCase().includes(search);
         const emailMatch = email.includes(search);
@@ -118,7 +195,7 @@ export async function fetchAdminUsers(options: {
         matched.push(
           mapUserRow(
             { id: authUser.id, email: authUser.email, created_at: authUser.created_at },
-            profileMap.get(authUser.id)
+            profile
           )
         );
       }
@@ -137,35 +214,34 @@ export async function fetchAdminUsers(options: {
       total: matched.length,
       totalPages: Math.max(1, Math.ceil(matched.length / perPage)),
       search,
+      ...baseResult,
     };
   }
 
-  const { data: authPage, error } = await admin.auth.admin.listUsers({ page, perPage });
+  const offset = (page - 1) * perPage;
+  const { data: profiles, count, error } = await admin
+    .from("profiles")
+    .select("*", { count: "exact" })
+    .gte("created_at", range.from.toISOString())
+    .lt("created_at", range.to.toISOString())
+    .order("created_at", { ascending: false })
+    .range(offset, offset + perPage - 1);
+
   if (error) {
     throw new Error(error.message);
   }
 
-  const authUsers = authPage.users;
-  const ids = authUsers.map((user) => user.id);
-  const { data: profiles } = ids.length
-    ? await admin.from("profiles").select("*").in("id", ids)
-    : { data: [] as Profile[] };
-
-  const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
-  const users = authUsers.map((authUser) =>
-    mapUserRow(
-      { id: authUser.id, email: authUser.email, created_at: authUser.created_at },
-      profileMap.get(authUser.id)
-    )
-  );
+  const users = await rowsFromProfiles(profiles ?? []);
+  const total = count ?? users.length;
 
   return {
     users,
     page,
     perPage,
-    total: authPage.total ?? users.length,
-    totalPages: Math.max(1, Math.ceil((authPage.total ?? users.length) / perPage)),
+    total,
+    totalPages: Math.max(1, Math.ceil(total / perPage)),
     search,
+    ...baseResult,
   };
 }
 

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { AdminDateRangeHiddenFields } from "@/components/admin/AdminDateRangeForm";
+import type { DatePreset } from "@/lib/admin/analytics-range";
 import type { AdminUserRow } from "@/lib/admin/users-list";
 
 function UserAvatar({ row }: { row: AdminUserRow }) {
@@ -96,9 +98,15 @@ export function UsersTable({ users }: { users: AdminUserRow[] }) {
 export function UsersSearchForm({
   search,
   page,
+  preset,
+  from,
+  to,
 }: {
   search: string;
   page: number;
+  preset: DatePreset;
+  from: string;
+  to: string;
 }) {
   return (
     <form className="rw-admin-panel flex flex-wrap items-end gap-3" method="get">
@@ -112,13 +120,17 @@ export function UsersSearchForm({
           className="rw-form-input py-2 text-sm"
         />
       </label>
+      <AdminDateRangeHiddenFields preset={preset} from={from} to={to} />
       <input type="hidden" name="page" value="1" />
       <button type="submit" className="rw-btn-primary min-h-10 px-4 py-2 text-sm">
         Search
       </button>
       {search && (
-        <Link href="/admin/users" className="rw-btn-secondary min-h-10 px-4 py-2 text-sm">
-          Clear
+        <Link
+          href={`/admin/users?preset=${encodeURIComponent(preset)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`}
+          className="rw-btn-secondary min-h-10 px-4 py-2 text-sm"
+        >
+          Clear search
         </Link>
       )}
       {!search && page > 1 && <input type="hidden" name="page" value={String(page)} />}
@@ -130,16 +142,31 @@ export function UsersPagination({
   page,
   totalPages,
   search,
+  preset,
+  from,
+  to,
 }: {
   page: number;
   totalPages: number;
   search: string;
+  preset: DatePreset;
+  from: string;
+  to: string;
 }) {
   if (totalPages <= 1) return null;
 
   const prev = Math.max(1, page - 1);
   const next = Math.min(totalPages, page + 1);
-  const query = search ? `q=${encodeURIComponent(search)}&` : "";
+  const base = new URLSearchParams();
+  base.set("preset", preset);
+  base.set("from", from);
+  base.set("to", to);
+  if (search) base.set("q", search);
+
+  const prevParams = new URLSearchParams(base);
+  prevParams.set("page", String(prev));
+  const nextParams = new URLSearchParams(base);
+  nextParams.set("page", String(next));
 
   return (
     <div className="flex items-center justify-between text-sm text-zinc-500">
@@ -148,13 +175,13 @@ export function UsersPagination({
       </span>
       <div className="flex gap-2">
         <Link
-          href={`/admin/users?${query}page=${prev}`}
+          href={`/admin/users?${prevParams.toString()}`}
           className={`rw-btn-secondary min-h-9 px-3 py-1.5 text-xs ${page <= 1 ? "pointer-events-none opacity-40" : ""}`}
         >
           Previous
         </Link>
         <Link
-          href={`/admin/users?${query}page=${next}`}
+          href={`/admin/users?${nextParams.toString()}`}
           className={`rw-btn-secondary min-h-9 px-3 py-1.5 text-xs ${page >= totalPages ? "pointer-events-none opacity-40" : ""}`}
         >
           Next

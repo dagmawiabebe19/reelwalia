@@ -1,4 +1,10 @@
 import type { SubscriptionPlan, SubscriptionStatus } from "@/lib/types/database";
+import {
+  chartBucketForRange,
+  type DateRange,
+  type ChartBucket,
+} from "@/lib/admin/analytics-range";
+import { buildTimeSeriesBuckets, type TimeSeriesPoint } from "@/lib/admin/chart-buckets";
 
 export type SubscriptionRow = {
   id: string;
@@ -10,38 +16,32 @@ export type SubscriptionRow = {
 };
 
 export type SalesDashboardData = {
-  totalSubscriptions: number;
-  activeSubscriptions: number;
-  newLast30Days: number;
+  range: DateRange;
+  chartBucket: ChartBucket;
+  totalInRange: number;
+  activeInRange: number;
   topPlan: { plan: string; count: number } | null;
   planBreakdown: { plan: string; count: number }[];
-  weeklySignups: { label: string; count: number }[];
+  signupSeries: TimeSeriesPoint[];
   revenueNote: string;
 };
 
 const ACTIVE_STATUSES = new Set(["active", "trialing"]);
 
-function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+function inRange(createdAt: string, range: DateRange): boolean {
+  const created = new Date(createdAt);
+  return created >= range.from && created < range.to;
 }
 
-function formatWeekLabel(date: Date): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(date);
-}
-
-export function buildSalesDashboardData(rows: SubscriptionRow[]): SalesDashboardData {
-  const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-  const activeSubscriptions = rows.filter((row) => ACTIVE_STATUSES.has(row.status)).length;
-  const newLast30Days = rows.filter((row) => new Date(row.created_at) >= thirtyDaysAgo).length;
+export function buildSalesDashboardData(
+  rows: SubscriptionRow[],
+  range: DateRange
+): SalesDashboardData {
+  const inRangeRows = rows.filter((row) => inRange(row.created_at, range));
+  const activeInRange = inRangeRows.filter((row) => ACTIVE_STATUSES.has(row.status)).length;
 
   const planCounts = new Map<string, number>();
-  for (const row of rows) {
+  for (const row of inRangeRows) {
     if (!ACTIVE_STATUSES.has(row.status)) continue;
     const plan = row.plan || "unknown";
     planCounts.set(plan, (planCounts.get(plan) ?? 0) + 1);
@@ -51,38 +51,24 @@ export function buildSalesDashboardData(rows: SubscriptionRow[]): SalesDashboard
     .map(([plan, count]) => ({ plan, count }))
     .sort((a, b) => b.count - a.count);
 
-  const topPlan = planBreakdown[0] ?? null;
-
-  const weeks = 12;
-  const weeklySignups: { label: string; count: number }[] = [];
-  for (let index = weeks - 1; index >= 0; index -= 1) {
-    const weekStart = startOfUtcDay(now);
-    weekStart.setUTCDate(weekStart.getUTCDate() - index * 7);
-    const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const count = rows.filter((row) => {
-      const created = new Date(row.created_at);
-      return created >= weekStart && created < weekEnd;
-    }).length;
-    weeklySignups.push({ label: formatWeekLabel(weekStart), count });
-  }
+  const chartBucket = chartBucketForRange(range);
+  const signupSeries = buildTimeSeriesBuckets(
+    inRangeRows.map((row) => new Date(row.created_at)),
+    range,
+    chartBucket
+  );
 
   return {
-    totalSubscriptions: rows.length,
-    activeSubscriptions,
-    newLast30Days,
-    topPlan,
+    range,
+    chartBucket,
+    totalInRange: inRangeRows.length,
+    activeInRange,
+    topPlan: planBreakdown[0] ?? null,
     planBreakdown,
-    weeklySignups: weeklySignups.map((item) => ({
-      ...item,
-      count: item.count,
-    })),
+    signupSeries,
     revenueNote:
-      "Payment amounts are not stored in Supabase. Counts below come from the subscriptions table only.",
+      "Payment amounts are not stored in Supabase. Counts below are subscriptions created in the selected date range only.",
   };
-}
-
-export function getWeeklySignupMax(data: SalesDashboardData): number {
-  return Math.max(...data.weeklySignups.map((item) => item.count), 1);
 }
 
 export function formatPlanLabel(plan: string): string {
