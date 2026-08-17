@@ -25,7 +25,7 @@ export const PAYWALL_INCLUDED = [
   },
   {
     id: "new",
-    label: "New episodes and series added regularly",
+    label: "New Drama Series Every Month",
   },
 ] as const;
 
