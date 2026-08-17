@@ -36,6 +36,10 @@ import {
   trackEpisodeStarted,
 } from "@/lib/analytics/funnel";
 import { reportAnalyticsEvent } from "@/lib/analytics/client-event";
+import {
+  isEpisodeWatchComplete,
+  resolvePlaybackDuration,
+} from "@/lib/analytics/episode-complete";
 import type { SeriesOrientation } from "@/lib/types/database";
 import {
   applyNativeFullscreenClass,
@@ -435,6 +439,53 @@ export function VideoPlayer({
     [episodeId, seriesId]
   );
 
+  const markEpisodeComplete = useCallback(
+    (watchTime?: number, totalDuration?: number, force = false) => {
+      if (episodeCompletedTrackedRef.current) return;
+      const video = videoRef.current;
+      const time = watchTime ?? video?.currentTime ?? 0;
+      const total = resolvePlaybackDuration(
+        totalDuration ?? video?.duration ?? 0,
+        duration
+      );
+      if (!force && !isEpisodeWatchComplete(time, total)) return;
+
+      episodeCompletedTrackedRef.current = true;
+      trackEpisodeCompleted({
+        episode_id: episodeId,
+        series_slug: seriesSlug,
+        episode_number: episodeNumber,
+        watch_time_seconds: Math.floor(time),
+        total_duration_seconds: Math.floor(total),
+        completion_percentage:
+          total > 0 ? Math.min(100, Math.round((time / total) * 100)) : 100,
+      });
+      reportAnalyticsEvent({ eventType: "complete", episodeId, seriesId });
+    },
+    [duration, episodeId, episodeNumber, seriesId, seriesSlug]
+  );
+
+  const maybeMarkEpisodeComplete = useCallback(
+    (watchTime: number, totalDuration: number) => {
+      const total = resolvePlaybackDuration(totalDuration, duration);
+      if (isEpisodeWatchComplete(watchTime, total)) {
+        markEpisodeComplete(watchTime, total);
+      }
+    },
+    [duration, markEpisodeComplete]
+  );
+
+  const persistProgressBeforeLeave = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const total = resolvePlaybackDuration(video.duration, duration);
+    const completed = isEpisodeWatchComplete(video.currentTime, total);
+    if (completed) {
+      markEpisodeComplete(video.currentTime, total, true);
+    }
+    void saveProgress(video.currentTime, completed);
+  }, [duration, markEpisodeComplete, saveProgress]);
+
   const bumpControls = useCallback(
     (autoHide = true) => {
       if (loadError) return;
@@ -659,7 +710,12 @@ export function VideoPlayer({
         if (!video.muted) {
           persistAudioPreference(true);
         }
-        void saveProgress(video.duration || video.currentTime, true);
+        const total = resolvePlaybackDuration(video.duration, duration);
+        const completed = isEpisodeWatchComplete(video.currentTime, total);
+        if (completed) {
+          markEpisodeComplete(video.currentTime, total, true);
+        }
+        void saveProgress(video.currentTime, completed);
       }
 
       const inFs =
@@ -711,9 +767,11 @@ export function VideoPlayer({
     [
       autoplayCanceled,
       cssFullscreen,
+      duration,
       episodeId,
       feedMode,
       isFullscreen,
+      markEpisodeComplete,
       nextEpisode,
       onFeedAdvance,
       router,
@@ -1045,10 +1103,15 @@ export function VideoPlayer({
     const interval = setInterval(() => {
       const video = videoRef.current;
       if (!video || video.paused) return;
-      void saveProgress(video.currentTime, false);
+      const total = resolvePlaybackDuration(video.duration, duration);
+      const completed = isEpisodeWatchComplete(video.currentTime, total);
+      if (completed) {
+        markEpisodeComplete(video.currentTime, total, true);
+      }
+      void saveProgress(video.currentTime, completed);
     }, 5000);
     return () => clearInterval(interval);
-  }, [saveProgress]);
+  }, [duration, markEpisodeComplete, saveProgress]);
 
   useEffect(() => {
     if (!playing) setShowControls(true);
@@ -1350,24 +1413,7 @@ export function VideoPlayer({
       }
     }
 
-    if (
-      !episodeCompletedTrackedRef.current &&
-      Number.isFinite(total) &&
-      total > 0 &&
-      Number.isFinite(time) &&
-      time >= total * 0.9
-    ) {
-      episodeCompletedTrackedRef.current = true;
-      trackEpisodeCompleted({
-        episode_id: episodeId,
-        series_slug: seriesSlug,
-        episode_number: episodeNumber,
-        watch_time_seconds: Math.floor(time),
-        total_duration_seconds: Math.floor(total),
-        completion_percentage: Math.min(100, Math.round((time / total) * 100)),
-      });
-      reportAnalyticsEvent({ eventType: "complete", episodeId, seriesId });
-    }
+    maybeMarkEpisodeComplete(time, total);
 
     if (
       !playing ||
@@ -1434,6 +1480,7 @@ export function VideoPlayer({
 
   const handleEnded = () => {
     setPlaying(false);
+    markEpisodeComplete(undefined, undefined, true);
     void saveProgress(duration, true);
 
     if (nextEpisode && !autoplayCanceled && !navigatedRef.current) {
@@ -1504,7 +1551,7 @@ export function VideoPlayer({
     ) => {
       const video = videoRef.current;
       if (video && !video.muted) persistAudioPreference(true);
-      if (video) void saveProgress(video.currentTime, false);
+      if (video) persistProgressBeforeLeave();
 
       const inFs =
         isFullscreen ||
@@ -1574,7 +1621,7 @@ export function VideoPlayer({
       nextEpisode?.locked,
       onFeedJumpTo,
       onFeedStep,
-      saveProgress,
+      persistProgressBeforeLeave,
     ]
   );
 
