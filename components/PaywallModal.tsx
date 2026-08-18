@@ -227,56 +227,68 @@ export function PaywallModal({
           </button>
         </div>
 
-        <h2 id="paywall-title" className="font-display text-2xl font-black leading-tight">
-          {PAYWALL_HEADLINE}
+        <h2 id="paywall-title" className="font-display text-[1.65rem] font-black leading-[1.08] sm:text-2xl">
+          <span className="bg-gradient-to-b from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent [text-shadow:0_2px_24px_rgba(255,255,255,0.12)]">
+            {PAYWALL_HEADLINE}
+          </span>
         </h2>
-        <p className="mt-2 text-sm text-gray-400">{PAYWALL_SUBHEAD}</p>
+        <p className="mt-2.5 text-sm font-medium text-zinc-300">{PAYWALL_SUBHEAD}</p>
 
         <div className="mt-5 space-y-3">
           {STRIPE_PLANS.map((p) => {
             const isSelected = selected === p.key;
             const badge = savingsBadge(p);
+            const isHighlighted = isSelected || p.mostPopular;
 
             return (
-              <div key={p.key} className="relative">
+              <div
+                key={p.key}
+                className={`overflow-hidden rounded-xl border transition duration-200 ${
+                  isHighlighted
+                    ? "border-obsidian-red/70 shadow-lg shadow-obsidian-red/20 ring-2 ring-obsidian-red/90"
+                    : "border-white/[0.08] hover:border-white/20 hover:shadow-md hover:shadow-black/40"
+                } ${isSelected ? "scale-[1.01]" : ""}`}
+              >
                 {p.mostPopular && (
-                  <div className="absolute -top-3 left-0 right-0 z-10 mx-4 rounded-t-lg bg-gradient-to-r from-obsidian-red to-red-700 px-3 py-1 text-center text-[10px] font-bold uppercase tracking-widest text-white">
+                  <div className="border-b border-red-900/40 bg-gradient-to-r from-obsidian-red via-red-500 to-obsidian-red px-3 py-1.5 text-center text-[11px] font-extrabold uppercase tracking-[0.22em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]">
                     Most Popular
                   </div>
                 )}
                 <button
                   type="button"
                   onClick={() => setSelected(p.key)}
-                  className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition hover:-translate-y-0.5 ${
-                    p.mostPopular
-                      ? "mt-3 border-obsidian-red/60 ring-2 ring-obsidian-red"
-                      : "border-white/[0.08]"
-                  } ${isSelected ? "border-obsidian-red ring-2 ring-obsidian-red" : ""}`}
+                  className="flex w-full items-start gap-3 p-4 text-left transition hover:bg-white/[0.04] active:bg-white/[0.06]"
                 >
                   <span
-                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                      isSelected ? "border-obsidian-red bg-obsidian-red" : "border-gray-500"
+                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition ${
+                      isSelected
+                        ? "border-obsidian-red bg-obsidian-red shadow-[0_0_10px_rgba(224,60,47,0.55)]"
+                        : "border-zinc-500"
                     }`}
                   >
                     {isSelected && <span className="h-2 w-2 rounded-full bg-white" />}
                   </span>
 
                   <div className="min-w-0 flex-1">
-                    <p className="font-display text-base font-bold uppercase leading-tight tracking-wide">
-                      {p.label}
+                    <p className="font-display text-lg font-extrabold uppercase leading-tight tracking-[0.12em]">
+                      <span className="bg-gradient-to-br from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent">
+                        {p.label}
+                      </span>
                     </p>
                     {badge && (
-                      <span className="mt-1.5 inline-flex max-w-full rounded bg-amber-400/95 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-tight tracking-wide text-black">
+                      <span className="mt-1.5 inline-flex max-w-full rounded-md bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 px-2 py-0.5 text-[10px] font-extrabold uppercase leading-tight tracking-wide text-amber-950 shadow-[0_0_14px_rgba(251,191,36,0.35)]">
                         {badge}
                       </span>
                     )}
                   </div>
 
                   <div className="shrink-0 text-right leading-none">
-                    <p className="whitespace-nowrap font-display text-xl font-bold tabular-nums text-white">
-                      {formatDailyPrice(p)}
+                    <p className="whitespace-nowrap font-display text-2xl font-extrabold tabular-nums">
+                      <span className="bg-gradient-to-br from-amber-50 via-white to-amber-200 bg-clip-text text-transparent drop-shadow-[0_0_18px_rgba(255,230,180,0.35)]">
+                        {formatDailyPrice(p)}
+                      </span>
                     </p>
-                    <p className="mt-1.5 whitespace-nowrap text-sm tabular-nums text-zinc-400">
+                    <p className="mt-1.5 whitespace-nowrap text-sm font-medium tabular-nums text-zinc-400">
                       {formatPeriodPrice(p)}
                     </p>
                   </div>
@@ -357,7 +369,7 @@ export function PaywallModal({
           type="button"
           disabled={loading}
           onClick={() => void handleCheckout()}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-obsidian-red py-3.5 text-base font-bold text-white transition hover:bg-obsidian-red-hover disabled:opacity-50"
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-obsidian-red via-red-500 to-obsidian-red py-4 text-base font-extrabold tracking-wide text-white shadow-[0_8px_32px_rgba(224,60,47,0.45),inset_0_1px_0_rgba(255,255,255,0.2)] transition duration-200 hover:brightness-110 hover:shadow-[0_10px_40px_rgba(224,60,47,0.55)] active:scale-[0.98] disabled:opacity-50"
         >
           {loading ? (
             <>
