@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/admin";
 import { buildSeriesAnalyticsPdf } from "@/lib/admin/analytics-pdf";
 import { parseAnalyticsRange } from "@/lib/admin/analytics-range";
-import { loadSeriesAnalytics } from "@/lib/admin/series-analytics";
+import {
+  isAllSeriesAnalytics,
+  loadSeriesAnalytics,
+} from "@/lib/admin/series-analytics";
 
 export async function GET(request: Request) {
   const auth = await requireAdminApi();
@@ -12,8 +15,8 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const seriesId = url.searchParams.get("seriesId");
-  if (!seriesId) {
-    return NextResponse.json({ error: "seriesId required" }, { status: 400 });
+  if (!seriesId || isAllSeriesAnalytics(seriesId)) {
+    return NextResponse.json({ error: "seriesId required (single series only)" }, { status: 400 });
   }
 
   const range = parseAnalyticsRange({

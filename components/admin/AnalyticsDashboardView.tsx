@@ -10,6 +10,10 @@ import {
 } from "@/lib/admin/analytics-range";
 import type { SeriesAnalytics, SeriesOption } from "@/lib/admin/series-analytics";
 import {
+  ALL_SERIES_ANALYTICS_ID,
+  isAllSeriesAnalytics,
+} from "@/lib/admin/series-analytics";
+import {
   TRAFFIC_SOURCE_ATTRIBUTION_START,
   TRAFFIC_SOURCE_LABELS,
   type TrafficSourceFilter,
@@ -71,6 +75,7 @@ export function AnalyticsDashboardView({
 }) {
   const customFrom = from;
   const customTo = to;
+  const platformWide = isAllSeriesAnalytics(selectedId);
 
   return (
     <div className="space-y-6">
@@ -84,10 +89,10 @@ export function AnalyticsDashboardView({
           <span className="rw-form-label">Series</span>
           <select
             name="seriesId"
-            defaultValue={selectedId ?? ""}
+            defaultValue={selectedId ?? ALL_SERIES_ANALYTICS_ID}
             className="w-full rounded-lg border border-white/[0.12] bg-black px-3 py-2 text-sm text-white"
           >
-            <option value="">Select a series…</option>
+            <option value={ALL_SERIES_ANALYTICS_ID}>All series</option>
             {seriesList.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.title}
@@ -97,13 +102,7 @@ export function AnalyticsDashboardView({
         </label>
       </AdminDateRangeForm>
 
-      {!selectedId && (
-        <div className="rw-admin-panel">
-          <p className="text-sm text-zinc-400">Choose a series to load its dashboard.</p>
-        </div>
-      )}
-
-      {selectedId && !data && (
+      {!platformWide && selectedId && !data && (
         <div className="rw-admin-panel">
           <p className="text-sm text-red-300">Series not found.</p>
         </div>
@@ -179,12 +178,14 @@ export function AnalyticsDashboardView({
                   : ""}
               </p>
             </div>
-            <a
-              href={`/admin/analytics/report?seriesId=${encodeURIComponent(data.series.id)}&preset=${encodeURIComponent(data.range.preset)}&from=${encodeURIComponent(customFrom)}&to=${encodeURIComponent(customTo)}`}
-              className="rw-btn-primary"
-            >
-              Download PDF report
-            </a>
+            {!platformWide && (
+              <a
+                href={`/admin/analytics/report?seriesId=${encodeURIComponent(data.series.id)}&preset=${encodeURIComponent(data.range.preset)}&from=${encodeURIComponent(customFrom)}&to=${encodeURIComponent(customTo)}`}
+                className="rw-btn-primary"
+              >
+                Download PDF report
+              </a>
+            )}
           </div>
 
           <div className="rw-admin-stat-grid">
@@ -315,57 +316,69 @@ export function AnalyticsDashboardView({
           <div className="rw-admin-panel space-y-4">
             <AdminPanelHeading
               title="Episode drop-off"
-              subtitle="Distinct viewers per episode. Finished = episode_events + watch_history (deduped). Not yet tracked when no completion data exists."
+              subtitle={
+                platformWide
+                  ? "Per-episode retention is available when you select a single series."
+                  : "Distinct viewers per episode. Finished = episode_events + watch_history (deduped). Not yet tracked when no completion data exists."
+              }
             />
-            {data.historyCompletionsRecovered != null && data.historyCompletionsRecovered > 0 && (
-              <p className="text-sm text-zinc-400">
-                Recovered {data.historyCompletionsRecovered.toLocaleString()} historical completion
-                {data.historyCompletionsRecovered === 1 ? "" : "s"} from watch_history that were
-                missing in episode_events.
+            {platformWide ? (
+              <p className="text-sm text-zinc-500">
+                Select a single series from the dropdown to see episode-level drop-off.
               </p>
-            )}
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[36rem] text-left text-sm">
-                <thead>
-                  <tr className="border-b border-white/[0.08] text-xs uppercase tracking-wide text-zinc-500">
-                    <th className="py-2 pr-3 font-medium">Episode</th>
-                    <th className="py-2 pr-3 font-medium">Started</th>
-                    <th className="py-2 pr-3 font-medium">Finished</th>
-                    <th className="py-2 pr-3 font-medium">Completion</th>
-                    <th className="py-2 font-medium">Retention</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.dropOff.map((ep) => {
-                    const maxStart = Math.max(
-                      ...data.dropOff.map((row) => row.started ?? 0),
-                      1
-                    );
-                    const bar = ((ep.finished ?? 0) / maxStart) * 100;
-                    return (
-                      <tr key={ep.episodeId} className="border-b border-white/[0.04]">
-                        <td className="py-2.5 pr-3 text-white">
-                          {ep.episodeNumber}. {ep.title}
-                        </td>
-                        <td className="py-2.5 pr-3 text-zinc-300">{formatCount(ep.started)}</td>
-                        <td className="py-2.5 pr-3 text-zinc-300">{formatCount(ep.finished)}</td>
-                        <td className="py-2.5 pr-3 text-zinc-300">
-                          {formatPercent(ep.completionRate)}
-                        </td>
-                        <td className="py-2.5">
-                          <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                            <div
-                              className="h-full rounded-full bg-obsidian-red/80"
-                              style={{ width: `${Math.max(ep.started ? bar : 0, 0)}%` }}
-                            />
-                          </div>
-                        </td>
+            ) : (
+              <>
+                {data.historyCompletionsRecovered != null && data.historyCompletionsRecovered > 0 && (
+                  <p className="text-sm text-zinc-400">
+                    Recovered {data.historyCompletionsRecovered.toLocaleString()} historical completion
+                    {data.historyCompletionsRecovered === 1 ? "" : "s"} from watch_history that were
+                    missing in episode_events.
+                  </p>
+                )}
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[36rem] text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-white/[0.08] text-xs uppercase tracking-wide text-zinc-500">
+                        <th className="py-2 pr-3 font-medium">Episode</th>
+                        <th className="py-2 pr-3 font-medium">Started</th>
+                        <th className="py-2 pr-3 font-medium">Finished</th>
+                        <th className="py-2 pr-3 font-medium">Completion</th>
+                        <th className="py-2 font-medium">Retention</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody>
+                      {data.dropOff.map((ep) => {
+                        const maxStart = Math.max(
+                          ...data.dropOff.map((row) => row.started ?? 0),
+                          1
+                        );
+                        const bar = ((ep.finished ?? 0) / maxStart) * 100;
+                        return (
+                          <tr key={ep.episodeId} className="border-b border-white/[0.04]">
+                            <td className="py-2.5 pr-3 text-white">
+                              {ep.episodeNumber}. {ep.title}
+                            </td>
+                            <td className="py-2.5 pr-3 text-zinc-300">{formatCount(ep.started)}</td>
+                            <td className="py-2.5 pr-3 text-zinc-300">{formatCount(ep.finished)}</td>
+                            <td className="py-2.5 pr-3 text-zinc-300">
+                              {formatPercent(ep.completionRate)}
+                            </td>
+                            <td className="py-2.5">
+                              <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                                <div
+                                  className="h-full rounded-full bg-obsidian-red/80"
+                                  style={{ width: `${Math.max(ep.started ? bar : 0, 0)}%` }}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="grid gap-6 xl:grid-cols-2">
@@ -455,15 +468,19 @@ export function AnalyticsDashboardView({
             <div className="rw-admin-panel space-y-3">
               <AdminPanelHeading
                 title="Net Revenue"
-                subtitle="Licensing agreement format — this series only."
+                subtitle={
+                  platformWide
+                    ? "Platform-wide totals across all series."
+                    : "Licensing agreement format — this series only."
+                }
               />
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between gap-4 text-zinc-300">
-                  <dt>Gross (direct)</dt>
+                  <dt>{platformWide ? "Gross (series-attributed)" : "Gross (direct)"}</dt>
                   <dd>{formatUsdCents(data.revenue.directCents)}</dd>
                 </div>
                 <div className="flex justify-between gap-4 text-zinc-300">
-                  <dt>Gross (pro-rata)</dt>
+                  <dt>{platformWide ? "Gross (unattributed)" : "Gross (pro-rata)"}</dt>
                   <dd>{formatUsdCents(data.revenue.prorataCents)}</dd>
                 </div>
                 <div className="flex justify-between gap-4 font-medium text-white">
