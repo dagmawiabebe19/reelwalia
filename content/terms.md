@@ -65,19 +65,17 @@ If you subscribe without an existing account, we will create an account using th
 
 ReelWalia offers auto-renewing subscription plans. Current plans include:
 
-| Plan | Intro Price | Standard Renewal Price |
-|------|-------------|------------------------|
-| **1-Week Pass** | $3.99 for the first week | $9.99 per week |
-| **2-Week Pass** | $4.24 for the first two weeks | $9.99 per two weeks |
-| **Monthly Pass** | $7.49 for the first month | $9.99 per month |
+| Plan | Price | Billing interval |
+|------|-------|------------------|
+| **1-Week Pass** | $1.00 | every week |
+| **2-Week Pass** | $1.50 | every two weeks |
+| **Monthly Pass** | $4.00 | every month |
 
-Prices are in **U.S. dollars** unless otherwise stated. Applicable taxes may be added at checkout.
+Prices are in **U.S. dollars** unless otherwise stated. Applicable taxes may be added at checkout. The amount you pay for your first billing period is the same amount charged on each renewal unless we notify you of a change.
 
-### 4.2 Introductory Pricing
+### 4.2 Pricing Display
 
-**Intro pricing** applies to your **first billing period** for the plan you select. After the introductory period ends, your subscription automatically renews at the **standard renewal price** shown above unless you cancel before the renewal date.
-
-We will clearly display intro and standard pricing before you complete purchase. By subscribing, you authorize us (through Stripe) to charge the intro price initially and subsequent standard prices on a recurring basis until you cancel.
+We display the plan price, billing interval, and auto-renewal terms before you complete purchase. By subscribing, you authorize us (through Stripe) to charge that recurring amount until you cancel.
 
 ### 4.3 Auto-Renewal
 

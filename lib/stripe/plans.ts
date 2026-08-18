@@ -14,11 +14,17 @@ export interface PlanDisplay {
   mostPopular?: boolean;
 }
 
+/**
+ * Display amounts MUST match the Stripe Price objects in
+ * STRIPE_PRICE_*_INTRO (checkout + renewal). Stripe Prices are immutable —
+ * changing these numbers without new Price IDs will show the wrong amount
+ * vs what Checkout charges.
+ */
 export const STRIPE_PLANS: PlanDisplay[] = [
   {
     key: "1week",
     label: "1-WEEK",
-    amount: 3.99,
+    amount: 1.0,
     days: 7,
     priceSuffix: "/week",
     renewalLabel: "Renews weekly",
@@ -27,7 +33,7 @@ export const STRIPE_PLANS: PlanDisplay[] = [
   {
     key: "2week",
     label: "2-WEEK",
-    amount: 4.24,
+    amount: 1.5,
     days: 14,
     priceSuffix: "/2 weeks",
     renewalLabel: "Renews every 2 weeks",
@@ -37,7 +43,7 @@ export const STRIPE_PLANS: PlanDisplay[] = [
   {
     key: "1month",
     label: "1-MONTH",
-    amount: 7.49,
+    amount: 4.0,
     days: 30,
     priceSuffix: "/month",
     renewalLabel: "Renews monthly",
@@ -65,7 +71,7 @@ export function dailyRate(amount: number, days: number): number {
   return amount / days;
 }
 
-/** e.g. "$0.57/day" — uses the listed Stripe amount, never a made-up price. */
+/** e.g. "$0.14/day" — uses the listed Stripe amount, never a made-up price. */
 export function formatDailyPrice(plan: PlanDisplay): string {
   return `$${dailyRate(plan.amount, plan.days).toFixed(2)}/day`;
 }
@@ -73,6 +79,9 @@ export function formatDailyPrice(plan: PlanDisplay): string {
 export function formatPeriodPrice(plan: PlanDisplay): string {
   return `${formatUsd(plan.amount)} ${plan.priceSuffix.replace(/^\//, "/ ")}`;
 }
+
+/** Hide badges that are too small to be a meaningful reason to pick a plan. */
+const MIN_SAVINGS_BADGE_PERCENT = 15;
 
 /**
  * Per-day savings vs the 1-week plan, using displayed (2-decimal) daily rates
@@ -88,7 +97,7 @@ export function dailySavingsPercentVsWeekly(plan: PlanDisplay): number | null {
 
   const exact = ((baseDaily - daily) / baseDaily) * 100;
   const rounded = Math.round(exact);
-  if (rounded <= 0) return null;
+  if (rounded < MIN_SAVINGS_BADGE_PERCENT) return null;
   // Drop if rounding would stretch the truth (e.g. 12.4% → 12 is fine; 12.6% → 13 is fine).
   if (Math.abs(exact - rounded) > 0.5) return null;
   return rounded;

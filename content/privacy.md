@@ -59,7 +59,7 @@ You can control cookies through your browser settings. Disabling essential cooki
 We use the information we collect to:
 
 - **Provide the Service** — stream video, manage your account, save watch progress, and maintain your watchlist
-- **Process subscriptions and payments** — create and manage billing through Stripe, including intro pricing, renewals, and cancellation
+- **Process subscriptions and payments** — create and manage billing through Stripe, including renewals and cancellation
 - **Authenticate you** — via magic link, Google OAuth, or post-checkout account creation
 - **Send transactional communications** — such as sign-in links, subscription confirmations, billing receipts (via Stripe), and important service notices
 - **Improve and maintain the Service** — fix bugs, analyze performance, develop new features, and understand how viewers use ReelWalia

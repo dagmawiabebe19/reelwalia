@@ -69,10 +69,20 @@ Apply in order via Supabase SQL Editor or CLI:
 
 ## Stripe subscriptions
 
-Intro pricing auto-renews at standard rates via Subscription Schedules (set up in the checkout webhook).
+Checkout charges `STRIPE_PRICE_*_INTRO` and renews at that same Price ID (legacy `*_STANDARD` env vars are unused for new checkouts).
 
-1. Create three products in Stripe with **intro** and **standard** recurring prices for 1-week, 2-week, and 1-month intervals.
-2. Copy price IDs into the `STRIPE_PRICE_*` env vars (exact names: `STRIPE_PRICE_1WEEK_INTRO`, not `1_WEEK`).
+Current display amounts (must match the Stripe Price objects):
+
+| Plan | Amount | Interval | Env var (new Price ID) |
+|------|--------|----------|------------------------|
+| 1-Week | $1.00 | week | `STRIPE_PRICE_1WEEK_INTRO` |
+| 2-Week | $1.50 | 2 weeks | `STRIPE_PRICE_2WEEK_INTRO` |
+| 1-Month | $4.00 | month | `STRIPE_PRICE_1MONTH_INTRO` |
+
+Stripe Prices are immutable. To change amounts, create new recurring Price objects and paste the new `price_…` IDs into those env vars (Vercel + `.env.local`).
+
+1. Create (or reuse) three Products in Stripe. Add a **new** recurring Price on each for the amounts above.
+2. Copy the new price IDs into the `STRIPE_PRICE_*_INTRO` env vars (exact names: `STRIPE_PRICE_1WEEK_INTRO`, not `1_WEEK`).
 3. Restart the dev server after editing `.env.local` — Next.js loads env at startup.
 4. Add webhook endpoint: `{SITE_URL}/api/stripe/webhook`
    - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`

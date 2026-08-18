@@ -237,26 +237,27 @@ assert(storage.has(WATCH_USER_INITIATED_KEY), "markBingeContinuation sets flag")
 const week = getPlanDisplay("1week");
 const twoWeek = getPlanDisplay("2week");
 const month = getPlanDisplay("1month");
-assert(formatDailyPrice(week) === "$0.57/day", "1-week per-day is $0.57");
-assert(formatDailyPrice(twoWeek) === "$0.30/day", "2-week per-day is $0.30");
-assert(formatDailyPrice(month) === "$0.25/day", "1-month per-day is $0.25");
+assert(week.amount === 1, "1-week display is $1.00");
+assert(twoWeek.amount === 1.5, "2-week display is $1.50");
+assert(month.amount === 4, "1-month display is $4.00");
+assert(formatDailyPrice(week) === "$0.14/day", "1-week per-day is $0.14");
+assert(formatDailyPrice(twoWeek) === "$0.11/day", "2-week per-day is $0.11");
+assert(formatDailyPrice(month) === "$0.13/day", "1-month per-day is $0.13");
 assert(savingsBadge(week) === null, "weekly plan has no savings badge");
 assert(
-  dailySavingsPercentVsWeekly(twoWeek) === 47,
-  "2-week is 47% less per day than weekly"
+  dailySavingsPercentVsWeekly(twoWeek) === 21,
+  "2-week is 21% less per day than weekly"
 );
 assert(
-  savingsBadge(twoWeek) === "47% less per day than weekly",
+  savingsBadge(twoWeek) === "21% less per day than weekly",
   "2-week badge names the per-day basis"
 );
 assert(
-  dailySavingsPercentVsWeekly(month) === 56,
-  "1-month is 56% less per day than weekly"
+  dailySavingsPercentVsWeekly(month) === null,
+  "1-month ~7% savings is too small to badge"
 );
-assert(
-  savingsBadge(month) === "56% less per day than weekly",
-  "1-month badge names the per-day basis"
-);
+assert(savingsBadge(month) === null, "1-month has no savings badge");
+assert(twoWeek.mostPopular === true, "2-week remains Most Popular");
 
 console.log("✓ All playback validation checks passed");
 console.log("  Entry: /watch/{id}?autoplay=true");
