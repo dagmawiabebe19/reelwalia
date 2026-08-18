@@ -238,20 +238,17 @@ const week = getPlanDisplay("1week");
 const twoWeek = getPlanDisplay("2week");
 const month = getPlanDisplay("1month");
 assert(week.amount === 1, "1-week display is $1.00");
-assert(twoWeek.amount === 1.5, "2-week display is $1.50");
+assert(twoWeek.amount === 1.75, "2-week display is $1.75");
 assert(month.amount === 4, "1-month display is $4.00");
 assert(formatDailyPrice(week) === "$0.14/day", "1-week per-day is $0.14");
-assert(formatDailyPrice(twoWeek) === "$0.11/day", "2-week per-day is $0.11");
+assert(formatDailyPrice(twoWeek) === "$0.13/day", "2-week per-day is $0.13");
 assert(formatDailyPrice(month) === "$0.13/day", "1-month per-day is $0.13");
 assert(savingsBadge(week) === null, "weekly plan has no savings badge");
 assert(
-  dailySavingsPercentVsWeekly(twoWeek) === 21,
-  "2-week is 21% less per day than weekly"
+  dailySavingsPercentVsWeekly(twoWeek) === null,
+  "2-week ~7% savings is too small to badge"
 );
-assert(
-  savingsBadge(twoWeek) === "21% less per day than weekly",
-  "2-week badge names the per-day basis"
-);
+assert(savingsBadge(twoWeek) === null, "2-week has no savings badge");
 assert(
   dailySavingsPercentVsWeekly(month) === null,
   "1-month ~7% savings is too small to badge"

@@ -33,7 +33,7 @@ export const STRIPE_PLANS: PlanDisplay[] = [
   {
     key: "2week",
     label: "2-WEEK",
-    amount: 1.5,
+    amount: 1.75,
     days: 14,
     priceSuffix: "/2 weeks",
     renewalLabel: "Renews every 2 weeks",

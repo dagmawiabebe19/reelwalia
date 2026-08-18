@@ -76,7 +76,7 @@ Current display amounts (must match the Stripe Price objects):
 | Plan | Amount | Interval | Env var (new Price ID) |
 |------|--------|----------|------------------------|
 | 1-Week | $1.00 | week | `STRIPE_PRICE_1WEEK_INTRO` |
-| 2-Week | $1.50 | 2 weeks | `STRIPE_PRICE_2WEEK_INTRO` |
+| 2-Week | $1.75 | 2 weeks | `STRIPE_PRICE_2WEEK_INTRO` |
 | 1-Month | $4.00 | month | `STRIPE_PRICE_1MONTH_INTRO` |
 
 Stripe Prices are immutable. To change amounts, create new recurring Price objects and paste the new `price_…` IDs into those env vars (Vercel + `.env.local`).
