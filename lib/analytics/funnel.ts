@@ -3,6 +3,7 @@ import type { StripePlanKey } from "@/lib/stripe/plans";
 
 export type PaywallTrigger =
   | "end_of_free_trial"
+  | "end_of_final_episode"
   | "locked_episode_click"
   | "direct_navigation"
   | "manual_subscribe_button"

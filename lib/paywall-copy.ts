@@ -6,6 +6,34 @@ export const PAYWALL_HEADLINE = "Get Full Access Pass to Binge Worthy Drama Seri
 export const PAYWALL_SUBHEAD = "Watch the full series. Pick a plan that fits.";
 export const PAYWALL_CATALOG_HEADING = "Popular Drama Series";
 
+/** Shown when the viewer finishes the last published episode — honest catalog framing. */
+export const PAYWALL_END_OF_SERIES_HEADLINE =
+  "Enjoyed this? Get unlimited access to every ReelWalia series";
+export const PAYWALL_END_OF_SERIES_SUBHEAD =
+  "Your pass unlocks the full catalog — binge every drama on ReelWalia.";
+
+export type PaywallCopyVariant = "default" | "end_of_final_episode";
+
+export function paywallCopyForVariant(
+  variant: PaywallCopyVariant = "default",
+  opts?: { moreEpisodesComingSoon?: boolean }
+): { headline: string; subhead: string } {
+  if (variant === "end_of_final_episode") {
+    const subhead = opts?.moreEpisodesComingSoon
+      ? `${PAYWALL_END_OF_SERIES_SUBHEAD} More episodes of this series are coming soon.`
+      : PAYWALL_END_OF_SERIES_SUBHEAD;
+    return {
+      headline: PAYWALL_END_OF_SERIES_HEADLINE,
+      subhead,
+    };
+  }
+
+  return {
+    headline: PAYWALL_HEADLINE,
+    subhead: PAYWALL_SUBHEAD,
+  };
+}
+
 export const PAYWALL_INCLUDED = [
   {
     id: "unlimited",

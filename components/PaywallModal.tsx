@@ -11,12 +11,12 @@ import {
   type StripePlanKey,
 } from "@/lib/stripe/plans";
 import {
-  PAYWALL_HEADLINE,
   PAYWALL_INCLUDED,
   PAYWALL_SOCIAL_PROOF,
-  PAYWALL_SUBHEAD,
   PAYWALL_CATALOG_HEADING,
+  paywallCopyForVariant,
   publishedPaywallTestimonials,
+  type PaywallCopyVariant,
 } from "@/lib/paywall-copy";
 import {
   trackPaywallViewed,
@@ -35,6 +35,8 @@ interface PaywallModalProps {
   episodeId?: string;
   seriesSlug?: string;
   trigger?: PaywallTrigger;
+  copyVariant?: PaywallCopyVariant;
+  moreEpisodesComingSoon?: boolean;
   isAuthenticated?: boolean;
 }
 
@@ -84,6 +86,8 @@ export function PaywallModal({
   episodeId,
   seriesSlug,
   trigger,
+  copyVariant = "default",
+  moreEpisodesComingSoon = false,
   isAuthenticated = false,
 }: PaywallModalProps) {
   const [selected, setSelected] = useState<StripePlanKey>(DEFAULT_PLAN);
@@ -160,6 +164,9 @@ export function PaywallModal({
 
   const selectedPlan = getPlanDisplay(selected);
   const testimonials = publishedPaywallTestimonials();
+  const { headline, subhead } = paywallCopyForVariant(copyVariant, {
+    moreEpisodesComingSoon,
+  });
   const showSocial =
     PAYWALL_SOCIAL_PROOF.enabled &&
     (PAYWALL_SOCIAL_PROOF.rating != null || testimonials.length > 0);
@@ -229,10 +236,10 @@ export function PaywallModal({
 
         <h2 id="paywall-title" className="font-display text-[1.65rem] font-black leading-[1.08] sm:text-2xl">
           <span className="bg-gradient-to-b from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent [text-shadow:0_2px_24px_rgba(255,255,255,0.12)]">
-            {PAYWALL_HEADLINE}
+            {headline}
           </span>
         </h2>
-        <p className="mt-2.5 text-sm font-medium text-zinc-300">{PAYWALL_SUBHEAD}</p>
+        <p className="mt-2.5 text-sm font-medium text-zinc-300">{subhead}</p>
 
         <div className="mt-5 space-y-3">
           {STRIPE_PLANS.map((p) => {

@@ -16,6 +16,8 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
 import { AutoplayOverlay } from "@/components/watch/AutoplayOverlay";
 import { EndOfSeriesOverlay } from "@/components/watch/EndOfSeriesOverlay";
+import { PaywallModal } from "@/components/PaywallModal";
+import { useSyncPaywallOpen } from "@/components/watch/PaywallOpenContext";
 import {
   FeedSwipeHint,
   hasLearnedFeedSwipeUp,
@@ -349,6 +351,7 @@ export function VideoPlayer({
   const [autoplayCanceled, setAutoplayCanceled] = useState(false);
   const [showEndOfSeries, setShowEndOfSeries] = useState(false);
   const [showEndPaywall, setShowEndPaywall] = useState(false);
+  const [showEndCatalogPaywall, setShowEndCatalogPaywall] = useState(false);
   const [showTapForSound, setShowTapForSound] = useState(false);
   const [mobileCaptionMode, setMobileCaptionMode] = useState(false);
   const [mobileCaptionText, setMobileCaptionText] = useState("");
@@ -798,12 +801,15 @@ export function VideoPlayer({
     autoplayLog("[autoplay] countdown_canceled", { episodeId });
   }, [episodeId]);
 
+  useSyncPaywallOpen(showEndCatalogPaywall);
+
   useEffect(() => {
     setAutoplayCanceled(false);
     setCountdownVisible(false);
     setCountdownSeconds(AUToplay_THRESHOLD);
     setShowEndOfSeries(false);
     setShowEndPaywall(false);
+    setShowEndCatalogPaywall(false);
     setShowTapForSound(false);
     navigatedRef.current = false;
     countdownStartedRef.current = false;
@@ -1422,6 +1428,7 @@ export function VideoPlayer({
       !nextEpisode ||
       loadError ||
       showEndOfSeries ||
+      showEndCatalogPaywall ||
       !Number.isFinite(total) ||
       total <= AUToplay_THRESHOLD + 1 ||
       !Number.isFinite(time) ||
@@ -1510,8 +1517,21 @@ export function VideoPlayer({
     setCountdownVisible(false);
 
     if (!nextEpisode) {
-      setShowEndOfSeries(true);
-      autoplayLog("[autoplay] series_completed", { seriesSlug });
+      if (isSubscribed) {
+        setShowEndOfSeries(true);
+        autoplayLog("[autoplay] series_completed", { seriesSlug });
+      } else {
+        navigatedRef.current = true;
+        maintainFsAcrossEpisodeRef.current = false;
+        void (async () => {
+          if (feedMode) {
+            await exitFullscreenForPaywall();
+          }
+          setShowEndCatalogPaywall(true);
+        })();
+        autoplayLog("[autoplay] end_catalog_paywall", { episodeId, seriesSlug });
+      }
+      return;
     }
   };
 
@@ -1842,7 +1862,7 @@ export function VideoPlayer({
             </button>
           )}
 
-          {!playing && !isInitialLoad && !showEndOfSeries && (
+          {!playing && !isInitialLoad && !showEndOfSeries && !showEndCatalogPaywall && (
             <button
               type="button"
               onClick={togglePlay}
@@ -1857,7 +1877,10 @@ export function VideoPlayer({
             </button>
           )}
 
-          {(countdownVisible || showEndPaywall) && nextEpisode && !showEndOfSeries && (
+          {(countdownVisible || showEndPaywall) &&
+            nextEpisode &&
+            !showEndOfSeries &&
+            !showEndCatalogPaywall && (
             <AutoplayOverlay
               nextEpisode={nextEpisode}
               seriesSlug={seriesSlug}
@@ -2109,12 +2132,24 @@ export function VideoPlayer({
   );
 
   return (
-    <div
-      ref={containerRef}
-      className={containerClassName}
-      onMouseMove={() => bumpControls()}
-    >
-      {playerContent}
-    </div>
+    <>
+      <div
+        ref={containerRef}
+        className={containerClassName}
+        onMouseMove={() => bumpControls()}
+      >
+        {playerContent}
+      </div>
+
+      <PaywallModal
+        open={showEndCatalogPaywall}
+        onClose={() => setShowEndCatalogPaywall(false)}
+        episodeId={episodeId}
+        seriesSlug={seriesSlug}
+        trigger="end_of_final_episode"
+        copyVariant="end_of_final_episode"
+        isAuthenticated={isAuthenticated}
+      />
+    </>
   );
 }
