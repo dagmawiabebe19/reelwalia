@@ -19,6 +19,15 @@ export const MARK_FRAME = {
  */
 export const MARK_PLAY = "M18.5 14.5L18.5 33.5L35 24Z";
 
+/** Flat mark SVG for favicon / PNG generation scripts. */
+export function flatBrandMarkSvgString(): string {
+  const { x, y, width, height, rx } = MARK_FRAME;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <rect x="${x}" y="${y}" width="${width}" height="${height}" rx="${rx}" fill="${BRAND_RED}"/>
+  <path d="${MARK_PLAY}" fill="#FFFFFF"/>
+</svg>`;
+}
+
 /** @deprecated Use MARK_FRAME + MARK_PLAY */
 export const PRODUCTION_MARK = {
   id: "red-stream-pod-premium",
