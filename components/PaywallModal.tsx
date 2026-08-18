@@ -220,7 +220,7 @@ export function PaywallModal({
       <div
         ref={scrollRef}
         tabIndex={-1}
-        className="relative max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] min-h-0 w-full max-w-[480px] overflow-y-auto overscroll-contain rounded-2xl border border-white/[0.08] bg-black px-5 pb-5 pt-0 shadow-2xl outline-none sm:max-h-[92vh] sm:p-6"
+        className="relative max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] min-h-0 w-full max-w-[480px] overflow-y-auto overscroll-contain rounded-2xl border border-white/[0.08] bg-black px-5 pb-8 pt-0 shadow-2xl outline-none sm:max-h-[92vh] sm:px-6 sm:pb-8 sm:pt-6"
       >
         <div className="sticky top-0 z-10 -mx-5 mb-5 flex items-start justify-between bg-black px-5 pb-2 pt-5 sm:static sm:mx-0 sm:mb-5 sm:bg-transparent sm:p-0">
           <ReelWaliaLogo variant="lockup" scale="nav" />
@@ -251,24 +251,24 @@ export function PaywallModal({
             return (
               <div
                 key={p.key}
-                className={`overflow-hidden rounded-xl border transition duration-200 ${
+                className={`rounded-xl border transition duration-200 ${
                   isHighlighted
                     ? "border-obsidian-red/70 shadow-lg shadow-obsidian-red/20 ring-2 ring-obsidian-red/90"
                     : "border-white/[0.08] hover:border-white/20 hover:shadow-md hover:shadow-black/40"
-                } ${isSelected ? "scale-[1.01]" : ""}`}
+                }`}
               >
                 {p.mostPopular && (
-                  <div className="border-b border-red-900/40 bg-gradient-to-r from-obsidian-red via-red-500 to-obsidian-red px-3 py-1.5 text-center text-[11px] font-extrabold uppercase tracking-[0.22em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]">
+                  <div className="rounded-t-[0.65rem] border-b border-red-900/40 bg-gradient-to-r from-obsidian-red via-red-500 to-obsidian-red px-3 py-1.5 text-center text-[11px] font-extrabold uppercase tracking-[0.22em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]">
                     Most Popular
                   </div>
                 )}
                 <button
                   type="button"
                   onClick={() => setSelected(p.key)}
-                  className="flex w-full items-start gap-3 p-4 text-left transition hover:bg-white/[0.04] active:bg-white/[0.06]"
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-white/[0.04] active:bg-white/[0.06]"
                 >
                   <span
-                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition ${
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition ${
                       isSelected
                         ? "border-obsidian-red bg-obsidian-red shadow-[0_0_10px_rgba(224,60,47,0.55)]"
                         : "border-zinc-500"
@@ -277,11 +277,9 @@ export function PaywallModal({
                     {isSelected && <span className="h-2 w-2 rounded-full bg-white" />}
                   </span>
 
-                  <div className="min-w-0 flex-1">
-                    <p className="font-display text-lg font-extrabold uppercase leading-tight tracking-[0.12em]">
-                      <span className="bg-gradient-to-br from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent">
-                        {p.label}
-                      </span>
+                  <div className="min-w-0 flex-1 pr-2">
+                    <p className="font-display text-base font-extrabold uppercase leading-none tracking-[0.12em] text-white sm:text-lg">
+                      {p.label}
                     </p>
                     {badge && (
                       <span className="mt-1.5 inline-flex max-w-full rounded-md bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 px-2 py-0.5 text-[10px] font-extrabold uppercase leading-tight tracking-wide text-amber-950 shadow-[0_0_14px_rgba(251,191,36,0.35)]">
@@ -290,19 +288,25 @@ export function PaywallModal({
                     )}
                   </div>
 
-                  <div className="shrink-0 text-right leading-none">
-                    <p className="whitespace-nowrap font-display font-extrabold tabular-nums">
-                      <span className="bg-gradient-to-br from-amber-50 via-white to-amber-200 bg-clip-text text-transparent drop-shadow-[0_0_18px_rgba(255,230,180,0.35)]">
-                        <span className="text-3xl tracking-tight">${dollars}</span>
-                        <span className="align-super text-[0.7rem] font-bold tracking-tight opacity-80">
-                          .{cents}
-                        </span>
+                  <div className="shrink-0 text-right">
+                    <p
+                      className="flex items-start justify-end text-white"
+                      aria-label={`${formatUsd(p.amount)}${p.priceSuffix}`}
+                    >
+                      <span className="mt-[0.35rem] font-display text-lg font-extrabold leading-none">
+                        $
+                      </span>
+                      <span className="font-display text-[2rem] font-extrabold leading-none tracking-wide">
+                        {dollars}
+                      </span>
+                      <span className="mt-[0.2rem] font-display text-sm font-bold leading-none text-white/75">
+                        .{cents}
                       </span>
                     </p>
-                    <p className="mt-1 whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                    <p className="mt-1.5 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
                       {p.priceSuffix.replace(/^\//, "")}
                     </p>
-                    <p className="mt-1 whitespace-nowrap text-[11px] tabular-nums text-zinc-500">
+                    <p className="mt-0.5 whitespace-nowrap text-[11px] tabular-nums text-zinc-500">
                       {formatDailyPrice(p)}
                     </p>
                   </div>
@@ -331,7 +335,7 @@ export function PaywallModal({
             <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
               {PAYWALL_CATALOG_HEADING}
             </p>
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+            <div className="grid grid-cols-3 gap-2 pb-1">
               {catalogPosters.map((item) => (
                 <div
                   key={item.id}
