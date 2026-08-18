@@ -2,6 +2,7 @@ export type StripePlanKey = "1week" | "2week" | "1month";
 
 export interface PlanDisplay {
   key: StripePlanKey;
+  label: string;
   /** Source of truth for display AND expected Stripe charge (USD cents). */
   amountCents: number;
   /** Recurring subscription price (USD) — always amountCents / 100. */
@@ -25,6 +26,7 @@ type PlanConfig = Omit<PlanDisplay, "amount">;
 const PLAN_CONFIG: PlanConfig[] = [
   {
     key: "1week",
+    label: "1-WEEK",
     amountCents: 100,
     days: 7,
     priceSuffix: "/week",
@@ -36,6 +38,7 @@ const PLAN_CONFIG: PlanConfig[] = [
   },
   {
     key: "2week",
+    label: "2-WEEK",
     amountCents: 175,
     days: 14,
     priceSuffix: "/2 weeks",
@@ -47,6 +50,7 @@ const PLAN_CONFIG: PlanConfig[] = [
   },
   {
     key: "1month",
+    label: "1-MONTH",
     amountCents: 400,
     days: 30,
     priceSuffix: "/month",

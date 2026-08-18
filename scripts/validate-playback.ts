@@ -238,7 +238,9 @@ assert(storage.has(WATCH_USER_INITIATED_KEY), "markBingeContinuation sets flag")
 const week = getPlanDisplay("1week");
 const twoWeek = getPlanDisplay("2week");
 const month = getPlanDisplay("1month");
-assert(week.amountCents === 100, "1-week is 100 cents");
+assert(week.label === "1-WEEK", "1-week label");
+assert(twoWeek.label === "2-WEEK", "2-week label");
+assert(month.label === "1-MONTH", "1-month label");
 assert(twoWeek.amountCents === 175, "2-week is 175 cents");
 assert(month.amountCents === 400, "1-month is 400 cents");
 assert(week.amount === week.amountCents / 100, "display amount derived from cents");
