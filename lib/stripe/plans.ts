@@ -2,8 +2,9 @@ export type StripePlanKey = "1week" | "2week" | "1month";
 
 export interface PlanDisplay {
   key: StripePlanKey;
-  label: string;
-  /** Recurring subscription price (USD). */
+  /** Source of truth for display AND expected Stripe charge (USD cents). */
+  amountCents: number;
+  /** Recurring subscription price (USD) — always amountCents / 100. */
   amount: number;
   /** Billing period length in days (for per-day math). */
   days: number;
@@ -11,45 +12,62 @@ export interface PlanDisplay {
   priceSuffix: string;
   renewalLabel: string;
   periodLabel: string;
+  /** Env var holding the Stripe Price ID used at checkout and renewal. */
+  priceEnvKey: string;
+  /** Stripe recurring interval that must match the Price object. */
+  stripeInterval: "week" | "month";
+  stripeIntervalCount: number;
   mostPopular?: boolean;
 }
 
-/**
- * Display amounts MUST match the Stripe Price objects in
- * STRIPE_PRICE_*_INTRO (checkout + renewal). Stripe Prices are immutable —
- * changing these numbers without new Price IDs will show the wrong amount
- * vs what Checkout charges.
- */
-export const STRIPE_PLANS: PlanDisplay[] = [
+type PlanConfig = Omit<PlanDisplay, "amount">;
+
+const PLAN_CONFIG: PlanConfig[] = [
   {
     key: "1week",
-    label: "1-WEEK",
-    amount: 1.0,
+    amountCents: 100,
     days: 7,
     priceSuffix: "/week",
     renewalLabel: "Renews weekly",
     periodLabel: "week",
+    priceEnvKey: "STRIPE_PRICE_1WEEK_INTRO",
+    stripeInterval: "week",
+    stripeIntervalCount: 1,
   },
   {
     key: "2week",
-    label: "2-WEEK",
-    amount: 1.75,
+    amountCents: 175,
     days: 14,
     priceSuffix: "/2 weeks",
     renewalLabel: "Renews every 2 weeks",
     periodLabel: "2 weeks",
+    priceEnvKey: "STRIPE_PRICE_2WEEK_INTRO",
+    stripeInterval: "week",
+    stripeIntervalCount: 2,
     mostPopular: true,
   },
   {
     key: "1month",
-    label: "1-MONTH",
-    amount: 4.0,
+    amountCents: 400,
     days: 30,
     priceSuffix: "/month",
     renewalLabel: "Renews monthly",
     periodLabel: "month",
+    priceEnvKey: "STRIPE_PRICE_1MONTH_INTRO",
+    stripeInterval: "month",
+    stripeIntervalCount: 1,
   },
 ];
+
+/**
+ * Single source of truth: display amount, per-day math, and expected Stripe
+ * charge all come from amountCents. Checkout looks up priceEnvKey and refuses
+ * to charge if the Stripe Price unit_amount does not match.
+ */
+export const STRIPE_PLANS: PlanDisplay[] = PLAN_CONFIG.map((plan) => ({
+  ...plan,
+  amount: plan.amountCents / 100,
+}));
 
 const BASELINE_PLAN_KEY: StripePlanKey = "1week";
 

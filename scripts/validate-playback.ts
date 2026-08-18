@@ -237,9 +237,15 @@ assert(storage.has(WATCH_USER_INITIATED_KEY), "markBingeContinuation sets flag")
 const week = getPlanDisplay("1week");
 const twoWeek = getPlanDisplay("2week");
 const month = getPlanDisplay("1month");
-assert(week.amount === 1, "1-week display is $1.00");
-assert(twoWeek.amount === 1.75, "2-week display is $1.75");
-assert(month.amount === 4, "1-month display is $4.00");
+assert(week.amountCents === 100, "1-week is 100 cents");
+assert(twoWeek.amountCents === 175, "2-week is 175 cents");
+assert(month.amountCents === 400, "1-month is 400 cents");
+assert(week.amount === week.amountCents / 100, "display amount derived from cents");
+assert(twoWeek.amount === twoWeek.amountCents / 100, "2-week display derived from cents");
+assert(month.amount === month.amountCents / 100, "1-month display derived from cents");
+assert(week.priceEnvKey === "STRIPE_PRICE_1WEEK_INTRO", "1-week checkout env key");
+assert(twoWeek.priceEnvKey === "STRIPE_PRICE_2WEEK_INTRO", "2-week checkout env key");
+assert(month.priceEnvKey === "STRIPE_PRICE_1MONTH_INTRO", "1-month checkout env key");
 assert(formatDailyPrice(week) === "$0.14/day", "1-week per-day is $0.14");
 assert(formatDailyPrice(twoWeek) === "$0.13/day", "2-week per-day is $0.13");
 assert(formatDailyPrice(month) === "$0.13/day", "1-month per-day is $0.13");

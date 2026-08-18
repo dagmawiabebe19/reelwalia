@@ -2,8 +2,8 @@ import Stripe from "stripe";
 import { resolveSeriesIdFromEpisode } from "@/lib/analytics/log-event";
 import type { TrafficSource } from "@/lib/traffic-source";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { StripePlanKey } from "@/lib/stripe/plans";
-import { getPlanPriceIds } from "@/lib/stripe/prices";
+import { type StripePlanKey } from "@/lib/stripe/plans";
+import { getPlanPriceIds, resolveVerifiedCheckoutPrice } from "@/lib/stripe/prices";
 import {
   getSubscriptionPeriod,
   unwrapStripeResponse,
@@ -63,7 +63,7 @@ export async function createCheckoutSession(params: {
   trafficSource?: TrafficSource | null;
 }): Promise<Stripe.Checkout.Session> {
   const stripe = getStripe();
-  const { introPriceId } = getPlanPriceIds(params.plan);
+  const { priceId } = await resolveVerifiedCheckoutPrice({ stripe, plan: params.plan });
   const customerId = await getOrCreateCustomer(params.userId, params.email);
   const resolved = await resolveSeriesIdFromEpisode(params.episodeId);
   const titleMeta = {
@@ -85,7 +85,7 @@ export async function createCheckoutSession(params: {
   return stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
-    line_items: [{ price: introPriceId, quantity: 1 }],
+    line_items: [{ price: priceId, quantity: 1 }],
     subscription_data: {
       metadata: {
         app: "reelwalia",
@@ -115,7 +115,7 @@ export async function createGuestCheckoutSession(params: {
   trafficSource?: TrafficSource | null;
 }): Promise<Stripe.Checkout.Session> {
   const stripe = getStripe();
-  const { introPriceId } = getPlanPriceIds(params.plan);
+  const { priceId } = await resolveVerifiedCheckoutPrice({ stripe, plan: params.plan });
   const resolved = await resolveSeriesIdFromEpisode(params.episodeId);
   const titleMeta = {
     ...(params.episodeId ? { episode_id: params.episodeId } : {}),
@@ -136,7 +136,7 @@ export async function createGuestCheckoutSession(params: {
 
   return stripe.checkout.sessions.create({
     mode: "subscription",
-    line_items: [{ price: introPriceId, quantity: 1 }],
+    line_items: [{ price: priceId, quantity: 1 }],
     subscription_data: {
       metadata: {
         app: "reelwalia",

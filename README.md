@@ -71,15 +71,15 @@ Apply in order via Supabase SQL Editor or CLI:
 
 Checkout charges `STRIPE_PRICE_*_INTRO` and renews at that same Price ID (legacy `*_STANDARD` env vars are unused for new checkouts).
 
-Current display amounts (must match the Stripe Price objects):
+Current display amounts (amountCents in `lib/stripe/plans.ts`) and the env var that must hold a Stripe Price whose `unit_amount` matches:
 
-| Plan | Amount | Interval | Env var (new Price ID) |
-|------|--------|----------|------------------------|
-| 1-Week | $1.00 | week | `STRIPE_PRICE_1WEEK_INTRO` |
-| 2-Week | $1.75 | 2 weeks | `STRIPE_PRICE_2WEEK_INTRO` |
-| 1-Month | $4.00 | month | `STRIPE_PRICE_1MONTH_INTRO` |
+| Plan | Amount | Interval | Env var |
+|------|--------|----------|---------|
+| 1-Week | $1.00 (100¢) | week | `STRIPE_PRICE_1WEEK_INTRO` = `price_1U5pqeALnDgzqB3SotXHdFEx` |
+| 2-Week | $1.75 (175¢) | 2 weeks | `STRIPE_PRICE_2WEEK_INTRO` = `price_1U5pphALnDgzqB3SymDWmCj4` |
+| 1-Month | $4.00 (400¢) | month | `STRIPE_PRICE_1MONTH_INTRO` = `price_1U5pq6ALnDgzqB3Sl8DZ3G6Q` |
 
-Stripe Prices are immutable. To change amounts, create new recurring Price objects and paste the new `price_…` IDs into those env vars (Vercel + `.env.local`).
+Checkout **retrieves** the Stripe Price and **refuses** to create a session if `unit_amount` ≠ `amountCents`. Stripe Prices are immutable — create a new Price and update the env var; never edit display amounts without a matching Price ID.
 
 1. Create (or reuse) three Products in Stripe. Add a **new** recurring Price on each for the amounts above.
 2. Copy the new price IDs into the `STRIPE_PRICE_*_INTRO` env vars (exact names: `STRIPE_PRICE_1WEEK_INTRO`, not `1_WEEK`).
