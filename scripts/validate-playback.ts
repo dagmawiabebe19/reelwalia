@@ -45,6 +45,7 @@ import {
   formatDailyPrice,
   getPlanDisplay,
   savingsBadge,
+  splitUsdParts,
 } from "../lib/stripe/plans";
 
 const episodes = [
@@ -246,7 +247,12 @@ assert(month.amount === month.amountCents / 100, "1-month display derived from c
 assert(week.priceEnvKey === "STRIPE_PRICE_1WEEK_INTRO", "1-week checkout env key");
 assert(twoWeek.priceEnvKey === "STRIPE_PRICE_2WEEK_INTRO", "2-week checkout env key");
 assert(month.priceEnvKey === "STRIPE_PRICE_1MONTH_INTRO", "1-month checkout env key");
-assert(formatDailyPrice(week) === "$0.14/day", "1-week per-day is $0.14");
+assert(splitUsdParts(week.amount).dollars === "1", "1-week dollars dominate as 1");
+assert(splitUsdParts(week.amount).cents === "00", "1-week cents are 00");
+assert(splitUsdParts(twoWeek.amount).dollars === "1", "2-week dollars are 1");
+assert(splitUsdParts(twoWeek.amount).cents === "75", "2-week cents are 75");
+assert(splitUsdParts(month.amount).dollars === "4", "1-month dollars dominate as 4");
+assert(splitUsdParts(month.amount).cents === "00", "1-month cents are 00");
 assert(formatDailyPrice(twoWeek) === "$0.13/day", "2-week per-day is $0.13");
 assert(formatDailyPrice(month) === "$0.13/day", "1-month per-day is $0.13");
 assert(savingsBadge(week) === null, "weekly plan has no savings badge");

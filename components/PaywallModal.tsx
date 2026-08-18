@@ -4,10 +4,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   STRIPE_PLANS,
   formatDailyPrice,
-  formatPeriodPrice,
   formatUsd,
   getPlanDisplay,
   savingsBadge,
+  splitUsdParts,
   type StripePlanKey,
 } from "@/lib/stripe/plans";
 import {
@@ -246,6 +246,7 @@ export function PaywallModal({
             const isSelected = selected === p.key;
             const badge = savingsBadge(p);
             const isHighlighted = isSelected || p.mostPopular;
+            const { dollars, cents } = splitUsdParts(p.amount);
 
             return (
               <div
@@ -290,13 +291,19 @@ export function PaywallModal({
                   </div>
 
                   <div className="shrink-0 text-right leading-none">
-                    <p className="whitespace-nowrap font-display text-2xl font-extrabold tabular-nums">
+                    <p className="whitespace-nowrap font-display font-extrabold tabular-nums">
                       <span className="bg-gradient-to-br from-amber-50 via-white to-amber-200 bg-clip-text text-transparent drop-shadow-[0_0_18px_rgba(255,230,180,0.35)]">
-                        {formatDailyPrice(p)}
+                        <span className="text-3xl tracking-tight">${dollars}</span>
+                        <span className="align-super text-[0.7rem] font-bold tracking-tight opacity-80">
+                          .{cents}
+                        </span>
                       </span>
                     </p>
-                    <p className="mt-1.5 whitespace-nowrap text-sm font-medium tabular-nums text-zinc-400">
-                      {formatPeriodPrice(p)}
+                    <p className="mt-1 whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                      {p.priceSuffix.replace(/^\//, "")}
+                    </p>
+                    <p className="mt-1 whitespace-nowrap text-[11px] tabular-nums text-zinc-500">
+                      {formatDailyPrice(p)}
                     </p>
                   </div>
                 </button>

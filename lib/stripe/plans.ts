@@ -81,6 +81,12 @@ export function formatUsd(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
 
+/** Split a USD amount so the dollar figure can render larger than the cents. */
+export function splitUsdParts(amount: number): { dollars: string; cents: string } {
+  const [dollars, cents] = amount.toFixed(2).split(".");
+  return { dollars: dollars ?? "0", cents: cents ?? "00" };
+}
+
 export function formatPlanPrice(plan: PlanDisplay): string {
   return `${formatUsd(plan.amount)}${plan.priceSuffix}`;
 }
