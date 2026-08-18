@@ -260,7 +260,8 @@ assert(
   "1-month ~7% savings is too small to badge"
 );
 assert(savingsBadge(month) === null, "1-month has no savings badge");
-assert(twoWeek.mostPopular === true, "2-week remains Most Popular");
+assert(month.mostPopular === true, "1-month is Most Popular");
+assert(!twoWeek.mostPopular, "2-week is not Most Popular");
 
 console.log("✓ All playback validation checks passed");
 console.log("  Entry: /watch/{id}?autoplay=true");

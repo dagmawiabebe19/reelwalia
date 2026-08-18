@@ -44,7 +44,6 @@ const PLAN_CONFIG: PlanConfig[] = [
     priceEnvKey: "STRIPE_PRICE_2WEEK_INTRO",
     stripeInterval: "week",
     stripeIntervalCount: 2,
-    mostPopular: true,
   },
   {
     key: "1month",
@@ -56,6 +55,7 @@ const PLAN_CONFIG: PlanConfig[] = [
     priceEnvKey: "STRIPE_PRICE_1MONTH_INTRO",
     stripeInterval: "month",
     stripeIntervalCount: 1,
+    mostPopular: true,
   },
 ];
 
