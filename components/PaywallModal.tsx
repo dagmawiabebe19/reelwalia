@@ -14,6 +14,7 @@ import {
   PAYWALL_INCLUDED,
   PAYWALL_SOCIAL_PROOF,
   PAYWALL_CATALOG_HEADING,
+  PAYWALL_OFFER_LINE,
   paywallCopyForVariant,
   publishedPaywallTestimonials,
   type PaywallCopyVariant,
@@ -239,6 +240,9 @@ export function PaywallModal({
             {headline}
           </span>
         </h2>
+        <p className="mt-3 rounded-lg bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 px-3 py-2 text-center text-sm font-extrabold leading-snug tracking-wide text-amber-950 shadow-[0_0_18px_rgba(251,191,36,0.35)]">
+          {PAYWALL_OFFER_LINE}
+        </p>
         <p className="mt-2.5 text-sm font-medium text-zinc-300">{subhead}</p>
 
         <div className="mt-5 space-y-3">

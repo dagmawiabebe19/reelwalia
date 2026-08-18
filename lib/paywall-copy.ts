@@ -4,6 +4,7 @@
 
 export const PAYWALL_HEADLINE = "Get Full Access Pass to Binge Worthy Drama Series";
 export const PAYWALL_SUBHEAD = "Watch the full series. Pick a plan that fits.";
+export const PAYWALL_OFFER_LINE = "Discount for the next 1000 drama lovers";
 export const PAYWALL_CATALOG_HEADING = "Popular Drama Series";
 
 /** Shown when the viewer finishes the last published episode — honest catalog framing. */
