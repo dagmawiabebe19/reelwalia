@@ -48,6 +48,10 @@ export async function initBunnyUpload(title: string): Promise<BunnyPresignedUplo
 /**
  * Direct browser → Bunny upload via presigned TUS (bytes never pass through Vercel).
  * Bunny's HTTP PUT endpoint only accepts AccessKey; presigned auth is supported on TUS.
+ *
+ * Always starts a fresh TUS session for the new video GUID — never resume a previous
+ * browser upload. Resuming by file fingerprint can attach an old empty session to a
+ * new GUID and make finalize think the file never landed.
  */
 export function uploadVideoToBunny(
   file: File,
@@ -63,6 +67,9 @@ export function uploadVideoToBunny(
     const upload = new tus.Upload(file, {
       endpoint: BUNNY_TUS_ENDPOINT,
       retryDelays: [0, 3000, 5000, 10_000, 20_000, 60_000],
+      // Fresh GUID each attempt — do not reuse localStorage fingerprints.
+      storeFingerprintForResuming: false,
+      removeFingerprintOnSuccess: true,
       headers: {
         AuthorizationSignature: credentials.signature,
         AuthorizationExpire: String(credentials.expirationTime),
@@ -96,12 +103,7 @@ export function uploadVideoToBunny(
       },
     });
 
-    void upload.findPreviousUploads().then((previousUploads) => {
-      if (previousUploads.length > 0) {
-        upload.resumeFromPreviousUpload(previousUploads[0]);
-      }
-      upload.start();
-    });
+    upload.start();
   });
 }
 
