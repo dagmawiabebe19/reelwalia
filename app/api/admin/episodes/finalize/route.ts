@@ -9,7 +9,7 @@ import {
   waitForBunnyVideoSource,
 } from "@/lib/bunny";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveFreeEpisodeCount } from "@/lib/access";
+import { PAYWALL_FREE_EPISODE_COUNT } from "@/lib/access";
 
 export async function POST(request: Request) {
   const auth = await requireAdminApi();
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
     const videoUrl = getPlaybackUrl(videoId);
     const thumbnailUrl = getThumbnailUrl(videoId);
-    const isFree = episodeNumber <= resolveFreeEpisodeCount(series.free_episode_count);
+    const isFree = episodeNumber <= PAYWALL_FREE_EPISODE_COUNT;
 
     const { data: episode, error } = await admin
       .from("episodes")

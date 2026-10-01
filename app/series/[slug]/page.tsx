@@ -91,8 +91,8 @@ async function getSeries(slug: string) {
 
   const characters = await listActiveCharactersForSeries(supabase, series.id);
 
-  const ab = await resolvePaywallAb({ userId: user?.id ?? null });
-  const freeCount = resolveViewerFreeEpisodeCount(series.free_episode_count, ab.variant);
+  await resolvePaywallAb({ userId: user?.id ?? null });
+  const freeCount = resolveViewerFreeEpisodeCount();
   const episodesWithLock = (episodes ?? []).map((ep) => ({
     ...ep,
     locked: !canWatchEpisode(ep.episode_number, freeCount, profile),

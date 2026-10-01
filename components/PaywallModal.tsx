@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   STRIPE_PLANS,
   formatDailyPrice,
@@ -100,7 +101,19 @@ export function PaywallModal({
   const checkoutStartedRef = useRef(false);
   const catalogFetchedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const { catalogPosters: contextPosters } = usePaywallOpen();
+
+  useEffect(() => {
+    if (!open) return;
+    const sync = () => {
+      const fsEl = document.fullscreenElement;
+      setPortalTarget(fsEl instanceof HTMLElement ? fsEl : document.body);
+    };
+    sync();
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, [open]);
 
   useEffect(() => {
     if (!open) {
@@ -162,7 +175,7 @@ export function PaywallModal({
     panel.focus({ preventScroll: true });
   }, [open]);
 
-  if (!open) return null;
+  if (!open || !portalTarget) return null;
 
   const selectedPlan = getPlanDisplay(selected);
   const testimonials = publishedPaywallTestimonials();
@@ -205,9 +218,9 @@ export function PaywallModal({
     }
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-hidden px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))] sm:items-center sm:p-4"
+      className="fixed inset-0 z-[2147483647] flex items-start justify-center overflow-hidden px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))] sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="paywall-title"
@@ -419,6 +432,7 @@ export function PaywallModal({
           </p>
         )}
       </div>
-    </div>
+    </div>,
+    portalTarget
   );
 }

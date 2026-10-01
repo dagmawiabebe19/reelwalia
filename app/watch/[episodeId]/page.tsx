@@ -86,8 +86,8 @@ async function getWatchData(
     initialProgress = resolveInitialProgress(history, isBingeNavigation);
   }
 
-  const ab = await resolvePaywallAb({ userId: user?.id ?? null });
-  const freeCount = resolveViewerFreeEpisodeCount(series.free_episode_count, ab.variant);
+  await resolvePaywallAb({ userId: user?.id ?? null });
+  const freeCount = resolveViewerFreeEpisodeCount();
   const isFreeEpisode = isEpisodeFree(episode.episode_number, freeCount);
 
   let guestSessionUnlock = false;

@@ -14,12 +14,12 @@ export const PAYWALL_AB_COOKIE = "rw_paywall_ab";
 /**
  * Flip `enabled` to stop assigning NEW visitors. Existing buckets stay sticky.
  * `weightA` / `weightB` are shares for Groups A and B; Group C gets the remainder.
- * Default 1/3 each.
+ * Test concluded — all new visitors go to Group C (paywall after episode 3).
  */
 export const PAYWALL_AB_CONFIG = {
   enabled: true,
-  weightA: 1 / 3,
-  weightB: 1 / 3,
+  weightA: 0,
+  weightB: 0,
 } as const;
 
 export const VARIANT_FREE_EPISODE_COUNT: Record<PaywallVariant, number> = {
