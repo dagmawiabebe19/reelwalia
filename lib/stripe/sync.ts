@@ -84,4 +84,15 @@ export async function deactivateSubscription(userId: string) {
       current_period_end: null,
     })
     .eq("id", userId);
+
+  // Keep the subscriptions mirror honest; never touch Chapa passes.
+  const { error } = await admin
+    .from("subscriptions")
+    .update({ status: "canceled" })
+    .eq("user_id", userId)
+    .not("stripe_subscription_id", "is", null)
+    .in("status", ["active", "trialing", "past_due"]);
+  if (error) {
+    console.warn("[stripe] could not mark subscriptions row canceled:", error.message);
+  }
 }

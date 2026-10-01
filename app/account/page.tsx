@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { ChapaRenewButtons } from "@/components/account/ChapaRenewButtons";
 import { ManageSubscriptionButton } from "@/components/account/ManageSubscriptionButton";
 import { Footer } from "@/components/layout/Footer";
 import { TopNav } from "@/components/layout/TopNav";
 import { Card } from "@/components/ui/Card";
 import { signOut } from "@/app/account/actions";
-import { hasActiveSubscription } from "@/lib/access";
+import { getViewerAccess } from "@/lib/payments/access";
 import { createClient } from "@/lib/supabase/server";
 
 interface AccountPageProps {
@@ -42,7 +43,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
     user.email?.split("@")[0] ??
     "Viewer";
 
-  const isActive = hasActiveSubscription(profile);
+  const access = await getViewerAccess(user.id);
+  const isActive = access.stripeActive;
+  const chapaEnd = access.chapa.periodEnd ? new Date(access.chapa.periodEnd) : null;
+  const formatDate = (d: Date) =>
+    d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   const justSubscribed = searchParams.subscribed === "true";
 
   return (
@@ -100,12 +105,33 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
             </p>
           )}
           {isActive && <ManageSubscriptionButton />}
-          {!isActive && (
+          {!isActive && !access.chapa.active && !chapaEnd && (
             <p className="mt-4 text-xs text-gray-500">
               Subscribe from any locked episode to unlock the full catalog.
             </p>
           )}
         </Card>
+
+        {(access.chapa.active || chapaEnd) && (
+          <Card className="mt-4 p-4 sm:p-6">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-400">
+              Telebirr pass
+            </h2>
+            {access.chapa.active && chapaEnd ? (
+              <p className="mt-2">Active until {formatDate(chapaEnd)}</p>
+            ) : (
+              <p className="mt-2">
+                Ended{chapaEnd ? ` on ${formatDate(chapaEnd)}` : ""}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">
+              Telebirr passes don&apos;t renew automatically. Buying again adds time to your pass.
+            </p>
+            <ChapaRenewButtons
+              label={access.chapa.active ? "Extend with Telebirr" : "Renew with Telebirr"}
+            />
+          </Card>
+        )}
 
         <Card className="mt-4 p-4 sm:p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-400">

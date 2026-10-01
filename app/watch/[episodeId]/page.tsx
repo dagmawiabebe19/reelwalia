@@ -9,7 +9,9 @@ import { WatchPostCheckout } from "@/components/watch/WatchPostCheckout";
 import { WatchSeriesInfo } from "@/components/watch/WatchSeriesInfo";
 import { PaywallOpenProvider } from "@/components/watch/PaywallOpenContext";
 import { MeetTheCharacters } from "@/components/chat/MeetTheCharacters";
-import { canWatchEpisode, hasActiveSubscription, isEpisodeFree, resolveViewerFreeEpisodeCount } from "@/lib/access";
+import { canWatchEpisode, isEpisodeFree, resolveViewerFreeEpisodeCount } from "@/lib/access";
+import { getViewerAccess } from "@/lib/payments/access";
+import { resolveDefaultPaymentProvider } from "@/lib/payments/default-provider";
 import { listActiveCharactersForSeries } from "@/lib/chat/server";
 import { getSignedCaptionTracksForEpisode } from "@/lib/captions/server";
 import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
@@ -65,18 +67,13 @@ async function getWatchData(
     data: { user },
   } = await supabase.auth.getUser();
 
-  let profile = null;
   let initialProgress = 0;
   const isBingeNavigation = searchParams.autoplay === "true";
 
-  if (user) {
-    const { data: p } = await supabase
-      .from("profiles")
-      .select("subscription_status")
-      .eq("id", user.id)
-      .maybeSingle();
-    profile = p;
+  const access = await getViewerAccess(user?.id ?? null);
+  const hasAccess = access.active;
 
+  if (user) {
     const { data: history } = await supabase
       .from("watch_history")
       .select("progress_seconds, completed")
@@ -99,8 +96,8 @@ async function getWatchData(
   const unlocked =
     isFreeEpisode ||
     guestSessionUnlock ||
-    hasActiveSubscription(profile);
-  const isSubscribed = hasActiveSubscription(profile) || guestSessionUnlock;
+    hasAccess;
+  const isSubscribed = hasAccess || guestSessionUnlock;
   // Paywall only for premium episodes without access — never gate free content
   const locked = !isFreeEpisode && !unlocked;
 
@@ -124,13 +121,12 @@ async function getWatchData(
     thumbnail_url: ep.thumbnail_url,
     display_view_count: ep.display_view_count,
     view_count: ep.view_count,
-    locked: !canWatchEpisode(ep.episode_number, freeCount, profile),
+    locked: !canWatchEpisode(ep.episode_number, freeCount, isSubscribed),
   }));
 
   // Feed props: never send video_url for locked episodes
   const feedEpisodes = (allEpisodes ?? []).map((ep) => {
-    const canWatch =
-      isSubscribed || canWatchEpisode(ep.episode_number, freeCount, profile);
+    const canWatch = canWatchEpisode(ep.episode_number, freeCount, isSubscribed);
     return {
       id: ep.id,
       episodeNumber: ep.episode_number,
@@ -149,7 +145,7 @@ async function getWatchData(
         title: nextEp.title,
         description: nextEp.description,
         thumbnailUrl: nextEp.thumbnail_url,
-        locked: !canWatchEpisode(nextEp.episode_number, freeCount, profile),
+        locked: !canWatchEpisode(nextEp.episode_number, freeCount, isSubscribed),
       }
     : null;
 
@@ -182,6 +178,7 @@ async function getWatchData(
     captionTracks,
     characters,
     catalogPosters,
+    defaultPaymentProvider: resolveDefaultPaymentProvider(),
   };
 }
 
@@ -210,6 +207,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
     captionTracks,
     characters,
     catalogPosters,
+    defaultPaymentProvider,
   } = data;
 
   const seriesOrientation = normalizeSeriesOrientation(series.orientation);
@@ -229,7 +227,10 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
 
   if (seriesOrientation === "landscape") {
     return (
-      <PaywallOpenProvider catalogPosters={catalogPosters}>
+      <PaywallOpenProvider
+        catalogPosters={catalogPosters}
+        defaultPaymentProvider={defaultPaymentProvider}
+      >
         <div
           className={`min-h-screen overflow-x-hidden bg-black ${
             !isSubscribed ? "pb-28 lg:pb-0" : ""
@@ -344,7 +345,10 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
   }
 
   return (
-    <PaywallOpenProvider catalogPosters={catalogPosters}>
+    <PaywallOpenProvider
+        catalogPosters={catalogPosters}
+        defaultPaymentProvider={defaultPaymentProvider}
+      >
       <div
         className="min-h-screen overflow-x-hidden bg-black max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:overflow-hidden md:h-auto md:overflow-x-hidden"
       >

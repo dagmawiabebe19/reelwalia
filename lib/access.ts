@@ -30,10 +30,11 @@ export function hasActiveSubscription(profile: Pick<Profile, "subscription_statu
   );
 }
 
+/** `hasAccess` must come from `getViewerAccess` / `hasActiveAccess` (lib/payments/access). */
 export function canWatchEpisode(
   episodeNumber: number,
   freeEpisodeCount: number,
-  profile: Pick<Profile, "subscription_status"> | null
+  hasAccess: boolean
 ): boolean {
-  return isEpisodeFree(episodeNumber, freeEpisodeCount) || hasActiveSubscription(profile);
+  return isEpisodeFree(episodeNumber, freeEpisodeCount) || hasAccess;
 }

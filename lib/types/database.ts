@@ -9,7 +9,8 @@ export type SubscriptionStatus =
   | "active"
   | "past_due"
   | "canceled"
-  | "trialing";
+  | "trialing"
+  | "expired";
 export type SubscriptionPlan =
   | "free"
   | "monthly"

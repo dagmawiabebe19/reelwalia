@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
-import { hasActiveSubscription } from "@/lib/access";
+import { hasActiveAccess } from "@/lib/payments/access";
 import { parseBubbles } from "@/lib/chat/bubbles";
 import {
   CHAT_LIMITS,
@@ -90,13 +90,8 @@ export async function POST(request: Request) {
     }
 
     // Resolve tiered daily cap (premium hook for later)
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("subscription_status")
-      .eq("id", user.id)
-      .maybeSingle();
     const dailyCap = getDailyCapForUser({
-      isPremium: hasActiveSubscription(profile),
+      isPremium: await hasActiveAccess(user.id),
     });
 
     // Layer 1–3: DB-backed quota (replaces in-memory checkRateLimit for chat).

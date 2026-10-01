@@ -17,6 +17,7 @@ import {
   PAYWALL_CATALOG_HEADING,
   PAYWALL_OFFER_LINE,
   PAYWALL_OFFER_URGENCY,
+  PAYWALL_PROVIDER_HEADING,
   paywallCopyForVariant,
   publishedPaywallTestimonials,
   type PaywallCopyVariant,
@@ -31,6 +32,12 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
 import { usePaywallOpen } from "@/components/watch/PaywallOpenContext";
 import type { PaywallCatalogPoster } from "@/lib/paywall-catalog";
+import {
+  formatEtb,
+  getChapaPlan,
+  type PaymentProvider,
+} from "@/lib/payments/pricing";
+import { startChapaCheckout } from "@/lib/payments/chapa/start-checkout";
 
 interface PaywallModalProps {
   open: boolean;
@@ -50,34 +57,59 @@ function BenefitIcon({ id }: { id: string }) {
   const className = "h-5 w-5 shrink-0 text-obsidian-red";
   if (id === "unlimited") {
     return (
-      <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        className={className}
+        fill="currentColor"
+        aria-hidden
+      >
         <path d="M4 6a2 2 0 012-2h12a2 2 0 012 2v9a2 2 0 01-2 2h-5l-3 3v-3H6a2 2 0 01-2-2V6zm3 3v2h10V9H7z" />
       </svg>
     );
   }
   if (id === "devices") {
     return (
-      <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        className={className}
+        fill="currentColor"
+        aria-hidden
+      >
         <path d="M4 5a2 2 0 012-2h8a2 2 0 012 2v10H4V5zm14 2h2a2 2 0 012 2v8a2 2 0 01-2 2h-6v-2h6V9h-2V7z" />
       </svg>
     );
   }
   if (id === "hd") {
     return (
-      <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        className={className}
+        fill="currentColor"
+        aria-hidden
+      >
         <path d="M3 6a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-5v2h2v2H8v-2h2v-2H5a2 2 0 01-2-2V6zm4 3v4h2V9H7zm4 0v4h1.5a1.5 1.5 0 000-3H13V9h-2zm2 2.5h.5a.5.5 0 000-1H13v1z" />
       </svg>
     );
   }
   if (id === "no-ads") {
     return (
-      <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        className={className}
+        fill="currentColor"
+        aria-hidden
+      >
         <path d="M3.28 2.22L2.22 3.28l4.4 4.4L3 12v2h3.5L12 20v-5.59l6.72 6.72 1.06-1.06L3.28 2.22zM14 8.83V4l-3.17 3.17L14 8.83zM16.5 12.67L19 10h2v4h-2l-.5-.4-2-1.6z" />
       </svg>
     );
   }
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="currentColor"
+      aria-hidden
+    >
       <path d="M12 3l2.1 6.4H21l-5.4 3.9 2.1 6.4L12 16.8 6.3 19.7l2.1-6.4L3 9.4h6.9L12 3z" />
     </svg>
   );
@@ -96,13 +128,19 @@ export function PaywallModal({
   const [selected, setSelected] = useState<StripePlanKey>(DEFAULT_PLAN);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [catalogPosters, setCatalogPosters] = useState<PaywallCatalogPoster[]>([]);
+  const [catalogPosters, setCatalogPosters] = useState<PaywallCatalogPoster[]>(
+    [],
+  );
   const paywallViewedRef = useRef(false);
   const checkoutStartedRef = useRef(false);
   const catalogFetchedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-  const { catalogPosters: contextPosters } = usePaywallOpen();
+  const { catalogPosters: contextPosters, defaultPaymentProvider } =
+    usePaywallOpen();
+  const [provider, setProvider] = useState<PaymentProvider>(
+    defaultPaymentProvider,
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -137,7 +175,13 @@ export function PaywallModal({
   }, [open, onClose]);
 
   useEffect(() => {
-    if (!open || paywallViewedRef.current || !trigger || !episodeId || !seriesSlug) {
+    if (
+      !open ||
+      paywallViewedRef.current ||
+      !trigger ||
+      !episodeId ||
+      !seriesSlug
+    ) {
       return;
     }
     paywallViewedRef.current = true;
@@ -193,6 +237,35 @@ export function PaywallModal({
     setError(null);
 
     const plan = getPlanDisplay(selected);
+
+    if (provider === "chapa") {
+      if (!isAuthenticated) {
+        const here = `${window.location.pathname}${window.location.search}`;
+        window.location.href = `/auth/sign-in?redirect=${encodeURIComponent(here)}`;
+        return;
+      }
+      trackSubscriptionCheckoutStarted({
+        plan: selected,
+        price_amount: getChapaPlan(selected).etbAmount,
+        currency: "etb",
+        episode_id: episodeId,
+      });
+      const result = await startChapaCheckout(selected, episodeId);
+      if (result.ok) {
+        window.location.href = result.url;
+        return;
+      }
+      checkoutStartedRef.current = false;
+      if (result.authRequired) {
+        const here = `${window.location.pathname}${window.location.search}`;
+        window.location.href = `/auth/sign-in?redirect=${encodeURIComponent(here)}`;
+        return;
+      }
+      setError(result.message);
+      setLoading(false);
+      return;
+    }
+
     trackSubscriptionCheckoutStarted({
       plan: selected,
       price_amount: plan.amount,
@@ -249,7 +322,10 @@ export function PaywallModal({
           </button>
         </div>
 
-        <h2 id="paywall-title" className="font-display text-[1.65rem] font-black leading-[1.08] sm:text-2xl">
+        <h2
+          id="paywall-title"
+          className="font-display text-[1.65rem] font-black leading-[1.08] sm:text-2xl"
+        >
           <span className="bg-gradient-to-b from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent [text-shadow:0_2px_24px_rgba(255,255,255,0.12)]">
             {headline}
           </span>
@@ -262,10 +338,64 @@ export function PaywallModal({
         </p>
         <p className="mt-2.5 text-sm font-medium text-zinc-300">{subhead}</p>
 
-        <div className="mt-5 space-y-3">
+        <div className="mt-5">
+          <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+            {PAYWALL_PROVIDER_HEADING}
+          </p>
+          <div
+            className="mt-2 grid grid-cols-2 gap-2"
+            role="radiogroup"
+            aria-label="Payment method"
+          >
+            {(
+              [
+                {
+                  id: "stripe",
+                  title: "Card / Apple Pay",
+                  caption: "International · USD",
+                },
+                {
+                  id: "chapa",
+                  title: "Telebirr",
+                  caption: "Ethiopian payments · ETB",
+                },
+              ] as const
+            ).map((opt) => {
+              const active = provider === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => {
+                    setProvider(opt.id);
+                    setError(null);
+                  }}
+                  className={`min-h-[60px] rounded-xl border px-3 py-2.5 text-left transition ${
+                    active
+                      ? "border-obsidian-red bg-obsidian-red/10 ring-2 ring-obsidian-red/80"
+                      : "border-white/[0.12] hover:border-white/25"
+                  }`}
+                >
+                  <span className="block text-sm font-extrabold text-white">
+                    {opt.title}
+                  </span>
+                  <span className="mt-0.5 block text-[11px] font-medium text-zinc-400">
+                    {opt.caption}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-3">
           {STRIPE_PLANS.map((p) => {
             const isSelected = selected === p.key;
-            const badge = savingsBadge(p);
+            const isChapa = provider === "chapa";
+            const chapaPlan = getChapaPlan(p.key);
+            const badge = isChapa ? null : savingsBadge(p);
             const isHighlighted = isSelected || p.mostPopular;
             const { dollars, cents } = splitUsdParts(p.amount);
 
@@ -295,7 +425,9 @@ export function PaywallModal({
                         : "border-zinc-500"
                     }`}
                   >
-                    {isSelected && <span className="h-2 w-2 rounded-full bg-white" />}
+                    {isSelected && (
+                      <span className="h-2 w-2 rounded-full bg-white" />
+                    )}
                   </span>
 
                   <div className="min-w-0 flex-1 pr-2">
@@ -309,28 +441,47 @@ export function PaywallModal({
                     )}
                   </div>
 
-                  <div className="shrink-0 text-right">
-                    <p
-                      className="flex items-start justify-end text-white"
-                      aria-label={`${formatUsd(p.amount)}${p.priceSuffix}`}
-                    >
-                      <span className="mt-[0.35rem] font-display text-lg font-extrabold leading-none">
-                        $
-                      </span>
-                      <span className="font-display text-[2rem] font-extrabold leading-none tracking-wide">
-                        {dollars}
-                      </span>
-                      <span className="mt-[0.2rem] font-display text-sm font-bold leading-none text-white/75">
-                        .{cents}
-                      </span>
-                    </p>
-                    <p className="mt-1.5 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                      {p.priceSuffix.replace(/^\//, "")}
-                    </p>
-                    <p className="mt-0.5 whitespace-nowrap text-[11px] tabular-nums text-zinc-500">
-                      {formatDailyPrice(p)}
-                    </p>
-                  </div>
+                  {isChapa ? (
+                    <div className="shrink-0 text-right">
+                      <p
+                        className="flex items-baseline justify-end gap-1 text-white"
+                        aria-label={`${formatEtb(chapaPlan.etbAmount)} for ${chapaPlan.periodDays} days`}
+                      >
+                        <span className="font-display text-[2rem] font-extrabold leading-none tracking-wide">
+                          {chapaPlan.etbAmount.toLocaleString("en-US")}
+                        </span>
+                        <span className="font-display text-sm font-bold leading-none text-white/75">
+                          ETB
+                        </span>
+                      </p>
+                      <p className="mt-1.5 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                        {chapaPlan.periodDays} days access
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="shrink-0 text-right">
+                      <p
+                        className="flex items-start justify-end text-white"
+                        aria-label={`${formatUsd(p.amount)}${p.priceSuffix}`}
+                      >
+                        <span className="mt-[0.35rem] font-display text-lg font-extrabold leading-none">
+                          $
+                        </span>
+                        <span className="font-display text-[2rem] font-extrabold leading-none tracking-wide">
+                          {dollars}
+                        </span>
+                        <span className="mt-[0.2rem] font-display text-sm font-bold leading-none text-white/75">
+                          .{cents}
+                        </span>
+                      </p>
+                      <p className="mt-1.5 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                        {p.priceSuffix.replace(/^\//, "")}
+                      </p>
+                      <p className="mt-0.5 whitespace-nowrap text-[11px] tabular-nums text-zinc-500">
+                        {formatDailyPrice(p)}
+                      </p>
+                    </div>
+                  )}
                 </button>
               </div>
             );
@@ -343,7 +494,10 @@ export function PaywallModal({
           </p>
           <ul className="space-y-2.5">
             {PAYWALL_INCLUDED.map((row) => (
-              <li key={row.id} className="flex items-center gap-3 text-sm text-zinc-200">
+              <li
+                key={row.id}
+                className="flex items-center gap-3 text-sm text-zinc-200"
+              >
                 <BenefitIcon id={row.id} />
                 <span>{row.label}</span>
               </li>
@@ -388,12 +542,16 @@ export function PaywallModal({
               </p>
             )}
             {testimonials.length > 0 && (
-              <ul className={`space-y-3 ${PAYWALL_SOCIAL_PROOF.rating != null ? "mt-3" : ""}`}>
+              <ul
+                className={`space-y-3 ${PAYWALL_SOCIAL_PROOF.rating != null ? "mt-3" : ""}`}
+              >
                 {testimonials.map((t) => (
                   <li key={t.quote} className="text-sm text-zinc-300">
                     <p>&ldquo;{t.quote}&rdquo;</p>
                     {t.attribution.trim() && (
-                      <p className="mt-1 text-xs text-zinc-500">{t.attribution}</p>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        {t.attribution}
+                      </p>
                     )}
                   </li>
                 ))}
@@ -412,7 +570,10 @@ export function PaywallModal({
         >
           {loading ? (
             <>
-              <LoadingSpinner className="h-5 w-5" label="Redirecting to checkout" />
+              <LoadingSpinner
+                className="h-5 w-5"
+                label="Redirecting to checkout"
+              />
               Redirecting…
             </>
           ) : (
@@ -420,19 +581,42 @@ export function PaywallModal({
           )}
         </button>
 
-        <p className="mt-3 text-center text-sm leading-relaxed text-zinc-300">
-          Auto-renews at {formatUsd(selectedPlan.amount)}
-          {selectedPlan.priceSuffix} ({selectedPlan.renewalLabel.toLowerCase()}). Cancel anytime in
-          your account.
-        </p>
+        {provider === "chapa" ? (
+          <>
+            <p className="mt-3 text-center text-sm leading-relaxed text-zinc-300">
+              One-time payment of {formatEtb(getChapaPlan(selected).etbAmount)}{" "}
+              for {getChapaPlan(selected).periodDays} days. No auto-renewal —
+              top up anytime from your account.
+            </p>
+            <p className="mt-2 text-center text-xs text-zinc-500">
+              Pay with Telebirr, CBE Birr, M-Pesa or Ethiopian bank cards via
+              Chapa.
+            </p>
+            {!isAuthenticated && (
+              <p className="mt-2 text-center text-sm text-zinc-400">
+                You&apos;ll sign in first so your pass is saved to your account.
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="mt-3 text-center text-sm leading-relaxed text-zinc-300">
+              Auto-renews at {formatUsd(selectedPlan.amount)}
+              {selectedPlan.priceSuffix} (
+              {selectedPlan.renewalLabel.toLowerCase()}). Cancel anytime in your
+              account.
+            </p>
 
-        {!isAuthenticated && (
-          <p className="mt-2 text-center text-sm text-zinc-400">
-            Enter your email in Stripe Checkout — we&apos;ll create your account automatically.
-          </p>
+            {!isAuthenticated && (
+              <p className="mt-2 text-center text-sm text-zinc-400">
+                Enter your email in Stripe Checkout — we&apos;ll create your
+                account automatically.
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>,
-    portalTarget
+    portalTarget,
   );
 }

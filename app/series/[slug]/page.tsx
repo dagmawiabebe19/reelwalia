@@ -9,7 +9,9 @@ import { WatchlistButton } from "@/components/series/WatchlistButton";
 import { SeriesComingSoonView } from "@/components/series/SeriesComingSoonView";
 import { Card } from "@/components/ui/Card";
 import { ViewCount } from "@/components/ui/ViewCount";
-import { canWatchEpisode, hasActiveSubscription, resolveViewerFreeEpisodeCount } from "@/lib/access";
+import { canWatchEpisode, resolveViewerFreeEpisodeCount } from "@/lib/access";
+import { getViewerAccess } from "@/lib/payments/access";
+import { resolveDefaultPaymentProvider } from "@/lib/payments/default-provider";
 import {
   getHighestUnlockedEpisode,
   listActiveCharactersForSeries,
@@ -70,18 +72,12 @@ async function getSeries(slug: string) {
     .eq("series_id", series.id)
     .order("episode_number", { ascending: true });
 
-  let profile = null;
   // unlocked_through_episode = max(watched_episode, 1) — EP1 floor for series landing
   let chatUnlockedEpisode = 1;
 
-  if (user) {
-    const { data: p } = await supabase
-      .from("profiles")
-      .select("subscription_status")
-      .eq("id", user.id)
-      .maybeSingle();
-    profile = p;
+  const hasAccess = (await getViewerAccess(user?.id ?? null)).active;
 
+  if (user) {
     chatUnlockedEpisode = await getHighestUnlockedEpisode(
       supabase,
       user.id,
@@ -95,7 +91,7 @@ async function getSeries(slug: string) {
   const freeCount = resolveViewerFreeEpisodeCount();
   const episodesWithLock = (episodes ?? []).map((ep) => ({
     ...ep,
-    locked: !canWatchEpisode(ep.episode_number, freeCount, profile),
+    locked: !canWatchEpisode(ep.episode_number, freeCount, hasAccess),
     is_free: ep.episode_number <= freeCount,
   }));
 
@@ -105,7 +101,7 @@ async function getSeries(slug: string) {
     episodes: episodesWithLock,
     inWatchlist,
     isAuthenticated: !!user,
-    isSubscribed: hasActiveSubscription(profile),
+    isSubscribed: hasAccess,
     characters,
     chatUnlockedEpisode,
   };
@@ -147,7 +143,10 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
     : "aspect-[9/16]";
 
   return (
-    <PaywallOpenProvider catalogPosters={catalogPosters}>
+    <PaywallOpenProvider
+      catalogPosters={catalogPosters}
+      defaultPaymentProvider={resolveDefaultPaymentProvider()}
+    >
       <div className="flex min-h-screen flex-col">
       <TopNav />
       <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden px-4 py-8 sm:px-6">

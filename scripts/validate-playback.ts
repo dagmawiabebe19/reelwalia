@@ -98,15 +98,15 @@ assert(isEpisodeFree(1, freeCount), "Episode 1 is free");
 assert(isEpisodeFree(2, freeCount), "Episode 2 is free");
 assert(!isEpisodeFree(3, freeCount), "Episode 3 is locked");
 assert(
-  canWatchEpisode(3, freeCount, { subscription_status: "active" }),
+  canWatchEpisode(3, freeCount, true),
   "Subscribers can watch episode 3"
 );
 assert(
-  !canWatchEpisode(3, freeCount, { subscription_status: "none" }),
+  !canWatchEpisode(3, freeCount, false),
   "Guests cannot watch episode 3"
 );
 assert(
-  !canWatchEpisode(3, freeCount, null),
+  !canWatchEpisode(3, freeCount, false),
   "Logged-out users cannot watch episode 3"
 );
 
@@ -114,7 +114,7 @@ assert(
 const ep2Next = getNextEpisode(episodes, "ep2");
 assert(ep2Next?.id === "ep3", "After ep2 binge targets ep3");
 assert(
-  !canWatchEpisode(ep2Next!.episode_number, freeCount, null),
+  !canWatchEpisode(ep2Next!.episode_number, freeCount, false),
   "Ep3 requires subscription after free tier"
 );
 
