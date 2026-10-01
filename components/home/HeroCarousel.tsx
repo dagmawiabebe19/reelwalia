@@ -17,22 +17,27 @@ type HeroItem = Pick<
 const SLIDE_MS = 6000;
 const PREVIEW_SLIDE_MS = 20000;
 const PREVIEW_START_DELAY_MS = 800;
-const DESKTOP_QUERY = "(min-width: 1024px)";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
-function useDesktopPreviewAllowed(): boolean {
+/** Soft-edge mask so vertical clips melt into the banner instead of sitting in a hard box. */
+const PORTRAIT_MASK =
+  "linear-gradient(to right, transparent 0%, #000 24%, #000 76%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 12%, #000 82%, transparent 100%)";
+
+/** Darkens the banner around the vertical clip so it reads as one composition. */
+const PORTRAIT_AMBIENT =
+  "radial-gradient(ellipse 38% 85% at 76% 50%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.28) 55%, transparent 100%)";
+
+function usePreviewAllowed(): boolean {
   const [allowed, setAllowed] = useState(false);
   useEffect(() => {
-    const desktop = window.matchMedia(DESKTOP_QUERY);
     const reduced = window.matchMedia(REDUCED_MOTION_QUERY);
-    const sync = () => setAllowed(desktop.matches && !reduced.matches);
+    const saveData =
+      (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData ===
+      true;
+    const sync = () => setAllowed(!reduced.matches && !saveData);
     sync();
-    desktop.addEventListener("change", sync);
     reduced.addEventListener("change", sync);
-    return () => {
-      desktop.removeEventListener("change", sync);
-      reduced.removeEventListener("change", sync);
-    };
+    return () => reduced.removeEventListener("change", sync);
   }, []);
   return allowed;
 }
@@ -87,26 +92,53 @@ function HeroPreviewVideo({
   }, [muted]);
 
   return (
-    <video
-      ref={videoRef}
-      muted={muted}
-      playsInline
-      preload="none"
-      aria-hidden
-      onLoadedMetadata={(e) => {
-        const v = e.currentTarget;
-        setPortrait(v.videoHeight > v.videoWidth);
-      }}
-      onPlaying={() => {
-        setVisible(true);
-        onPlaying();
-      }}
-      onEnded={onEnded}
-      onError={() => setVisible(false)}
-      className={`absolute inset-0 h-full w-full transition-opacity duration-700 ${
-        portrait ? "object-contain object-[78%_50%]" : "object-cover object-center"
-      } ${visible ? "opacity-100" : "opacity-0"}`}
-    />
+    <>
+      {portrait && (
+        <div
+          className={`pointer-events-none absolute inset-0 transition-opacity duration-700 ${
+            visible ? "opacity-100" : "opacity-0"
+          }`}
+          style={{ background: PORTRAIT_AMBIENT }}
+          aria-hidden
+        />
+      )}
+      <div
+        className={`pointer-events-none absolute transition-opacity duration-700 ${
+          portrait
+            ? "inset-y-0 right-[12%] aspect-[9/16] sm:right-[10%] lg:right-[12%]"
+            : "inset-0"
+        } ${visible ? "opacity-100" : "opacity-0"}`}
+        style={
+          portrait
+            ? {
+                maskImage: PORTRAIT_MASK,
+                WebkitMaskImage: PORTRAIT_MASK,
+                maskComposite: "intersect",
+                WebkitMaskComposite: "source-in",
+              }
+            : undefined
+        }
+      >
+        <video
+          ref={videoRef}
+          muted={muted}
+          playsInline
+          preload="none"
+          aria-hidden
+          onLoadedMetadata={(e) => {
+            const v = e.currentTarget;
+            setPortrait(v.videoHeight > v.videoWidth);
+          }}
+          onPlaying={() => {
+            setVisible(true);
+            onPlaying();
+          }}
+          onEnded={onEnded}
+          onError={() => setVisible(false)}
+          className="h-full w-full object-cover object-center"
+        />
+      </div>
+    </>
   );
 }
 
@@ -147,7 +179,7 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
-  const previewAllowed = useDesktopPreviewAllowed();
+  const previewAllowed = usePreviewAllowed();
   const count = items.length;
 
   const goTo = useCallback(
