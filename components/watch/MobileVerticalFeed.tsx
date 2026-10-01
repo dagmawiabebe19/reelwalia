@@ -13,6 +13,7 @@ import { WatchPaywall } from "@/components/watch/WatchPaywall";
 import { fsLog, isMobileViewport } from "@/lib/landscape-rotate-fullscreen";
 import { markBingeContinuation, watchEpisodeHref } from "@/lib/watch-playback";
 import type { SeriesOrientation } from "@/lib/types/database";
+import { signedUrlExpiresSoon } from "@/lib/video/signed-url";
 
 export type FeedEpisode = {
   id: string;
@@ -51,6 +52,7 @@ function softReplaceWatchUrl(episodeId: string) {
 /** Prefetch next episode metadata without painting any video pixels. */
 function NextEpisodePreload({ src }: { src: string }) {
   useEffect(() => {
+    if (signedUrlExpiresSoon(src)) return;
     const video = document.createElement("video");
     video.preload = "metadata";
     video.muted = true;

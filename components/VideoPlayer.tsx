@@ -25,6 +25,8 @@ import {
 } from "@/components/watch/FeedSwipeHint";
 import { FeedEpisodeSheet } from "@/components/watch/FeedEpisodeSheet";
 import type { Series } from "@/lib/types/database";
+import { signedUrlExpiresAt, signedUrlExpiresSoon } from "@/lib/video/signed-url";
+import { fetchFreshStreamUrl } from "@/lib/video/stream-client";
 import {
   consumeUnmutedIntent,
   markBingeContinuation,
@@ -621,19 +623,104 @@ export function VideoPlayer({
     bumpControls(false);
   }, [bumpControls]);
 
+  // Signed playback URLs are short-lived; the loaded URL can differ from `src`.
+  const currentUrlRef = useRef(src);
+  const episodeIdRef = useRef(episodeId);
+  episodeIdRef.current = episodeId;
+  const refreshingRef = useRef(false);
+  const lastRefreshAtRef = useRef(0);
+  const recoverStreamRef = useRef<() => Promise<boolean>>(async () => false);
+
+  const attachUrl = useCallback((url: string) => {
+    const video = videoRef.current;
+    if (!video) return;
+    currentUrlRef.current = url;
+
+    const canNativeHls =
+      video.canPlayType("application/vnd.apple.mpegurl") !== "";
+
+    if (canNativeHls) {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+      video.src = url;
+      video.load();
+    } else if (Hls.isSupported()) {
+      if (hlsRef.current) {
+        hlsRef.current.loadSource(url);
+      } else {
+        const hls = new Hls({ enableWorker: true });
+        hlsRef.current = hls;
+        hls.loadSource(url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          if (!data.fatal) return;
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+            void recoverStreamRef.current().then((recovered) => {
+              if (!recovered) {
+                console.error("HLS fatal error:", data);
+                setLoadError(true);
+              }
+            });
+            return;
+          }
+          console.error("HLS fatal error:", data);
+          setLoadError(true);
+        });
+      }
+    } else {
+      video.src = url;
+      video.load();
+    }
+  }, []);
+
+  /** Expired signed URL mid-playback → fetch a fresh one and resume where we were. */
+  recoverStreamRef.current = async () => {
+    const video = videoRef.current;
+    const failedUrl = currentUrlRef.current;
+    if (!video || refreshingRef.current) return false;
+    if (signedUrlExpiresAt(failedUrl) == null) return false;
+    if (Date.now() - lastRefreshAtRef.current < 15_000) return false;
+
+    refreshingRef.current = true;
+    lastRefreshAtRef.current = Date.now();
+    const resumeAt = video.currentTime;
+    const resume = !video.paused;
+    const fresh = await fetchFreshStreamUrl(episodeIdRef.current);
+    refreshingRef.current = false;
+    if (!fresh || videoRef.current !== video || currentUrlRef.current !== failedUrl) {
+      return false;
+    }
+
+    if (resumeAt > 0) {
+      video.addEventListener(
+        "loadedmetadata",
+        () => {
+          video.currentTime = resumeAt;
+        },
+        { once: true }
+      );
+    }
+    attachUrl(fresh);
+    if (resume) void video.play().catch(() => undefined);
+    return true;
+  };
+
   const retryLoad = useCallback(() => {
     setLoadError(false);
     setIsInitialLoad(true);
     setIsBuffering(true);
     const video = videoRef.current;
     if (!video) return;
-    video.load();
-    if (hlsRef.current) {
-      hlsRef.current.loadSource(src);
-    } else {
-      video.src = src;
+    const url = currentUrlRef.current;
+    if (signedUrlExpiresSoon(url, 30)) {
+      void fetchFreshStreamUrl(episodeIdRef.current).then((fresh) => attachUrl(fresh ?? url));
+      return;
     }
-  }, [src]);
+    video.load();
+    attachUrl(url);
+  }, [attachUrl]);
 
   useEffect(() => {
     setLoadError(false);
@@ -641,44 +728,34 @@ export function VideoPlayer({
     setIsBuffering(true);
     const video = videoRef.current;
     if (!video) return;
+    let cancelled = false;
 
-    const canNativeHls =
-      video.canPlayType("application/vnd.apple.mpegurl") !== "";
-
-    const onVideoError = () => setLoadError(true);
-    video.addEventListener("error", onVideoError);
-
-    if (canNativeHls) {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-      video.src = src;
+    if (signedUrlExpiresSoon(src)) {
+      // Server-signed URL went stale (e.g. long binge in the feed). Clear the old
+      // episode first so autoplay waits for the fresh source's metadata.
+      hlsRef.current?.destroy();
+      hlsRef.current = null;
+      video.removeAttribute("src");
       video.load();
-    } else if (Hls.isSupported()) {
-      if (hlsRef.current) {
-        hlsRef.current.loadSource(src);
-      } else {
-        const hls = new Hls({ enableWorker: true });
-        hlsRef.current = hls;
-        hls.loadSource(src);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.ERROR, (_, data) => {
-          if (data.fatal) {
-            console.error("HLS fatal error:", data);
-            setLoadError(true);
-          }
-        });
-      }
+      void fetchFreshStreamUrl(episodeIdRef.current).then((fresh) => {
+        if (!cancelled) attachUrl(fresh ?? src);
+      });
     } else {
-      video.src = src;
-      video.load();
+      attachUrl(src);
     }
 
+    const onVideoError = () => {
+      void recoverStreamRef.current().then((recovered) => {
+        if (!recovered) setLoadError(true);
+      });
+    };
+    video.addEventListener("error", onVideoError);
+
     return () => {
+      cancelled = true;
       video.removeEventListener("error", onVideoError);
     };
-  }, [src]);
+  }, [src, attachUrl]);
 
   // Destroy HLS only on unmount (src swaps reuse the instance)
   useEffect(() => {

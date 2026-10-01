@@ -12,6 +12,7 @@ import { ViewCount } from "@/components/ui/ViewCount";
 import { canWatchEpisode, resolveViewerFreeEpisodeCount } from "@/lib/access";
 import { getViewerAccess } from "@/lib/payments/access";
 import { resolveDefaultPaymentProvider } from "@/lib/payments/default-provider";
+import { signThumbnailUrl } from "@/lib/video/stream-urls";
 import {
   getHighestUnlockedEpisode,
   listActiveCharactersForSeries,
@@ -91,6 +92,7 @@ async function getSeries(slug: string) {
   const freeCount = resolveViewerFreeEpisodeCount();
   const episodesWithLock = (episodes ?? []).map((ep) => ({
     ...ep,
+    thumbnail_url: signThumbnailUrl(ep.thumbnail_url),
     locked: !canWatchEpisode(ep.episode_number, freeCount, hasAccess),
     is_free: ep.episode_number <= freeCount,
   }));

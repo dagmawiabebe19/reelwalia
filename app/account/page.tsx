@@ -44,7 +44,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
     "Viewer";
 
   const access = await getViewerAccess(user.id);
-  const isActive = access.stripeActive;
+  const isActive = access.stripe.active && !access.stripe.canceledWithTimeLeft;
+  const stripeAccessUntil =
+    access.stripe.canceledWithTimeLeft && access.stripe.periodEnd
+      ? new Date(access.stripe.periodEnd)
+      : null;
   const chapaEnd = access.chapa.periodEnd ? new Date(access.chapa.periodEnd) : null;
   const formatDate = (d: Date) =>
     d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -104,8 +108,13 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
               })}
             </p>
           )}
+          {stripeAccessUntil && (
+            <p className="mt-1 text-xs text-gray-500">
+              Canceled — you keep access until {formatDate(stripeAccessUntil)}
+            </p>
+          )}
           {isActive && <ManageSubscriptionButton />}
-          {!isActive && !access.chapa.active && !chapaEnd && (
+          {!isActive && !stripeAccessUntil && !access.chapa.active && !chapaEnd && (
             <p className="mt-4 text-xs text-gray-500">
               Subscribe from any locked episode to unlock the full catalog.
             </p>
@@ -125,7 +134,10 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
               </p>
             )}
             <p className="mt-1 text-xs text-gray-500">
-              Telebirr passes don&apos;t renew automatically. Buying again adds time to your pass.
+              Telebirr passes don&apos;t renew automatically.{" "}
+              {access.chapa.active
+                ? "Buying again adds time after your current end date."
+                : "Renewing starts a new pass from today."}
             </p>
             <ChapaRenewButtons
               label={access.chapa.active ? "Extend with Telebirr" : "Renew with Telebirr"}

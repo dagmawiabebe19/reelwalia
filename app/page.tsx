@@ -9,6 +9,8 @@ import { SubtitlesPromoStrip } from "@/components/home/SubtitlesPromoStrip";
 import { filterPublishedCatalogRows } from "@/lib/coming-soon";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { isEpisodeFree, resolveViewerFreeEpisodeCount } from "@/lib/access";
+import { loadSignedStreamUrls } from "@/lib/video/stream-urls";
 
 /** Prefer EP1-safe voice lines; skip later-episode name-drops. */
 function pickPromoTeaser(
@@ -190,18 +192,29 @@ async function getCatalog() {
   if (featuredItems.length > 0) {
     const { data: episodes } = await supabase
       .from("episodes")
-      .select("id, series_id, episode_number, video_url")
+      .select("id, series_id, episode_number")
       .in(
         "series_id",
         featuredItems.map((s) => s.id)
       )
       .order("episode_number", { ascending: true });
 
-    const firstBySeries = new Map<string, { id: string; videoUrl: string | null }>();
+    const firstEpisodes = new Map<string, { id: string; episodeNumber: number }>();
     for (const ep of episodes ?? []) {
-      if (!firstBySeries.has(ep.series_id)) {
-        firstBySeries.set(ep.series_id, { id: ep.id, videoUrl: ep.video_url ?? null });
+      if (!firstEpisodes.has(ep.series_id)) {
+        firstEpisodes.set(ep.series_id, { id: ep.id, episodeNumber: ep.episode_number });
       }
+    }
+    // Preview only free episodes, as short-lived signed URLs.
+    const freeCount = resolveViewerFreeEpisodeCount();
+    const signedPreviews = await loadSignedStreamUrls(
+      Array.from(firstEpisodes.values())
+        .filter((ep) => isEpisodeFree(ep.episodeNumber, freeCount))
+        .map((ep) => ep.id)
+    );
+    const firstBySeries = new Map<string, { id: string; videoUrl: string | null }>();
+    for (const [seriesId, ep] of Array.from(firstEpisodes.entries())) {
+      firstBySeries.set(seriesId, { id: ep.id, videoUrl: signedPreviews.get(ep.id) ?? null });
     }
 
     featuredWithEpisodes = featuredItems.map((item) => {

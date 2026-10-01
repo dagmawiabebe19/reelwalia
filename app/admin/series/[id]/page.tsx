@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { signThumbnailUrl } from "@/lib/video/stream-urls";
 import { EpisodeManager } from "@/components/admin/EpisodeManager";
 import { SeriesForm } from "@/components/admin/SeriesForm";
 import { requireAdmin } from "@/lib/admin";
@@ -60,7 +61,10 @@ export default async function AdminSeriesEditPage({ params }: AdminSeriesEditPag
       <EpisodeManager
         seriesId={params.id}
         seriesTitle={series.title}
-        episodes={episodes ?? []}
+        episodes={(episodes ?? []).map((ep) => ({
+          ...ep,
+          thumbnail_url: signThumbnailUrl(ep.thumbnail_url),
+        }))}
         nextEpisodeNumber={nextEpisodeNumber}
         bunnyHealthFlags={bunnyHealthFlags}
         captionsByEpisode={captionsByEpisode}

@@ -1,6 +1,8 @@
 "use client";
 
 import Hls from "hls.js";
+import { signedUrlExpiresSoon } from "@/lib/video/signed-url";
+import { fetchFreshStreamUrl } from "@/lib/video/stream-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { WatchEpisodeLink } from "@/components/watch/WatchEpisodeLink";
@@ -44,11 +46,13 @@ function usePreviewAllowed(): boolean {
 
 function HeroPreviewVideo({
   src,
+  episodeId,
   muted,
   onPlaying,
   onEnded,
 }: {
   src: string;
+  episodeId: string | null;
   muted: boolean;
   onPlaying: () => void;
   onEnded: () => void;
@@ -63,13 +67,20 @@ function HeroPreviewVideo({
     let hls: Hls | null = null;
     let cancelled = false;
 
-    const startTimer = window.setTimeout(() => {
+    const startTimer = window.setTimeout(async () => {
       if (cancelled) return;
+      // Signed preview URLs are short-lived; refresh if the page has been open a while.
+      let url = src;
+      if (episodeId && signedUrlExpiresSoon(src, 60)) {
+        const fresh = await fetchFreshStreamUrl(episodeId);
+        if (cancelled || !fresh) return;
+        url = fresh;
+      }
       if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        video.src = src;
+        video.src = url;
       } else if (Hls.isSupported()) {
         hls = new Hls({ capLevelToPlayerSize: true, maxBufferLength: 20 });
-        hls.loadSource(src);
+        hls.loadSource(url);
         hls.attachMedia(video);
       } else {
         return;
@@ -85,7 +96,7 @@ function HeroPreviewVideo({
       video.removeAttribute("src");
       video.load();
     };
-  }, [src]);
+  }, [src, episodeId]);
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.muted = muted;
@@ -227,6 +238,7 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
           <HeroPreviewVideo
             key={active.id}
             src={active.previewVideoUrl}
+            episodeId={active.firstEpisodeId}
             muted={muted}
             onPlaying={() => setPreviewPlaying(true)}
             onEnded={() => {

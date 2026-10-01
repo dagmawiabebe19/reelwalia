@@ -24,7 +24,7 @@ export async function syncSubscriptionToDatabase(params: {
   const period = getSubscriptionPeriod(subscription);
 
   const periodStart = new Date(period.current_period_start * 1000).toISOString();
-  const periodEnd = new Date(period.current_period_end * 1000).toISOString();
+  let periodEnd = new Date(period.current_period_end * 1000).toISOString();
 
   await admin
     .from("profiles")
@@ -39,9 +39,19 @@ export async function syncSubscriptionToDatabase(params: {
 
   const { data: existing } = await admin
     .from("subscriptions")
-    .select("id")
+    .select("id, status")
     .eq("stripe_subscription_id", subscription.id)
     .maybeSingle();
+
+  // Cancelled rows keep access until current_period_end (lib/payments/access-rules).
+  // When the current period was never paid (unpaid / cancelled out of past_due),
+  // Stripe's period end is the unpaid renewal period, so end it now instead.
+  if (
+    status === "canceled" &&
+    (subscription.status === "unpaid" || existing?.status === "past_due")
+  ) {
+    periodEnd = new Date(Math.min(Date.parse(periodEnd), Date.now())).toISOString();
+  }
 
   const row = {
     user_id: userId,
@@ -86,12 +96,22 @@ export async function deactivateSubscription(userId: string) {
     .eq("id", userId);
 
   // Keep the subscriptions mirror honest; never touch Chapa passes.
-  const { error } = await admin
+  // A paid period stays usable after cancellation (access-rules grants canceled
+  // rows until current_period_end). past_due rows already point at the unpaid
+  // renewal period, so that period ends now.
+  const { error: paidError } = await admin
     .from("subscriptions")
     .update({ status: "canceled" })
     .eq("user_id", userId)
     .not("stripe_subscription_id", "is", null)
-    .in("status", ["active", "trialing", "past_due"]);
+    .in("status", ["active", "trialing"]);
+  const { error: unpaidError } = await admin
+    .from("subscriptions")
+    .update({ status: "canceled", current_period_end: new Date().toISOString() })
+    .eq("user_id", userId)
+    .not("stripe_subscription_id", "is", null)
+    .in("status", ["past_due", "none"]);
+  const error = paidError ?? unpaidError;
   if (error) {
     console.warn("[stripe] could not mark subscriptions row canceled:", error.message);
   }

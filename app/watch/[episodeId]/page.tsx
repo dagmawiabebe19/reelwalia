@@ -23,6 +23,7 @@ import { resolvePaywallAb } from "@/lib/paywall-ab-server";
 import { listPaywallCatalogPosters } from "@/lib/paywall-catalog-server";
 import { verifyCheckoutSession } from "@/lib/stripe/server";
 import { createClient } from "@/lib/supabase/server";
+import { loadSignedStreamUrls, signThumbnailUrl } from "@/lib/video/stream-urls";
 
 interface WatchPageProps {
   params: { episodeId: string };
@@ -38,7 +39,7 @@ async function getWatchData(
   const { data: episode } = await supabase
     .from("episodes")
     .select(
-      "id, episode_number, title, description, video_url, thumbnail_url, subtitle_url, view_count, display_view_count, series_id"
+      "id, episode_number, title, description, thumbnail_url, subtitle_url, view_count, display_view_count, series_id"
     )
     .eq("id", episodeId)
     .maybeSingle();
@@ -58,7 +59,7 @@ async function getWatchData(
   const { data: allEpisodes } = await supabase
     .from("episodes")
     .select(
-      "id, episode_number, title, description, thumbnail_url, display_view_count, view_count, video_url"
+      "id, episode_number, title, description, thumbnail_url, display_view_count, view_count"
     )
     .eq("series_id", series.id)
     .order("episode_number", { ascending: true });
@@ -113,12 +114,27 @@ async function getWatchData(
 
   const catalogPosters = await listPaywallCatalogPosters();
 
+  // Raw Bunny URLs never reach the browser: sign only what this viewer may play.
+  const playableIds = (allEpisodes ?? [])
+    .filter((ep) => canWatchEpisode(ep.episode_number, freeCount, isSubscribed))
+    .map((ep) => ep.id);
+  if (unlocked && !playableIds.includes(episode.id)) playableIds.push(episode.id);
+  const signedUrls = await loadSignedStreamUrls(playableIds);
+  const thumbs = new Map(
+    (allEpisodes ?? []).map((ep) => [ep.id, signThumbnailUrl(ep.thumbnail_url)])
+  );
+  const playableEpisode = {
+    ...episode,
+    thumbnail_url: signThumbnailUrl(episode.thumbnail_url),
+    video_url: unlocked ? signedUrls.get(episode.id) ?? null : null,
+  };
+
   const pickerEpisodes = (allEpisodes ?? []).map((ep) => ({
     id: ep.id,
     episode_number: ep.episode_number,
     title: ep.title,
     description: ep.description,
-    thumbnail_url: ep.thumbnail_url,
+    thumbnail_url: thumbs.get(ep.id) ?? null,
     display_view_count: ep.display_view_count,
     view_count: ep.view_count,
     locked: !canWatchEpisode(ep.episode_number, freeCount, isSubscribed),
@@ -132,9 +148,9 @@ async function getWatchData(
       episodeNumber: ep.episode_number,
       title: ep.title,
       description: ep.description,
-      thumbnailUrl: ep.thumbnail_url,
+      thumbnailUrl: thumbs.get(ep.id) ?? null,
       locked: !canWatch,
-      videoUrl: canWatch ? ep.video_url : null,
+      videoUrl: canWatch ? signedUrls.get(ep.id) ?? null : null,
     };
   });
 
@@ -144,7 +160,7 @@ async function getWatchData(
         episodeNumber: nextEp.episode_number,
         title: nextEp.title,
         description: nextEp.description,
-        thumbnailUrl: nextEp.thumbnail_url,
+        thumbnailUrl: thumbs.get(nextEp.id) ?? null,
         locked: !canWatchEpisode(nextEp.episode_number, freeCount, isSubscribed),
       }
     : null;
@@ -160,7 +176,7 @@ async function getWatchData(
   const characters = await listActiveCharactersForSeries(supabase, series.id);
 
   return {
-    episode,
+    episode: playableEpisode,
     series,
     totalSeriesViews,
     unlocked,
@@ -169,7 +185,7 @@ async function getWatchData(
     isAuthenticated: !!user,
     isSubscribed,
     justSubscribed: searchParams.subscribed === "true",
-    autoPlay: shouldAutoStartWatch(unlocked, !!episode.video_url),
+    autoPlay: shouldAutoStartWatch(unlocked, !!playableEpisode.video_url),
     nextEpisode,
     pickerEpisodes,
     feedEpisodes,

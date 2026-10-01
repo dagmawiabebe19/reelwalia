@@ -10,6 +10,19 @@ ReelWalia has two payment providers that feed one access check
 
 Episodes 1–4 are free; Episode 5+ needs access.
 
+## Automated tests (no keys, no tunnel)
+
+`npm test` (Vitest) covers the logic a click-through can't:
+access matrix (Stripe/Chapa × status × period), Chapa renewal math, webhook signature
+(valid / tampered), grant-once idempotency (replays and concurrent fulfilment), Bunny token
+signing against Bunny's official vectors, and the `/api/episodes/[id]/stream` gate.
+
+`supabase/tests/chapa_renewal_check.sql` checks the real `grant_chapa_entitlement` function
+in the SQL editor (runs in a transaction and rolls back).
+
+The end-to-end paths below (real Chapa test payment through a tunnel, real signed Bunny
+playback) still have to be run by hand.
+
 ## 0. Prerequisites
 
 1. Apply migrations **manually** in the Supabase SQL editor, in order:
@@ -30,8 +43,11 @@ Episodes 1–4 are free; Episode 5+ needs access.
 - Test cards: `4242 4242 4242 4242` (success), `4000 0000 0000 9995` (declined),
   `4000 0025 0000 3155` (3-D Secure). Any future expiry, any CVC.
 - Expect: redirect back to the episode, video plays, `/account` shows the Stripe plan.
-- Cancel via the customer portal → after `customer.subscription.deleted`, Episode 5 locks again
-  and the Stripe `subscriptions` row is marked `canceled`.
+- Cancel via the customer portal (cancel at period end) → access continues until the period
+  ends. After `customer.subscription.deleted` the Stripe `subscriptions` row is `canceled`;
+  access stays while its `current_period_end` is in the future, then Episode 5 locks.
+  Cancellations out of `past_due` / `unpaid` end access immediately (that period was never paid).
+  Quick check: set the row's `current_period_end` to `now() + interval '2 minutes'`.
 
 ## 2. Chapa test mode (Telebirr)
 
@@ -126,3 +142,17 @@ update public.subscriptions set status = 'expired'
 
 Refund the test payment in the Chapa dashboard → `charge.refunded` webhook → payment marked
 `refunded`, and the days it added are removed from the pass (access ends if nothing is left).
+
+## 7. Signed video playback (after Bunny token auth is enabled)
+
+- Signed out, open Episode 1 → plays. In DevTools → Network the playlist URL looks like
+  `https://<host>/bcdn_token=HS256-…&token_path=…&expires=…/<videoId>/playlist.m3u8`, and
+  segment requests carry the same `/bcdn_token=…/` prefix.
+- Open Episode 5 signed out → paywall; `GET /api/episodes/<ep5-id>/stream` returns 403.
+- As a subscriber (Stripe or Telebirr) Episode 5 plays.
+- Paste the raw `https://<host>/<videoId>/playlist.m3u8` → 403.
+- Leave a feed tab open > 15 minutes, then swipe to the next episode → it still plays
+  (the player fetches a fresh URL).
+- Thumbnails on the series page and episode picker load (per-file tokens).
+- Anon key: `select video_url from episodes` → permission denied (migration 034).
+
