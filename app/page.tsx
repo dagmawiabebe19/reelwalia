@@ -184,29 +184,34 @@ async function getCatalog() {
   let featuredWithEpisodes = featuredItems.map((item) => ({
     ...item,
     firstEpisodeId: null as string | null,
+    previewVideoUrl: null as string | null,
   }));
 
   if (featuredItems.length > 0) {
     const { data: episodes } = await supabase
       .from("episodes")
-      .select("id, series_id, episode_number")
+      .select("id, series_id, episode_number, video_url")
       .in(
         "series_id",
         featuredItems.map((s) => s.id)
       )
       .order("episode_number", { ascending: true });
 
-    const firstBySeries = new Map<string, string>();
+    const firstBySeries = new Map<string, { id: string; videoUrl: string | null }>();
     for (const ep of episodes ?? []) {
       if (!firstBySeries.has(ep.series_id)) {
-        firstBySeries.set(ep.series_id, ep.id);
+        firstBySeries.set(ep.series_id, { id: ep.id, videoUrl: ep.video_url ?? null });
       }
     }
 
-    featuredWithEpisodes = featuredItems.map((item) => ({
-      ...item,
-      firstEpisodeId: firstBySeries.get(item.id) ?? null,
-    }));
+    featuredWithEpisodes = featuredItems.map((item) => {
+      const first = firstBySeries.get(item.id);
+      return {
+        ...item,
+        firstEpisodeId: first?.id ?? null,
+        previewVideoUrl: first?.videoUrl ?? null,
+      };
+    });
   }
 
   const comingSoonList = comingSoon ?? [];
