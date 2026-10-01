@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/Card";
 import { ViewCount } from "@/components/ui/ViewCount";
 import { canWatchEpisode, resolveViewerFreeEpisodeCount } from "@/lib/access";
 import { getViewerAccess } from "@/lib/payments/access";
-import { resolveDefaultPaymentProvider } from "@/lib/payments/default-provider";
+import { resolvePaywallPayments } from "@/lib/payments/availability";
 import { signThumbnailUrl } from "@/lib/video/stream-urls";
 import {
   getHighestUnlockedEpisode,
@@ -147,7 +147,7 @@ export default async function SeriesPage({ params }: SeriesPageProps) {
   return (
     <PaywallOpenProvider
       catalogPosters={catalogPosters}
-      defaultPaymentProvider={resolveDefaultPaymentProvider()}
+      {...resolvePaywallPayments()}
     >
       <div className="flex min-h-screen flex-col">
       <TopNav />

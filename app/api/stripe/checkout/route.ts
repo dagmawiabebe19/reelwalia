@@ -6,12 +6,21 @@ import {
 } from "@/lib/stripe/server";
 import type { StripePlanKey } from "@/lib/stripe/plans";
 import { getStripePriceEnvKeys } from "@/lib/stripe/prices";
+import { isStripeConfigured } from "@/lib/payments/availability";
 import { resolveBaseUrl } from "@/lib/site-url";
 import { resolveTrafficSource } from "@/lib/traffic-source-server";
 
 const VALID_PLANS: StripePlanKey[] = ["1week", "2week", "1month"];
 
 export async function POST(request: Request) {
+  if (!isStripeConfigured()) {
+    console.error("[stripe] checkout attempted without STRIPE_SECRET_KEY / price IDs");
+    return NextResponse.json(
+      { error: "Card payments are not available right now.", code: "provider_unavailable" },
+      { status: 503 }
+    );
+  }
+
   try {
     const body = (await request.json()) as {
       plan?: StripePlanKey;

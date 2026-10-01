@@ -11,7 +11,7 @@ import { PaywallOpenProvider } from "@/components/watch/PaywallOpenContext";
 import { MeetTheCharacters } from "@/components/chat/MeetTheCharacters";
 import { canWatchEpisode, isEpisodeFree, resolveViewerFreeEpisodeCount } from "@/lib/access";
 import { getViewerAccess } from "@/lib/payments/access";
-import { resolveDefaultPaymentProvider } from "@/lib/payments/default-provider";
+import { resolvePaywallPayments } from "@/lib/payments/availability";
 import { listActiveCharactersForSeries } from "@/lib/chat/server";
 import { getSignedCaptionTracksForEpisode } from "@/lib/captions/server";
 import { getEpisodeDisplayViewCount } from "@/lib/episode-view-count";
@@ -194,7 +194,7 @@ async function getWatchData(
     captionTracks,
     characters,
     catalogPosters,
-    defaultPaymentProvider: resolveDefaultPaymentProvider(),
+    ...resolvePaywallPayments(),
   };
 }
 
@@ -224,6 +224,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
     characters,
     catalogPosters,
     defaultPaymentProvider,
+    paymentAvailability,
   } = data;
 
   const seriesOrientation = normalizeSeriesOrientation(series.orientation);
@@ -246,6 +247,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
       <PaywallOpenProvider
         catalogPosters={catalogPosters}
         defaultPaymentProvider={defaultPaymentProvider}
+        paymentAvailability={paymentAvailability}
       >
         <div
           className={`min-h-screen overflow-x-hidden bg-black ${
@@ -364,6 +366,7 @@ export default async function WatchPage({ params, searchParams }: WatchPageProps
     <PaywallOpenProvider
         catalogPosters={catalogPosters}
         defaultPaymentProvider={defaultPaymentProvider}
+        paymentAvailability={paymentAvailability}
       >
       <div
         className="min-h-screen overflow-x-hidden bg-black max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:overflow-hidden md:h-auto md:overflow-x-hidden"

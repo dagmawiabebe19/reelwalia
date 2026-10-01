@@ -8,6 +8,7 @@
 import { STRIPE_PLANS, getPlanDisplay, type StripePlanKey } from "@/lib/stripe/plans";
 
 export type PaymentProvider = "stripe" | "chapa";
+export type PaymentAvailability = Record<PaymentProvider, boolean>;
 export type PlanKey = StripePlanKey;
 
 export const PLAN_KEYS: readonly PlanKey[] = ["1week", "2week", "1month"] as const;

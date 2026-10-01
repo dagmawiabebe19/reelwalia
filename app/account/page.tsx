@@ -8,6 +8,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { Card } from "@/components/ui/Card";
 import { signOut } from "@/app/account/actions";
 import { getViewerAccess } from "@/lib/payments/access";
+import { getPaymentAvailability } from "@/lib/payments/availability";
 import { createClient } from "@/lib/supabase/server";
 
 interface AccountPageProps {
@@ -139,9 +140,13 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                 ? "Buying again adds time after your current end date."
                 : "Renewing starts a new pass from today."}
             </p>
-            <ChapaRenewButtons
-              label={access.chapa.active ? "Extend with Telebirr" : "Renew with Telebirr"}
-            />
+            {getPaymentAvailability().chapa ? (
+              <ChapaRenewButtons
+                label={access.chapa.active ? "Extend with Telebirr" : "Renew with Telebirr"}
+              />
+            ) : (
+              <p className="mt-4 text-xs text-gray-500">Telebirr unavailable right now.</p>
+            )}
           </Card>
         )}
 

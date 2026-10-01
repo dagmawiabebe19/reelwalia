@@ -17,7 +17,10 @@ function splitName(fullName: string | null | undefined): { first: string | null;
 export async function POST(request: Request) {
   if (!isChapaConfigured()) {
     console.error("[chapa] checkout attempted without CHAPA_SECRET_KEY");
-    return NextResponse.json({ error: "Telebirr payments are not available right now." }, { status: 503 });
+    return NextResponse.json(
+      { error: "Telebirr payments are not available right now.", code: "provider_unavailable" },
+      { status: 503 }
+    );
   }
 
   let body: { plan?: unknown; episodeId?: unknown };

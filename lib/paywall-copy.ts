@@ -7,8 +7,6 @@ import { PAYWALL_FREE_EPISODE_COUNT } from "@/lib/access";
 export const PAYWALL_HEADLINE = "Unlock the rest of the series";
 export const PAYWALL_SUBHEAD = `Subscribe to watch Episode ${PAYWALL_FREE_EPISODE_COUNT + 1} onward.`;
 export const PAYWALL_PROVIDER_HEADING = "How would you like to pay?";
-export const PAYWALL_OFFER_LINE = "Discount for the next 1000 drama lovers!";
-export const PAYWALL_OFFER_URGENCY = "Only 55 spots left! Claim yours!";
 export const PAYWALL_CATALOG_HEADING = "Popular Drama Series";
 
 /** Shown when the viewer finishes the last published episode — honest catalog framing. */

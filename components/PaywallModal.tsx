@@ -2,21 +2,11 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  STRIPE_PLANS,
-  formatDailyPrice,
-  formatUsd,
-  getPlanDisplay,
-  savingsBadge,
-  splitUsdParts,
-  type StripePlanKey,
-} from "@/lib/stripe/plans";
+import { getPlanDisplay } from "@/lib/stripe/plans";
 import {
   PAYWALL_INCLUDED,
   PAYWALL_SOCIAL_PROOF,
   PAYWALL_CATALOG_HEADING,
-  PAYWALL_OFFER_LINE,
-  PAYWALL_OFFER_URGENCY,
   PAYWALL_PROVIDER_HEADING,
   paywallCopyForVariant,
   publishedPaywallTestimonials,
@@ -28,16 +18,22 @@ import {
   type PaywallTrigger,
 } from "@/lib/analytics/funnel";
 import { reportAnalyticsEvent } from "@/lib/analytics/client-event";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
 import { usePaywallOpen } from "@/components/watch/PaywallOpenContext";
 import type { PaywallCatalogPoster } from "@/lib/paywall-catalog";
 import {
-  formatEtb,
   getChapaPlan,
+  type PaymentAvailability,
   type PaymentProvider,
+  type PlanKey,
 } from "@/lib/payments/pricing";
 import { startChapaCheckout } from "@/lib/payments/chapa/start-checkout";
+import { paywallProviderState, resolveInitialProvider } from "@/lib/paywall/provider-state";
+import { resolvePaywallPromo } from "@/lib/paywall/promo";
+import { PaywallCheckoutCta } from "@/components/paywall/PaywallCheckoutCta";
+import { DEFAULT_PAYWALL_PLAN, PaywallPlanList } from "@/components/paywall/PaywallPlanList";
+import { PaywallPromoBanner } from "@/components/paywall/PaywallPromoBanner";
+import { PaywallProviderPicker } from "@/components/paywall/PaywallProviderPicker";
 
 interface PaywallModalProps {
   open: boolean;
@@ -49,9 +45,6 @@ interface PaywallModalProps {
   moreEpisodesComingSoon?: boolean;
   isAuthenticated?: boolean;
 }
-
-const DEFAULT_PLAN: StripePlanKey =
-  STRIPE_PLANS.find((p) => p.mostPopular)?.key ?? STRIPE_PLANS[0]!.key;
 
 function BenefitIcon({ id }: { id: string }) {
   const className = "h-5 w-5 shrink-0 text-obsidian-red";
@@ -125,7 +118,7 @@ export function PaywallModal({
   moreEpisodesComingSoon = false,
   isAuthenticated = false,
 }: PaywallModalProps) {
-  const [selected, setSelected] = useState<StripePlanKey>(DEFAULT_PLAN);
+  const [selected, setSelected] = useState<PlanKey>(DEFAULT_PAYWALL_PLAN);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [catalogPosters, setCatalogPosters] = useState<PaywallCatalogPoster[]>(
@@ -136,11 +129,21 @@ export function PaywallModal({
   const catalogFetchedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-  const { catalogPosters: contextPosters, defaultPaymentProvider } =
-    usePaywallOpen();
-  const [provider, setProvider] = useState<PaymentProvider>(
+  const {
+    catalogPosters: contextPosters,
     defaultPaymentProvider,
+    paymentAvailability,
+  } = usePaywallOpen();
+  // Providers the server rejected at checkout this session (config changed since render).
+  const [rejected, setRejected] = useState<Partial<Record<PaymentProvider, true>>>({});
+  const availability: PaymentAvailability = {
+    stripe: paymentAvailability.stripe && !rejected.stripe,
+    chapa: paymentAvailability.chapa && !rejected.chapa,
+  };
+  const [provider, setProvider] = useState<PaymentProvider | null>(() =>
+    resolveInitialProvider(defaultPaymentProvider, paymentAvailability),
   );
+  const providerState = paywallProviderState({ availability, selected: provider });
 
   useEffect(() => {
     if (!open) return;
@@ -221,7 +224,7 @@ export function PaywallModal({
 
   if (!open || !portalTarget) return null;
 
-  const selectedPlan = getPlanDisplay(selected);
+  const promo = resolvePaywallPromo({ provider: providerState.selected, plan: selected });
   const testimonials = publishedPaywallTestimonials();
   const { headline, subhead } = paywallCopyForVariant(copyVariant, {
     moreEpisodesComingSoon,
@@ -230,15 +233,23 @@ export function PaywallModal({
     PAYWALL_SOCIAL_PROOF.enabled &&
     (PAYWALL_SOCIAL_PROOF.rating != null || testimonials.length > 0);
 
+  const markProviderUnavailable = (unavailable: PaymentProvider) => {
+    checkoutStartedRef.current = false;
+    setLoading(false);
+    setError(null);
+    setRejected((prev) => ({ ...prev, [unavailable]: true }));
+  };
+
   const handleCheckout = async () => {
-    if (checkoutStartedRef.current) return;
+    const checkoutProvider = providerState.selected;
+    if (!checkoutProvider || checkoutStartedRef.current) return;
     checkoutStartedRef.current = true;
     setLoading(true);
     setError(null);
 
     const plan = getPlanDisplay(selected);
 
-    if (provider === "chapa") {
+    if (checkoutProvider === "chapa") {
       if (!isAuthenticated) {
         const here = `${window.location.pathname}${window.location.search}`;
         window.location.href = `/auth/sign-in?redirect=${encodeURIComponent(here)}`;
@@ -253,6 +264,10 @@ export function PaywallModal({
       const result = await startChapaCheckout(selected, episodeId);
       if (result.ok) {
         window.location.href = result.url;
+        return;
+      }
+      if (result.providerUnavailable) {
+        markProviderUnavailable("chapa");
         return;
       }
       checkoutStartedRef.current = false;
@@ -279,7 +294,15 @@ export function PaywallModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan: selected, episodeId }),
       });
-      const data = (await res.json()) as { url?: string; error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        url?: string;
+        error?: string;
+        code?: string;
+      };
+      if (data.code === "provider_unavailable") {
+        markProviderUnavailable("stripe");
+        return;
+      }
       if (!res.ok || !data.url) {
         checkoutStartedRef.current = false;
         throw new Error(data.error ?? "Checkout failed");
@@ -330,163 +353,24 @@ export function PaywallModal({
             {headline}
           </span>
         </h2>
-        <p className="mt-3 rounded-lg bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 px-3 py-2 text-center text-sm font-extrabold leading-snug tracking-wide text-amber-950 shadow-[0_0_18px_rgba(251,191,36,0.35)]">
-          {PAYWALL_OFFER_LINE}
-        </p>
-        <p className="mt-2 text-center text-sm font-extrabold tracking-wide text-obsidian-red">
-          {PAYWALL_OFFER_URGENCY}
-        </p>
         <p className="mt-2.5 text-sm font-medium text-zinc-300">{subhead}</p>
+        <PaywallPromoBanner promo={promo} />
 
-        <div className="mt-5">
-          <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
-            {PAYWALL_PROVIDER_HEADING}
-          </p>
-          <div
-            className="mt-2 grid grid-cols-2 gap-2"
-            role="radiogroup"
-            aria-label="Payment method"
-          >
-            {(
-              [
-                {
-                  id: "stripe",
-                  title: "Card / Apple Pay",
-                  caption: "International · USD",
-                },
-                {
-                  id: "chapa",
-                  title: "Telebirr",
-                  caption: "Ethiopian payments · ETB",
-                },
-              ] as const
-            ).map((opt) => {
-              const active = provider === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => {
-                    setProvider(opt.id);
-                    setError(null);
-                  }}
-                  className={`min-h-[60px] rounded-xl border px-3 py-2.5 text-left transition ${
-                    active
-                      ? "border-obsidian-red bg-obsidian-red/10 ring-2 ring-obsidian-red/80"
-                      : "border-white/[0.12] hover:border-white/25"
-                  }`}
-                >
-                  <span className="block text-sm font-extrabold text-white">
-                    {opt.title}
-                  </span>
-                  <span className="mt-0.5 block text-[11px] font-medium text-zinc-400">
-                    {opt.caption}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <PaywallProviderPicker
+          heading={PAYWALL_PROVIDER_HEADING}
+          tabs={providerState.tabs}
+          selected={providerState.selected}
+          onSelect={(next) => {
+            setProvider(next);
+            setError(null);
+          }}
+        />
 
-        <div className="mt-4 space-y-3">
-          {STRIPE_PLANS.map((p) => {
-            const isSelected = selected === p.key;
-            const isChapa = provider === "chapa";
-            const chapaPlan = getChapaPlan(p.key);
-            const badge = isChapa ? null : savingsBadge(p);
-            const isHighlighted = isSelected || p.mostPopular;
-            const { dollars, cents } = splitUsdParts(p.amount);
-
-            return (
-              <div
-                key={p.key}
-                className={`rounded-xl border transition duration-200 ${
-                  isHighlighted
-                    ? "border-obsidian-red/70 shadow-lg shadow-obsidian-red/20 ring-2 ring-obsidian-red/90"
-                    : "border-white/[0.08] hover:border-white/20 hover:shadow-md hover:shadow-black/40"
-                }`}
-              >
-                {p.mostPopular && (
-                  <div className="rounded-t-[0.65rem] border-b border-red-900/40 bg-gradient-to-r from-obsidian-red via-red-500 to-obsidian-red px-3 py-1.5 text-center text-[11px] font-extrabold uppercase tracking-[0.22em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]">
-                    Most Popular
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setSelected(p.key)}
-                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-white/[0.04] active:bg-white/[0.06]"
-                >
-                  <span
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition ${
-                      isSelected
-                        ? "border-obsidian-red bg-obsidian-red shadow-[0_0_10px_rgba(224,60,47,0.55)]"
-                        : "border-zinc-500"
-                    }`}
-                  >
-                    {isSelected && (
-                      <span className="h-2 w-2 rounded-full bg-white" />
-                    )}
-                  </span>
-
-                  <div className="min-w-0 flex-1 pr-2">
-                    <p className="font-display text-base font-extrabold uppercase leading-none tracking-[0.12em] text-white sm:text-lg">
-                      {p.label}
-                    </p>
-                    {badge && (
-                      <span className="mt-1.5 inline-flex max-w-full rounded-md bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 px-2 py-0.5 text-[10px] font-extrabold uppercase leading-tight tracking-wide text-amber-950 shadow-[0_0_14px_rgba(251,191,36,0.35)]">
-                        {badge}
-                      </span>
-                    )}
-                  </div>
-
-                  {isChapa ? (
-                    <div className="shrink-0 text-right">
-                      <p
-                        className="flex items-baseline justify-end gap-1 text-white"
-                        aria-label={`${formatEtb(chapaPlan.etbAmount)} for ${chapaPlan.periodDays} days`}
-                      >
-                        <span className="font-display text-[2rem] font-extrabold leading-none tracking-wide">
-                          {chapaPlan.etbAmount.toLocaleString("en-US")}
-                        </span>
-                        <span className="font-display text-sm font-bold leading-none text-white/75">
-                          ETB
-                        </span>
-                      </p>
-                      <p className="mt-1.5 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                        {chapaPlan.periodDays} days access
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="shrink-0 text-right">
-                      <p
-                        className="flex items-start justify-end text-white"
-                        aria-label={`${formatUsd(p.amount)}${p.priceSuffix}`}
-                      >
-                        <span className="mt-[0.35rem] font-display text-lg font-extrabold leading-none">
-                          $
-                        </span>
-                        <span className="font-display text-[2rem] font-extrabold leading-none tracking-wide">
-                          {dollars}
-                        </span>
-                        <span className="mt-[0.2rem] font-display text-sm font-bold leading-none text-white/75">
-                          .{cents}
-                        </span>
-                      </p>
-                      <p className="mt-1.5 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                        {p.priceSuffix.replace(/^\//, "")}
-                      </p>
-                      <p className="mt-0.5 whitespace-nowrap text-[11px] tabular-nums text-zinc-500">
-                        {formatDailyPrice(p)}
-                      </p>
-                    </div>
-                  )}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+        <PaywallPlanList
+          provider={providerState.selected ?? "stripe"}
+          selected={selected}
+          onSelect={setSelected}
+        />
 
         <div className="mt-6 space-y-3">
           <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
@@ -560,61 +444,14 @@ export function PaywallModal({
           </div>
         )}
 
-        {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
-
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => void handleCheckout()}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-obsidian-red via-red-500 to-obsidian-red py-4 text-base font-extrabold tracking-wide text-white shadow-[0_8px_32px_rgba(224,60,47,0.45),inset_0_1px_0_rgba(255,255,255,0.2)] transition duration-200 hover:brightness-110 hover:shadow-[0_10px_40px_rgba(224,60,47,0.55)] active:scale-[0.98] disabled:opacity-50"
-        >
-          {loading ? (
-            <>
-              <LoadingSpinner
-                className="h-5 w-5"
-                label="Redirecting to checkout"
-              />
-              Redirecting…
-            </>
-          ) : (
-            "Get Full Access"
-          )}
-        </button>
-
-        {provider === "chapa" ? (
-          <>
-            <p className="mt-3 text-center text-sm leading-relaxed text-zinc-300">
-              One-time payment of {formatEtb(getChapaPlan(selected).etbAmount)}{" "}
-              for {getChapaPlan(selected).periodDays} days. No auto-renewal —
-              top up anytime from your account.
-            </p>
-            <p className="mt-2 text-center text-xs text-zinc-500">
-              Pay with Telebirr, CBE Birr, M-Pesa or Ethiopian bank cards via
-              Chapa.
-            </p>
-            {!isAuthenticated && (
-              <p className="mt-2 text-center text-sm text-zinc-400">
-                You&apos;ll sign in first so your pass is saved to your account.
-              </p>
-            )}
-          </>
-        ) : (
-          <>
-            <p className="mt-3 text-center text-sm leading-relaxed text-zinc-300">
-              Auto-renews at {formatUsd(selectedPlan.amount)}
-              {selectedPlan.priceSuffix} (
-              {selectedPlan.renewalLabel.toLowerCase()}). Cancel anytime in your
-              account.
-            </p>
-
-            {!isAuthenticated && (
-              <p className="mt-2 text-center text-sm text-zinc-400">
-                Enter your email in Stripe Checkout — we&apos;ll create your
-                account automatically.
-              </p>
-            )}
-          </>
-        )}
+        <PaywallCheckoutCta
+          state={providerState}
+          plan={selected}
+          loading={loading}
+          error={error}
+          isAuthenticated={isAuthenticated}
+          onCheckout={() => void handleCheckout()}
+        />
       </div>
     </div>,
     portalTarget,

@@ -10,14 +10,18 @@ import {
   type ReactNode,
 } from "react";
 import type { PaywallCatalogPoster } from "@/lib/paywall-catalog";
-import type { PaymentProvider } from "@/lib/payments/pricing";
+import type { PaymentAvailability, PaymentProvider } from "@/lib/payments/pricing";
 
 interface PaywallOpenContextValue {
   isPaywallOpen: boolean;
   setPaywallOpen: (open: boolean) => void;
   catalogPosters: PaywallCatalogPoster[];
   defaultPaymentProvider: PaymentProvider;
+  paymentAvailability: PaymentAvailability;
 }
+
+/** Outside a provider nothing server-side vouched for Telebirr — offer card only. */
+const FALLBACK_AVAILABILITY: PaymentAvailability = { stripe: true, chapa: false };
 
 const PaywallOpenContext = createContext<PaywallOpenContextValue | null>(null);
 
@@ -25,10 +29,12 @@ export function PaywallOpenProvider({
   children,
   catalogPosters = [],
   defaultPaymentProvider = "stripe",
+  paymentAvailability = FALLBACK_AVAILABILITY,
 }: {
   children: ReactNode;
   catalogPosters?: PaywallCatalogPoster[];
   defaultPaymentProvider?: PaymentProvider;
+  paymentAvailability?: PaymentAvailability;
 }) {
   const openCountRef = useRef(0);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
@@ -44,7 +50,13 @@ export function PaywallOpenProvider({
 
   return (
     <PaywallOpenContext.Provider
-      value={{ isPaywallOpen, setPaywallOpen, catalogPosters, defaultPaymentProvider }}
+      value={{
+        isPaywallOpen,
+        setPaywallOpen,
+        catalogPosters,
+        defaultPaymentProvider,
+        paymentAvailability,
+      }}
     >
       {children}
     </PaywallOpenContext.Provider>
@@ -59,6 +71,7 @@ export function usePaywallOpen() {
       setPaywallOpen: () => {},
       catalogPosters: [] as PaywallCatalogPoster[],
       defaultPaymentProvider: "stripe" as PaymentProvider,
+      paymentAvailability: FALLBACK_AVAILABILITY,
     };
   }
   return ctx;
