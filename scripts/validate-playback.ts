@@ -127,9 +127,9 @@ assert(freeEpisodeCountForVariant(PAYWALL_VARIANT_AFTER_2) === 2, "Group B: 2 fr
 assert(freeEpisodeCountForVariant(PAYWALL_VARIANT_AFTER_3) === 3, "Group C: 3 free episodes");
 // Platform-wide: every viewer gets episodes 1–3 free, regardless of legacy bucket or series value
 const viewerFree = resolveViewerFreeEpisodeCount();
-assert(viewerFree === 3, "Viewer free count is 3 for everyone");
-assert(isEpisodeFree(3, viewerFree), "Episode 3 is free for everyone");
-assert(!isEpisodeFree(4, viewerFree), "Episode 4 is locked for everyone");
+assert(viewerFree === 4, "Viewer free count is 4 for everyone");
+assert(isEpisodeFree(4, viewerFree), "Episode 4 is free for everyone");
+assert(!isEpisodeFree(5, viewerFree), "Episode 5 is locked for everyone");
 
 const cookie = serializePaywallAbCookie({
   visitorId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
@@ -246,6 +246,6 @@ assert(!twoWeek.mostPopular, "2-week is not Most Popular");
 
 console.log("✓ All playback validation checks passed");
 console.log("  Entry: /watch/{id}?autoplay=true");
-console.log("  Chain: ep1–ep3 free → [paywall] → ep4+ (all viewers)");
+console.log("  Chain: ep1–ep4 free → [paywall] → ep5+ (all viewers)");
 console.log(`  Free tier: episodes 1–${resolveViewerFreeEpisodeCount()}`);
 console.log("  Binge progress: always starts at 0");

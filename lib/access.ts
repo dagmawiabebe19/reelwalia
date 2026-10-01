@@ -2,8 +2,8 @@ import type { Profile } from "@/lib/types/database";
 /** Default free episodes when series.free_episode_count is unset. */
 export const DEFAULT_FREE_EPISODE_COUNT = 2;
 
-/** Platform-wide paywall: episodes 1–3 free for every viewer, paywall after episode 3. */
-export const PAYWALL_FREE_EPISODE_COUNT = 3;
+/** Platform-wide paywall: episodes 1–4 free for every viewer, paywall after episode 4. */
+export const PAYWALL_FREE_EPISODE_COUNT = 4;
 
 export function resolveFreeEpisodeCount(count: number | null | undefined): number {
   if (count == null || count < 0) return DEFAULT_FREE_EPISODE_COUNT;
