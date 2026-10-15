@@ -9,6 +9,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        commercial: {
+          bg: "#0A0A0A",
+          red: "#E53935",
+          deep: "#B71C1C",
+        },
         obsidian: {
           bg: "#000000",
           red: "#E03C2F",

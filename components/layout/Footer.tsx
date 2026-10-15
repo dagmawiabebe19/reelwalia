@@ -18,6 +18,15 @@ export function Footer() {
             •
           </span>
           <Link
+            href="/ads"
+            className="transition duration-200 hover:text-white"
+          >
+            Commercials
+          </Link>
+          <span className="text-zinc-600" aria-hidden>
+            •
+          </span>
+          <Link
             href="/privacy"
             className="transition duration-200 hover:text-white"
           >
