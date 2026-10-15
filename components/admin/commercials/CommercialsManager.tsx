@@ -90,7 +90,7 @@ export function CommercialsManager({ commercials }: { commercials: Commercial[] 
     <div className="space-y-4">
       <div className="flex flex-col gap-3 rounded-xl border border-obsidian-red/25 bg-obsidian-red/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-zinc-400">
-          Lower sort order shows first. The first featured, published advertisement plays in the /ads hero (or the first published one if none is featured).
+          Lower sort order shows first. Featured advertisements rotate in the /ads hero with arrows. If none are featured, the first published one plays.
         </p>
         <button type="button" className="rw-btn-primary min-h-11 shrink-0 px-5 text-sm" onClick={() => setEditing("new")}>
           + Upload advertisement

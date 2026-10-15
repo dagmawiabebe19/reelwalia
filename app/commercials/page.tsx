@@ -11,7 +11,7 @@ import {
   CommercialValueProps,
 } from "@/components/commercials/CommercialSections";
 import { CommercialPlaybackProvider } from "@/components/commercials/CommercialPlayback";
-import { pickHeroCommercial } from "@/lib/commercials/constants";
+import { pickHeroCommercials } from "@/lib/commercials/constants";
 import { getPublishedCommercials } from "@/lib/commercials/server";
 import { isAdminUserId } from "@/lib/admin-id";
 import { createClient } from "@/lib/supabase/server";
@@ -38,7 +38,7 @@ export default async function CommercialsShowcasePage() {
   const supabase = createClient();
   const [commercials, { data: auth }] = await Promise.all([getPublishedCommercials(), supabase.auth.getUser()]);
   const isAdmin = isAdminUserId(auth.user?.id);
-  const hero = pickHeroCommercial(commercials);
+  const heroes = pickHeroCommercials(commercials);
 
   return (
     <div className="commercial-page flex min-h-screen flex-col bg-commercial-bg text-white">
@@ -53,7 +53,7 @@ export default async function CommercialsShowcasePage() {
       )}
       <main className="flex-1">
         <CommercialPlaybackProvider>
-          <CommercialHero hero={hero} />
+          <CommercialHero heroes={heroes} />
           <CommercialGallery commercials={commercials} />
         </CommercialPlaybackProvider>
         <CommercialValueProps />

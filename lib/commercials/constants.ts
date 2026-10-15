@@ -96,9 +96,19 @@ export const ASPECT_CSS: Record<Commercial["aspect_ratio"], string> = {
   "1:1": "1 / 1",
 };
 
-/** Featured commercial, else the first published one (list is sort_order-ordered); null only when there are none. */
+/**
+ * Hero slides for /ads: every featured commercial (already sort_order-ordered),
+ * else the first published one alone. Empty only when there are no commercials.
+ */
+export function pickHeroCommercials(commercials: Commercial[]): Commercial[] {
+  const featured = commercials.filter((c) => c.is_featured);
+  if (featured.length > 0) return featured;
+  return commercials[0] ? [commercials[0]] : [];
+}
+
+/** First hero slide only (tests / single-slot callers). */
 export function pickHeroCommercial(commercials: Commercial[]): Commercial | null {
-  return commercials.find((c) => c.is_featured) ?? commercials[0] ?? null;
+  return pickHeroCommercials(commercials)[0] ?? null;
 }
 
 /** Window event used by the player modal to pre-fill the inquiry form's reference. */

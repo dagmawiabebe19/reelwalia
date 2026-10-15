@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
 import { ArrowRightIcon, PlayIcon } from "@/components/commercials/CommercialIcons";
 import { CommercialInlineVideo } from "@/components/commercials/CommercialInlineVideo";
@@ -9,6 +10,18 @@ import {
   COMMERCIAL_GALLERY_ANCHOR,
   type Commercial,
 } from "@/lib/commercials/constants";
+
+function ArrowIcon({ direction }: { direction: "left" | "right" }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden>
+      {direction === "left" ? (
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 5l-7 7 7 7" />
+      ) : (
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+      )}
+    </svg>
+  );
+}
 
 function HeroPlayButton({ commercial, className }: { commercial: Commercial; className: string }) {
   const { openPlayer } = useCommercialPlayback();
@@ -87,9 +100,32 @@ function WideHeroVideo({ commercial }: { commercial: Commercial }) {
   );
 }
 
-export function CommercialHero({ hero }: { hero: Commercial | null }) {
-  const wide = hero?.aspect_ratio === "16:9";
-  const framed = Boolean(hero) && !wide;
+export function CommercialHero({
+  heroes,
+  /** @deprecated Prefer `heroes`. Kept so older call sites keep working. */
+  hero,
+}: {
+  heroes?: Commercial[];
+  hero?: Commercial | null;
+}) {
+  const slides = heroes ?? (hero ? [hero] : []);
+  const count = slides.length;
+  const [activeIndex, setActiveIndex] = useState(0);
+  const safeIndex = count === 0 ? 0 : ((activeIndex % count) + count) % count;
+  const active = slides[safeIndex] ?? null;
+
+  const goTo = useCallback(
+    (index: number) => {
+      if (count === 0) return;
+      setActiveIndex(((index % count) + count) % count);
+    },
+    [count]
+  );
+  const goNext = useCallback(() => goTo(safeIndex + 1), [goTo, safeIndex]);
+  const goPrev = useCallback(() => goTo(safeIndex - 1), [goTo, safeIndex]);
+
+  const wide = active?.aspect_ratio === "16:9";
+  const framed = Boolean(active) && !wide;
 
   return (
     <section className="commercial-hero relative isolate overflow-hidden">
@@ -116,7 +152,12 @@ export function CommercialHero({ hero }: { hero: Commercial | null }) {
           </h1>
         </div>
 
-        {hero && (wide ? <WideHeroVideo commercial={hero} /> : <FramedHeroVideo commercial={hero} />)}
+        {active &&
+          (wide ? (
+            <WideHeroVideo key={active.id} commercial={active} />
+          ) : (
+            <FramedHeroVideo key={active.id} commercial={active} />
+          ))}
 
         <div className={`relative z-10 ${framed ? "lg:self-start lg:pt-6" : "lg:max-w-4xl lg:pt-6"}`}>
           <p className="max-w-xl text-base leading-relaxed text-zinc-300 sm:text-lg">
@@ -141,6 +182,41 @@ export function CommercialHero({ hero }: { hero: Commercial | null }) {
           </div>
         </div>
       </div>
+
+      {count > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={goPrev}
+            aria-label="Previous featured advertisement"
+            className="absolute left-2 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white backdrop-blur-sm transition hover:scale-105 hover:bg-black/70 sm:left-4 sm:h-12 sm:w-12"
+          >
+            <ArrowIcon direction="left" />
+          </button>
+          <button
+            type="button"
+            onClick={goNext}
+            aria-label="Next featured advertisement"
+            className="absolute right-2 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white backdrop-blur-sm transition hover:scale-105 hover:bg-black/70 sm:right-4 sm:h-12 sm:w-12"
+          >
+            <ArrowIcon direction="right" />
+          </button>
+          <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 gap-2 sm:bottom-6">
+            {slides.map((item, index) => (
+              <button
+                key={item.id}
+                type="button"
+                aria-label={`Show ${item.title}`}
+                aria-current={index === safeIndex ? "true" : undefined}
+                onClick={() => goTo(index)}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  index === safeIndex ? "w-8 bg-commercial-red" : "w-4 bg-white/40 hover:bg-white/60"
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </section>
   );
 }

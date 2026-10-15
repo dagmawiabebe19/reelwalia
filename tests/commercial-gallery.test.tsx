@@ -8,7 +8,7 @@ import {
   resolveUploadType,
 } from "@/lib/commercials/object-path";
 import { CommercialHero } from "@/components/commercials/CommercialHero";
-import { pickHeroCommercial, type Commercial } from "@/lib/commercials/constants";
+import { pickHeroCommercial, pickHeroCommercials, type Commercial } from "@/lib/commercials/constants";
 
 const base: Commercial = {
   id: "c1",
@@ -60,16 +60,19 @@ describe("CommercialGallery", () => {
 });
 
 describe("CommercialHero", () => {
-  it("prefers Featured, falls back to the first by sort order, null only when empty", () => {
+  it("prefers Featured slides, falls back to the first by sort order, empty only when none", () => {
     const first = { ...base, id: "first" };
     const star = { ...base, id: "star", is_featured: true };
+    const star2 = { ...base, id: "star2", is_featured: true, sort_order: 1 };
+    expect(pickHeroCommercials([first, star, star2]).map((c) => c.id)).toEqual(["star", "star2"]);
     expect(pickHeroCommercial([first, star])?.id).toBe("star");
-    expect(pickHeroCommercial([first, { ...base, id: "second" }])?.id).toBe("first");
+    expect(pickHeroCommercials([first, { ...base, id: "second" }]).map((c) => c.id)).toEqual(["first"]);
     expect(pickHeroCommercial([])).toBeNull();
+    expect(pickHeroCommercials([])).toEqual([]);
   });
 
   it("vertical hero: muted inline video with poster, nothing downloads before hydration", () => {
-    const html = renderToStaticMarkup(<CommercialHero hero={base} />);
+    const html = renderToStaticMarkup(<CommercialHero heroes={[base]} />);
     const video = html.match(/<video[^>]*>/)?.[0] ?? "";
     expect(video).toContain(`src="${base.video_url}"`);
     expect(video).toContain(`poster="${base.thumbnail_url}"`);
@@ -83,12 +86,24 @@ describe("CommercialHero", () => {
   });
 
   it("wide hero sits behind the copy on desktop; no hero video when there are no commercials", () => {
-    const wide = renderToStaticMarkup(<CommercialHero hero={{ ...base, aspect_ratio: "16:9" }} />);
+    const wide = renderToStaticMarkup(<CommercialHero heroes={[{ ...base, aspect_ratio: "16:9" }]} />);
     expect(wide).toContain("lg:absolute lg:inset-0");
     expect(wide).toContain("<video");
-    const empty = renderToStaticMarkup(<CommercialHero hero={null} />);
+    const empty = renderToStaticMarkup(<CommercialHero heroes={[]} />);
     expect(empty).not.toContain("<video");
     expect(empty).toContain("stop the scroll");
+  });
+
+  it("shows prev/next arrows when there is more than one featured slide", () => {
+    const a = { ...base, id: "a", is_featured: true, title: "First Spot" };
+    const b = { ...base, id: "b", is_featured: true, title: "Second Spot", aspect_ratio: "16:9" as const };
+    const html = renderToStaticMarkup(<CommercialHero heroes={[a, b]} />);
+    expect(html).toContain("Previous featured advertisement");
+    expect(html).toContain("Next featured advertisement");
+    expect(html).toContain('aria-label="Show First Spot"');
+    expect(html).toContain('aria-label="Show Second Spot"');
+    const single = renderToStaticMarkup(<CommercialHero heroes={[a]} />);
+    expect(single).not.toContain("Previous featured advertisement");
   });
 });
 
