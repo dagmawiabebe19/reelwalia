@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState, useTransition } from "react";
-import { updateInquiryStatus } from "@/app/admin/commercials/actions";
+import { adminFetch } from "@/lib/commercials/upload";
 import {
   INQUIRY_STATUSES,
   INQUIRY_STATUS_LABELS,
@@ -44,7 +44,7 @@ function StatusSelect({ inquiry }: { inquiry: CommercialInquiry }) {
         setError(false);
         startTransition(async () => {
           try {
-            await updateInquiryStatus(inquiry.id, next);
+            await adminFetch(`/api/admin/commercial-inquiries/${inquiry.id}`, { method: "PATCH", body: { status: next } });
           } catch {
             setStatus(prev);
             setError(true);

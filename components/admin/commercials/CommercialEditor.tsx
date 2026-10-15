@@ -1,14 +1,27 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
-import { discardCommercialUpload, saveCommercial } from "@/app/admin/commercials/actions";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { CommercialDropzone } from "@/components/admin/commercials/CommercialDropzone";
 import {
   COMMERCIAL_ASPECT_RATIOS,
   COMMERCIAL_CATEGORY_SUGGESTIONS,
   type Commercial,
   type CommercialAspectRatio,
 } from "@/lib/commercials/constants";
-import { readVideoDuration, uploadCommercialFile } from "@/lib/commercials/upload";
+import {
+  UPLOAD_ACCEPT,
+  UPLOAD_KIND_LABEL,
+  resolveUploadType,
+  type CommercialUploadKind,
+} from "@/lib/commercials/object-path";
+import {
+  CommercialAdminError,
+  adminFetch,
+  discardCommercialUpload,
+  readVideoInfo,
+  uploadCommercialFile,
+  type UploadedFile,
+} from "@/lib/commercials/upload";
 
 function Label({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
   return (
@@ -18,41 +31,33 @@ function Label({ children, htmlFor }: { children: ReactNode; htmlFor?: string })
   );
 }
 
-function detectAspect(file: File): Promise<CommercialAspectRatio | null> {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const v = document.createElement("video");
-    v.preload = "metadata";
-    v.onloadedmetadata = () => {
-      URL.revokeObjectURL(url);
-      const r = v.videoWidth && v.videoHeight ? v.videoWidth / v.videoHeight : 0;
-      if (!r) return resolve(null);
-      resolve(r < 0.8 ? "9:16" : r > 1.25 ? "16:9" : "1:1");
-    };
-    v.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(null);
-    };
-    v.src = url;
-  });
+function fileNameFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  return decodeURIComponent(url.split("?")[0]!.split("/").pop() ?? "") || null;
+}
+
+function useObjectUrl(file: File | null): string | null {
+  const url = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  useEffect(() => () => {
+    if (url) URL.revokeObjectURL(url);
+  }, [url]);
+  return url;
 }
 
 export function CommercialEditor({
   commercial,
   nextSortOrder,
-  onDone,
+  onSaved,
   onCancel,
 }: {
   commercial: Commercial | null;
   nextSortOrder: number;
-  onDone: () => void;
+  onSaved: (message: string) => void;
   onCancel: () => void;
 }) {
   const [title, setTitle] = useState(commercial?.title ?? "");
   const [clientName, setClientName] = useState(commercial?.client_name ?? "");
   const [description, setDescription] = useState(commercial?.description ?? "");
-  const [videoUrl, setVideoUrl] = useState(commercial?.video_url ?? "");
-  const [thumbUrl, setThumbUrl] = useState(commercial?.thumbnail_url ?? "");
   const [aspect, setAspect] = useState<CommercialAspectRatio>(commercial?.aspect_ratio ?? "9:16");
   const [duration, setDuration] = useState<number | null>(commercial?.duration_seconds ?? null);
   const [category, setCategory] = useState(commercial?.category ?? "");
@@ -60,62 +65,70 @@ export function CommercialEditor({
   const [published, setPublished] = useState(commercial?.is_published ?? true);
   const [sortOrder, setSortOrder] = useState(commercial?.sort_order ?? nextSortOrder);
 
-  const [videoProgress, setVideoProgress] = useState<number | null>(null);
-  const [thumbProgress, setThumbProgress] = useState<number | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const [progress, setProgress] = useState<{ video: number | null; thumbnail: number | null }>({
+    video: null,
+    thumbnail: null,
+  });
+  const [phase, setPhase] = useState<"idle" | "uploading" | "saving">("idle");
   const [error, setError] = useState<string | null>(null);
-  /** Files uploaded in this editor session that are not yet saved to a row. */
-  const unsaved = useRef<Set<string>>(new Set());
 
-  const discard = (url: string) => {
-    if (unsaved.current.delete(url)) void discardCommercialUpload(url).catch(() => {});
-  };
+  /** Files already uploaded this session (so a retry never re-uploads them). */
+  const uploads = useRef(new Map<File, UploadedFile>());
+  const videoPreview = useObjectUrl(videoFile);
+  const thumbPreview = useObjectUrl(thumbFile);
+  const busy = phase !== "idle";
 
-  const onVideo = async (file: File | undefined) => {
-    if (!file) return;
+  const pick = (kind: CommercialUploadKind, file: File) => {
+    if (!resolveUploadType(kind, file.name, file.type)) {
+      setError(UPLOAD_KIND_LABEL[kind]);
+      return;
+    }
     setError(null);
-    setVideoProgress(0);
-    try {
-      const [detected, seconds] = await Promise.all([detectAspect(file), readVideoDuration(file)]);
-      const url = await uploadCommercialFile(file, "video", setVideoProgress);
-      if (videoUrl) discard(videoUrl);
-      unsaved.current.add(url);
-      setVideoUrl(url);
-      if (detected) setAspect(detected);
-      if (seconds != null) setDuration(seconds);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Video upload failed");
-    } finally {
-      setVideoProgress(null);
+    const previous = kind === "video" ? videoFile : thumbFile;
+    const prevUpload = previous ? uploads.current.get(previous) : undefined;
+    if (previous && prevUpload) {
+      uploads.current.delete(previous);
+      discardCommercialUpload(prevUpload.path);
+    }
+    if (kind === "video") {
+      setVideoFile(file);
+      void readVideoInfo(file).then(({ duration: d, aspect: a }) => {
+        if (d != null) setDuration(d);
+        if (a) setAspect(a);
+      });
+    } else {
+      setThumbFile(file);
     }
   };
 
-  const onThumb = async (file: File | undefined) => {
-    if (!file) return;
-    setError(null);
-    setThumbProgress(0);
+  const ensureUploaded = async (kind: CommercialUploadKind, file: File | null): Promise<string | null> => {
+    if (!file) return null;
+    const cached = uploads.current.get(file);
+    if (cached) return cached.publicUrl;
+    setProgress((p) => ({ ...p, [kind]: 0 }));
     try {
-      const url = await uploadCommercialFile(file, "thumb", setThumbProgress);
-      if (thumbUrl) discard(thumbUrl);
-      unsaved.current.add(url);
-      setThumbUrl(url);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Thumbnail upload failed");
+      const result = await uploadCommercialFile(file, kind, (f) => setProgress((p) => ({ ...p, [kind]: f })));
+      uploads.current.set(file, result);
+      return result.publicUrl;
     } finally {
-      setThumbProgress(null);
+      setProgress((p) => ({ ...p, [kind]: null }));
     }
   };
-
-  const uploading = videoProgress !== null || thumbProgress !== null;
 
   const onSave = async () => {
     setError(null);
     if (!title.trim()) return setError("Title is required.");
-    if (!videoUrl) return setError("Upload a video first.");
-    setSaving(true);
+    if (!videoFile && !commercial?.video_url) return setError("Choose a video file.");
+
     try {
-      await saveCommercial({
-        id: commercial?.id,
+      setPhase("uploading");
+      const videoUrl = (await ensureUploaded("video", videoFile)) ?? commercial!.video_url;
+      const thumbUrl = (await ensureUploaded("thumbnail", thumbFile)) ?? commercial?.thumbnail_url ?? null;
+
+      setPhase("saving");
+      const payload = {
         title,
         client_name: clientName,
         description,
@@ -127,41 +140,62 @@ export function CommercialEditor({
         is_featured: featured,
         is_published: published,
         sort_order: sortOrder,
-      });
-      unsaved.current.clear();
-      onDone();
+      };
+      if (commercial) {
+        await adminFetch(`/api/admin/commercials/${commercial.id}`, { method: "PATCH", body: payload });
+      } else {
+        await adminFetch("/api/admin/commercials", { method: "POST", body: payload });
+      }
+      uploads.current.clear();
+      onSaved(commercial ? `Saved “${title.trim()}”. /ads is updated.` : `Uploaded “${title.trim()}”. It's live on /ads${published ? "" : " once published"}.`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
-      setSaving(false);
+      setError(
+        e instanceof CommercialAdminError
+          ? e.message
+          : "Something went wrong. Your form and files are kept. Click Save to retry."
+      );
+      setPhase("idle");
     }
   };
 
   const cancel = () => {
-    Array.from(unsaved.current).forEach(discard);
+    uploads.current.forEach((u) => discardCommercialUpload(u.path));
+    uploads.current.clear();
     onCancel();
   };
+
+  const actionLabel =
+    phase === "uploading"
+      ? progress.video !== null
+        ? `Uploading video… ${Math.round(progress.video * 100)}%`
+        : "Uploading thumbnail…"
+      : phase === "saving"
+        ? "Saving…"
+        : commercial
+          ? "Save changes"
+          : "Upload & save";
 
   return (
     <div className="rw-admin-panel space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg uppercase tracking-wide text-white">
-          {commercial ? "Edit commercial" : "New commercial"}
+          {commercial ? "Edit commercial" : "Upload commercial"}
         </h2>
-        <button type="button" className="text-sm text-zinc-400 hover:text-white" onClick={cancel} disabled={saving}>
+        <button type="button" className="text-sm text-zinc-400 hover:text-white" onClick={cancel} disabled={busy}>
           Cancel
         </button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_16rem]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
         <div className="space-y-4">
           <div>
             <Label htmlFor="commercial-title">Title</Label>
-            <input id="commercial-title" className="rw-form-input" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input id="commercial-title" className="rw-form-input" value={title} disabled={busy} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="commercial-client">Client (blank = ReelWalia Original)</Label>
-              <input id="commercial-client" className="rw-form-input" value={clientName} onChange={(e) => setClientName(e.target.value)} />
+              <input id="commercial-client" className="rw-form-input" value={clientName} disabled={busy} onChange={(e) => setClientName(e.target.value)} />
             </div>
             <div>
               <Label htmlFor="commercial-category">Category</Label>
@@ -170,6 +204,7 @@ export function CommercialEditor({
                 className="rw-form-input"
                 list="commercial-category-options"
                 value={category}
+                disabled={busy}
                 onChange={(e) => setCategory(e.target.value)}
               />
               <datalist id="commercial-category-options">
@@ -186,6 +221,7 @@ export function CommercialEditor({
               className="rw-form-textarea"
               rows={4}
               value={description}
+              disabled={busy}
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
@@ -196,6 +232,7 @@ export function CommercialEditor({
                 id="commercial-aspect"
                 className="rw-form-select"
                 value={aspect}
+                disabled={busy}
                 onChange={(e) => setAspect(e.target.value as CommercialAspectRatio)}
               >
                 {COMMERCIAL_ASPECT_RATIOS.map((a) => (
@@ -213,6 +250,7 @@ export function CommercialEditor({
                 min={0}
                 className="rw-form-input"
                 value={duration ?? ""}
+                disabled={busy}
                 onChange={(e) => setDuration(e.target.value === "" ? null : Number(e.target.value))}
               />
             </div>
@@ -223,86 +261,67 @@ export function CommercialEditor({
                 type="number"
                 className="rw-form-input"
                 value={sortOrder}
+                disabled={busy}
                 onChange={(e) => setSortOrder(Number(e.target.value) || 0)}
               />
             </div>
           </div>
           <div className="flex flex-wrap gap-6 text-sm text-zinc-300">
             <label className="inline-flex items-center gap-2">
-              <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
+              <input type="checkbox" checked={published} disabled={busy} onChange={(e) => setPublished(e.target.checked)} />
               Published
             </label>
             <label className="inline-flex items-center gap-2">
-              <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} />
+              <input type="checkbox" checked={featured} disabled={busy} onChange={(e) => setFeatured(e.target.checked)} />
               Featured (plays in hero)
             </label>
           </div>
         </div>
 
         <div className="space-y-5">
-          <div>
-            <Label htmlFor="commercial-video">Video (MP4 / MOV / WebM)</Label>
-            {videoUrl && (
-              <video
-                src={videoUrl}
-                controls
-                playsInline
-                preload="metadata"
-                className="mb-2 max-h-72 w-full rounded-lg bg-black object-contain"
-              />
-            )}
-            <input
-              id="commercial-video"
-              type="file"
-              accept="video/mp4,video/quicktime,video/webm"
-              disabled={uploading || saving}
-              onChange={(e) => {
-                void onVideo(e.target.files?.[0]);
-                e.target.value = "";
-              }}
-              className="block w-full text-xs text-zinc-400 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white"
-            />
-            {videoProgress !== null && (
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full bg-obsidian-red transition-all" style={{ width: `${Math.round(videoProgress * 100)}%` }} />
-              </div>
-            )}
-          </div>
-          <div>
-            <Label htmlFor="commercial-thumb">Thumbnail (JPG / PNG / WebP)</Label>
-            {thumbUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={thumbUrl} alt="" className="mb-2 max-h-48 rounded-lg object-contain" />
-            )}
-            <input
-              id="commercial-thumb"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              disabled={uploading || saving}
-              onChange={(e) => {
-                void onThumb(e.target.files?.[0]);
-                e.target.value = "";
-              }}
-              className="block w-full text-xs text-zinc-400 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white"
-            />
-            {thumbProgress !== null && <p className="mt-1 text-xs text-zinc-500">Uploading…</p>}
-          </div>
+          <CommercialDropzone
+            id="commercial-video"
+            label="Video"
+            hint="MP4, MOV, or WebM"
+            accept={UPLOAD_ACCEPT.video}
+            file={videoFile}
+            currentName={fileNameFromUrl(commercial?.video_url)}
+            previewUrl={videoPreview ?? commercial?.video_url ?? null}
+            previewKind="video"
+            progress={progress.video}
+            uploaded={Boolean(videoFile && uploads.current.has(videoFile))}
+            disabled={busy}
+            onFile={(f) => pick("video", f)}
+          />
+          <CommercialDropzone
+            id="commercial-thumb"
+            label="Thumbnail"
+            hint="JPG, PNG, or WebP"
+            accept={UPLOAD_ACCEPT.thumbnail}
+            file={thumbFile}
+            currentName={fileNameFromUrl(commercial?.thumbnail_url)}
+            previewUrl={thumbPreview ?? commercial?.thumbnail_url ?? null}
+            previewKind="image"
+            progress={progress.thumbnail}
+            uploaded={Boolean(thumbFile && uploads.current.has(thumbFile))}
+            disabled={busy}
+            onFile={(f) => pick("thumbnail", f)}
+          />
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300" role="alert">
+          {error}
+        </div>
+      )}
 
       <div className="flex justify-end gap-3">
-        <button type="button" className="rw-btn-secondary min-h-10 px-4 text-sm" onClick={cancel} disabled={saving}>
+        <button type="button" className="rw-btn-secondary min-h-10 px-4 text-sm" onClick={cancel} disabled={busy}>
           Cancel
         </button>
-        <button
-          type="button"
-          className="rw-btn-primary min-h-10 px-5 text-sm"
-          onClick={() => void onSave()}
-          disabled={saving || uploading}
-        >
-          {saving ? "Saving…" : uploading ? "Uploading…" : "Save commercial"}
+        <button type="button" className="rw-btn-primary min-h-10 px-5 text-sm" onClick={() => void onSave()} disabled={busy}>
+          {actionLabel}
         </button>
       </div>
     </div>

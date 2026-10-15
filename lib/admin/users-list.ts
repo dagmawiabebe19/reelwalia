@@ -1,4 +1,4 @@
-import { getAdminEmails, isAdminEmail } from "@/lib/admin";
+import { isAdminUserId } from "@/lib/admin-id";
 import {
   chartBucketForRange,
   type DateRange,
@@ -65,7 +65,7 @@ function mapUserRow(
     createdAt: profile?.created_at ?? authUser.created_at ?? new Date(0).toISOString(),
     subscriptionStatus: status,
     subscriptionPlan: profile?.subscription_plan ?? "free",
-    isAdmin: isAdminEmail(authUser.email),
+    isAdmin: isAdminUserId(authUser.id),
     paymentLabel: hasPaidPlan && isActive ? "Paid" : "No payment",
     activeLabel: isActive ? "Active" : "Inactive",
     country: normalizeCountryCode(profile?.country) ?? profile?.country ?? null,
@@ -280,9 +280,4 @@ export async function fetchAdminUsers(options: {
     search,
     ...baseResult,
   };
-}
-
-export function getAdminEmailsHint(): string {
-  const emails = getAdminEmails();
-  return emails.length ? emails.join(", ") : "Configured via ADMIN_EMAILS";
 }

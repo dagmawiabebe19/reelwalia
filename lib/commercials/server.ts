@@ -1,10 +1,13 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { COMMERCIAL_PUBLIC_COLUMNS, type Commercial } from "@/lib/commercials/constants";
 
+export const COMMERCIALS_CACHE_TAG = "commercials";
+
 /** Published commercials, read with the anon key so RLS (is_published = true) applies. */
-export async function getPublishedCommercials(): Promise<Commercial[]> {
+async function fetchPublishedCommercials(): Promise<Commercial[]> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return [];
@@ -26,3 +29,9 @@ export async function getPublishedCommercials(): Promise<Commercial[]> {
   }
   return (data ?? []) as Commercial[];
 }
+
+/** Cached for 60s; admin writes call revalidateTag(COMMERCIALS_CACHE_TAG) for instant updates. */
+export const getPublishedCommercials = unstable_cache(fetchPublishedCommercials, ["published-commercials"], {
+  revalidate: 60,
+  tags: [COMMERCIALS_CACHE_TAG],
+});

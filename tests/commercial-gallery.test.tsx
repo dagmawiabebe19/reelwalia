@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CommercialGallery, commercialCategories } from "@/components/commercials/CommercialGallery";
-import { commercialObjectName, commercialObjectPath } from "@/lib/commercials/upload";
+import {
+  commercialObjectName,
+  commercialObjectPath,
+  isCommercialObjectPath,
+  resolveUploadType,
+} from "@/lib/commercials/object-path";
 import type { Commercial } from "@/lib/commercials/constants";
 
 const base: Commercial = {
@@ -53,11 +58,30 @@ describe("CommercialGallery", () => {
   });
 });
 
-describe("storage object names", () => {
-  it("never contain 'ad'", () => {
-    for (let i = 0; i < 2000; i++) expect(commercialObjectName()).not.toMatch(/ad/i);
-    expect(commercialObjectPath("video", "video/mp4")).toMatch(/^videos\/[^/]+\.mp4$/);
-    expect(commercialObjectPath("thumb", "image/webp")).toMatch(/^thumbs\/[^/]+\.webp$/);
-    expect(() => commercialObjectPath("video", "image/gif")).toThrow();
+describe("storage object paths and types", () => {
+  it("never contain 'ad' and round-trip through the path guard", () => {
+    for (let i = 0; i < 2000; i++) {
+      expect(commercialObjectName()).not.toMatch(/ad/i);
+      const p = commercialObjectPath(i % 2 ? "video" : "thumbnail", i % 2 ? "mp4" : "webp");
+      expect(p).not.toMatch(/ad/i);
+      expect(isCommercialObjectPath(p)).toBe(true);
+    }
+    expect(commercialObjectPath("video", "mov")).toMatch(/^videos\/[^/]+\.mov$/);
+    expect(commercialObjectPath("thumbnail", "jpeg")).toMatch(/^thumbs\/[^/]+\.jpg$/);
+    expect(isCommercialObjectPath("../secrets.txt")).toBe(false);
+    expect(isCommercialObjectPath("videos/ads_banner.mp4")).toBe(false);
+  });
+
+  it("accepts only mp4/mov/webm videos and jpg/png/webp thumbnails", () => {
+    expect(resolveUploadType("video", "spot.mp4", "video/mp4")).toEqual({ contentType: "video/mp4", ext: "mp4" });
+    expect(resolveUploadType("video", "spot.MOV", "")).toEqual({ contentType: "video/quicktime", ext: "mov" });
+    expect(resolveUploadType("video", "spot.webm", "video/webm")?.contentType).toBe("video/webm");
+    expect(resolveUploadType("video", "spot.avi", "video/x-msvideo")).toBeNull();
+    expect(resolveUploadType("video", "spot.gif", "")).toBeNull();
+    expect(resolveUploadType("video", "poster.png", "image/png")).toBeNull();
+    expect(resolveUploadType("thumbnail", "t.jpeg", "image/jpeg")).toEqual({ contentType: "image/jpeg", ext: "jpeg" });
+    expect(resolveUploadType("thumbnail", "t.webp", "")?.contentType).toBe("image/webp");
+    expect(resolveUploadType("thumbnail", "t.gif", "image/gif")).toBeNull();
+    expect(resolveUploadType("thumbnail", "t.mp4", "video/mp4")).toBeNull();
   });
 });

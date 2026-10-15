@@ -1,17 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ADMIN_USER_ID, isAdminUserId } from "@/lib/admin-id";
 
-export function getAdminEmails(): string[] {
-  return (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-export function isAdminEmail(email: string | undefined | null): boolean {
-  if (!email) return false;
-  return getAdminEmails().includes(email.toLowerCase());
-}
+export { ADMIN_USER_ID, isAdminUserId };
 
 export async function requireAdmin() {
   const supabase = createClient();
@@ -23,7 +14,7 @@ export async function requireAdmin() {
     redirect("/auth/sign-in?next=/admin/series");
   }
 
-  if (!isAdminEmail(user.email)) {
+  if (!isAdminUserId(user.id)) {
     redirect("/not-authorized");
   }
 
@@ -36,8 +27,11 @@ export async function requireAdminApi() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user || !isAdminEmail(user.email)) {
-    return { error: "Unauthorized", status: 401 as const, user: null };
+  if (!user) {
+    return { error: "Not signed in", status: 401 as const, user: null };
+  }
+  if (!isAdminUserId(user.id)) {
+    return { error: "Not authorized", status: 403 as const, user: null };
   }
 
   return { error: null, status: 200 as const, user };

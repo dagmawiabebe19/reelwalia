@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
 import { ArrowRightIcon } from "@/components/commercials/CommercialIcons";
 import {
@@ -41,15 +40,14 @@ export function CommercialHero({ featured }: { featured: Commercial | null }) {
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,rgba(229,57,53,0.22),transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(183,28,28,0.18),transparent_50%)]" />
       )}
 
-      <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 pb-16 pt-10 sm:px-8 sm:pb-24 sm:pt-14 lg:min-h-[88vh] lg:grid-cols-[1.15fr_0.85fr] lg:gap-16">
+      <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 pb-16 pt-10 sm:px-8 sm:pb-24 sm:pt-16 lg:min-h-[80vh] lg:grid-cols-[1.15fr_0.85fr] lg:gap-16">
         <div className={framed ? "" : "lg:col-span-2 lg:max-w-4xl"}>
-          <Link href="/" aria-label="ReelWalia home" className="inline-flex">
-            <ReelWaliaLogo variant="lockup" scale="nav" />
-          </Link>
-
-          <p className="mt-10 text-xs font-semibold uppercase tracking-[0.28em] text-commercial-red sm:mt-14">
-            ReelWalia Studio · Commercials
-          </p>
+          <div className="flex items-center gap-3">
+            <ReelWaliaLogo variant="mark" markClassName="h-10 w-10 sm:h-12 sm:w-12" />
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-commercial-red">
+              ReelWalia Studio · Commercials
+            </p>
+          </div>
           <h1 className="commercial-headline mt-4 font-display text-[2.6rem] uppercase leading-[0.95] tracking-[0.01em] text-white sm:text-6xl lg:text-7xl">
             We make commercials that <span className="text-commercial-red">stop the scroll</span>
           </h1>

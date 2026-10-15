@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ReelWaliaLogo } from "@/components/brand/ReelWaliaLogo";
+import { SiteNavMenu } from "@/components/layout/SiteNavMenu";
 import { SocialProofBanner } from "@/components/layout/SocialProofBanner";
+import { isAdminUserId } from "@/lib/admin-id";
 import { createClient } from "@/lib/supabase/server";
 
 export async function TopNav() {
@@ -42,37 +44,12 @@ export async function TopNav() {
           <ReelWaliaLogo variant="lockup" scale="nav" />
         </Link>
 
-        <nav className="flex items-center gap-3 sm:gap-4">
-          {user ? (
-            <Link
-              href="/account"
-              className="flex min-h-11 items-center gap-2 rounded-full border border-white/[0.08] py-1 pl-1 pr-3 transition duration-200 hover:border-white/25 hover:bg-white/[0.04]"
-            >
-              {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={avatarUrl}
-                  alt=""
-                  className="h-8 w-8 rounded-full object-cover ring-1 ring-white/10"
-                />
-              ) : (
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-obsidian-red text-sm font-bold">
-                  {displayName?.charAt(0).toUpperCase()}
-                </span>
-              )}
-              <span className="hidden text-sm font-medium text-zinc-400 sm:inline">
-                {displayName}
-              </span>
-            </Link>
-          ) : (
-            <Link
-              href="/auth/sign-in"
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-4 text-sm font-semibold text-white transition duration-200 hover:bg-white/[0.06] hover:text-obsidian-red"
-            >
-              Sign In
-            </Link>
-          )}
-        </nav>
+        <SiteNavMenu
+          signedIn={Boolean(user)}
+          isAdmin={isAdminUserId(user?.id)}
+          avatarUrl={avatarUrl}
+          displayName={displayName}
+        />
       </div>
     </header>
   );

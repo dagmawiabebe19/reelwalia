@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isAdminEmail } from "@/lib/admin";
+import { isAdminUserId } from "@/lib/admin-id";
 
 export async function updateSession(request: NextRequest): Promise<{
   response: NextResponse;
@@ -46,6 +46,21 @@ export async function updateSession(request: NextRequest): Promise<{
     return { response: NextResponse.redirect(signIn), userId: null };
   }
 
+  if (isAdminRoute && pathname.startsWith("/api/admin")) {
+    if (!user) {
+      return {
+        response: NextResponse.json({ error: "Not signed in", code: "not_signed_in" }, { status: 401 }),
+        userId: null,
+      };
+    }
+    if (!isAdminUserId(user.id)) {
+      return {
+        response: NextResponse.json({ error: "Not authorized", code: "not_admin" }, { status: 403 }),
+        userId,
+      };
+    }
+  }
+
   if (isAdminRoute) {
     if (!user) {
       const signIn = new URL("/auth/sign-in", request.url);
@@ -53,7 +68,7 @@ export async function updateSession(request: NextRequest): Promise<{
       return { response: NextResponse.redirect(signIn), userId: null };
     }
 
-    if (!isAdminEmail(user.email)) {
+    if (!isAdminUserId(user.id)) {
       return {
         response: NextResponse.redirect(new URL("/not-authorized", request.url)),
         userId,

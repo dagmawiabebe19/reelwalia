@@ -34,7 +34,6 @@ Copy `.env.example` to `.env.local` for local dev. Add the same keys in **Vercel
 | `BUNNY_STREAM_LIBRARY_ID` | Bunny Stream library ID |
 | `BUNNY_STREAM_API_KEY` | Bunny Stream API key |
 | `BUNNY_CDN_HOSTNAME` | CDN hostname (e.g. `vz-xxxxx.b-cdn.net`) |
-| `ADMIN_EMAILS` | Comma-separated admin emails |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
 | `STRIPE_SECRET_KEY` | Stripe secret key |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
@@ -117,9 +116,9 @@ Episode uploads (admin) flow: create video → PUT file to Bunny → save HLS UR
 
 ## Admin access
 
-Set `ADMIN_EMAILS=dagmawiabebe19@gmail.com` (comma-separated for multiple admins).
+Admin is a single Supabase auth user, identified by id: `ADMIN_USER_ID` in `lib/admin-id.ts`. Every admin gate (middleware, pages, API routes) and the admin RLS policies (migration 036) use that id. To change the admin, update the constant and the policies together.
 
-Sign in with that email, then visit `/admin/series` to manage catalog and upload episodes.
+Sign in with that account, then visit `/admin/series` to manage catalog and upload episodes.
 
 Review creator submissions at `/admin/submissions` (status workflow: New → Reviewing → Contacted → Approved / Rejected). Submissions are never auto-published.
 
