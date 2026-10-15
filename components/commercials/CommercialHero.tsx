@@ -73,8 +73,8 @@ function WideHeroVideo({ commercial }: { commercial: Commercial }) {
       className="aspect-video w-full rounded-2xl border border-white/10 bg-black lg:absolute lg:inset-0 lg:z-0 lg:aspect-auto lg:rounded-none lg:border-0"
       overlay={({ idle }) => (
         <>
-          <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-b from-black/70 via-black/60 to-commercial-bg lg:block" />
-          <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-r from-black/80 via-black/30 to-transparent lg:block" />
+          <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-b from-black/25 via-transparent via-60% to-commercial-bg lg:block" />
+          <div className="pointer-events-none absolute inset-0 hidden bg-gradient-to-r from-black/75 via-black/30 via-40% to-transparent to-70% lg:block" />
           {idle && (
             <HeroPlayButton
               commercial={commercial}
