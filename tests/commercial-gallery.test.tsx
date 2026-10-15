@@ -7,7 +7,8 @@ import {
   isCommercialObjectPath,
   resolveUploadType,
 } from "@/lib/commercials/object-path";
-import type { Commercial } from "@/lib/commercials/constants";
+import { CommercialHero } from "@/components/commercials/CommercialHero";
+import { pickHeroCommercial, type Commercial } from "@/lib/commercials/constants";
 
 const base: Commercial = {
   id: "c1",
@@ -55,6 +56,39 @@ describe("CommercialGallery", () => {
     expect(
       commercialCategories([base, { ...base, id: "x" }, { ...base, id: "y", category: "App" }, { ...base, id: "z", category: null }])
     ).toEqual(["All", "Product", "App"]);
+  });
+});
+
+describe("CommercialHero", () => {
+  it("prefers Featured, falls back to the first by sort order, null only when empty", () => {
+    const first = { ...base, id: "first" };
+    const star = { ...base, id: "star", is_featured: true };
+    expect(pickHeroCommercial([first, star])?.id).toBe("star");
+    expect(pickHeroCommercial([first, { ...base, id: "second" }])?.id).toBe("first");
+    expect(pickHeroCommercial([])).toBeNull();
+  });
+
+  it("vertical hero: muted inline video with poster, nothing downloads before hydration", () => {
+    const html = renderToStaticMarkup(<CommercialHero hero={base} />);
+    const video = html.match(/<video[^>]*>/)?.[0] ?? "";
+    expect(video).toContain(`src="${base.video_url}"`);
+    expect(video).toContain(`poster="${base.thumbnail_url}"`);
+    expect(video).toMatch(/playsinline/i);
+    expect(video).toContain("muted");
+    expect(video).toContain("loop");
+    expect(video).toContain('preload="none"');
+    expect(video).not.toContain("autoplay");
+    expect(html).toContain("aspect-ratio:9 / 16");
+    expect(html).toContain("lg:col-start-2");
+  });
+
+  it("wide hero sits behind the copy on desktop; no hero video when there are no commercials", () => {
+    const wide = renderToStaticMarkup(<CommercialHero hero={{ ...base, aspect_ratio: "16:9" }} />);
+    expect(wide).toContain("lg:absolute lg:inset-0");
+    expect(wide).toContain("<video");
+    const empty = renderToStaticMarkup(<CommercialHero hero={null} />);
+    expect(empty).not.toContain("<video");
+    expect(empty).toContain("stop the scroll");
   });
 });
 

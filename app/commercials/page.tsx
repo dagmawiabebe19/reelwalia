@@ -10,6 +10,8 @@ import {
   CommercialProcess,
   CommercialValueProps,
 } from "@/components/commercials/CommercialSections";
+import { CommercialPlaybackProvider } from "@/components/commercials/CommercialPlayback";
+import { pickHeroCommercial } from "@/lib/commercials/constants";
 import { getPublishedCommercials } from "@/lib/commercials/server";
 import { isAdminUserId } from "@/lib/admin-id";
 import { createClient } from "@/lib/supabase/server";
@@ -21,7 +23,7 @@ export const revalidate = 60;
 
 const title = "Commercials by ReelWalia | Hire Us";
 const description =
-  "Vertical-first, story-driven commercials for TikTok, Reels, and Shorts from the team behind ReelWalia's dramas. See our work and get a quote.";
+  "Story-driven commercials for TikTok, Reels, and Shorts from the team behind ReelWalia's dramas. See our work and get a quote.";
 const ogImage = { url: "/opengraph-image", width: 1200, height: 630, alt: "ReelWalia — Stories That Move You" };
 
 export const metadata: Metadata = {
@@ -36,7 +38,7 @@ export default async function CommercialsShowcasePage() {
   const supabase = createClient();
   const [commercials, { data: auth }] = await Promise.all([getPublishedCommercials(), supabase.auth.getUser()]);
   const isAdmin = isAdminUserId(auth.user?.id);
-  const featured = commercials.find((c) => c.is_featured) ?? null;
+  const hero = pickHeroCommercial(commercials);
 
   return (
     <div className="commercial-page flex min-h-screen flex-col bg-commercial-bg text-white">
@@ -50,8 +52,10 @@ export default async function CommercialsShowcasePage() {
         </Link>
       )}
       <main className="flex-1">
-        <CommercialHero featured={featured} />
-        <CommercialGallery commercials={commercials} />
+        <CommercialPlaybackProvider>
+          <CommercialHero hero={hero} />
+          <CommercialGallery commercials={commercials} />
+        </CommercialPlaybackProvider>
         <CommercialValueProps />
         <CommercialProcess />
         <CommercialInquiryForm references={commercials.map((c) => ({ id: c.id, title: c.title }))} />

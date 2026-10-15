@@ -5,7 +5,9 @@ import { signedUrlExpiresSoon } from "@/lib/video/signed-url";
 import { fetchFreshStreamUrl } from "@/lib/video/stream-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { MutedIcon, SoundOnIcon } from "@/components/video/SoundIcons";
 import { WatchEpisodeLink } from "@/components/watch/WatchEpisodeLink";
+import { usePreviewAllowed } from "@/lib/video/use-preview-allowed";
 import type { Series } from "@/lib/types/database";
 
 type HeroItem = Pick<
@@ -19,7 +21,6 @@ type HeroItem = Pick<
 const SLIDE_MS = 6000;
 const PREVIEW_SLIDE_MS = 20000;
 const PREVIEW_START_DELAY_MS = 800;
-const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
 /** Soft-edge mask so vertical clips melt into the banner instead of sitting in a hard box. */
 const PORTRAIT_MASK =
@@ -28,21 +29,6 @@ const PORTRAIT_MASK =
 /** Darkens the banner around the vertical clip so it reads as one composition. */
 const PORTRAIT_AMBIENT =
   "radial-gradient(ellipse 38% 85% at 76% 50%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.28) 55%, transparent 100%)";
-
-function usePreviewAllowed(): boolean {
-  const [allowed, setAllowed] = useState(false);
-  useEffect(() => {
-    const reduced = window.matchMedia(REDUCED_MOTION_QUERY);
-    const saveData =
-      (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData ===
-      true;
-    const sync = () => setAllowed(!reduced.matches && !saveData);
-    sync();
-    reduced.addEventListener("change", sync);
-    return () => reduced.removeEventListener("change", sync);
-  }, []);
-  return allowed;
-}
 
 function HeroPreviewVideo({
   src,
@@ -336,15 +322,7 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
           aria-label={muted ? "Unmute preview" : "Mute preview"}
           className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white backdrop-blur-sm transition hover:bg-black/70 sm:right-6 sm:top-6"
         >
-          {muted ? (
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.59 3L19 9.59 17.59 8.17 15.17 10.6 12.76 8.17 11.34 9.59 13.76 12l-2.42 2.41 1.42 1.42 2.41-2.42 2.42 2.42L19 14.41 16.59 12z" />
-            </svg>
-          ) : (
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05A4.48 4.48 0 0016.5 12zM14 3.23v2.06a7 7 0 010 13.42v2.06A9 9 0 0014 3.23z" />
-            </svg>
-          )}
+          {muted ? <MutedIcon /> : <SoundOnIcon />}
         </button>
       )}
 

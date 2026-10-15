@@ -1,14 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { CommercialCard } from "@/components/commercials/CommercialCard";
-import { CommercialPlayerModal } from "@/components/commercials/CommercialPlayerModal";
-import {
-  COMMERCIAL_FORM_ANCHOR,
-  COMMERCIAL_GALLERY_ANCHOR,
-  COMMERCIAL_REFERENCE_EVENT,
-  type Commercial,
-} from "@/lib/commercials/constants";
+import { useCommercialPlayback } from "@/components/commercials/CommercialPlayback";
+import { COMMERCIAL_GALLERY_ANCHOR, type Commercial } from "@/lib/commercials/constants";
 
 const ALL = "All";
 
@@ -23,22 +18,13 @@ export function commercialCategories(commercials: Commercial[]): string[] {
 
 export function CommercialGallery({ commercials }: { commercials: Commercial[] }) {
   const [category, setCategory] = useState(ALL);
-  const [open, setOpen] = useState<Commercial | null>(null);
+  const { openPlayer } = useCommercialPlayback();
   const categories = useMemo(() => commercialCategories(commercials), [commercials]);
   const visible =
     category === ALL ? commercials : commercials.filter((c) => c.category?.trim() === category);
 
-  const close = useCallback(() => setOpen(null), []);
-  const wantOne = useCallback((c: Commercial) => {
-    setOpen(null);
-    window.dispatchEvent(new CustomEvent(COMMERCIAL_REFERENCE_EVENT, { detail: { id: c.id } }));
-    requestAnimationFrame(() => {
-      document.getElementById(COMMERCIAL_FORM_ANCHOR)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }, []);
-
   return (
-    <section id={COMMERCIAL_GALLERY_ANCHOR} className="commercial-gallery scroll-mt-6 py-16 sm:py-24">
+    <section id={COMMERCIAL_GALLERY_ANCHOR} className="commercial-gallery scroll-mt-6 pb-16 pt-8 sm:pb-24 sm:pt-12">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -94,13 +80,11 @@ export function CommercialGallery({ commercials }: { commercials: Commercial[] }
         ) : (
           <div className="mt-10 columns-2 gap-4 lg:columns-4">
             {visible.map((c) => (
-              <CommercialCard key={c.id} commercial={c} onOpen={setOpen} />
+              <CommercialCard key={c.id} commercial={c} onOpen={openPlayer} />
             ))}
           </div>
         )}
       </div>
-
-      {open && <CommercialPlayerModal commercial={open} onClose={close} onWantOne={wantOne} />}
     </section>
   );
 }

@@ -90,6 +90,17 @@ export function commercialClientLabel(c: Pick<Commercial, "client_name">): strin
   return c.client_name?.trim() || "ReelWalia Original";
 }
 
+export const ASPECT_CSS: Record<Commercial["aspect_ratio"], string> = {
+  "9:16": "9 / 16",
+  "16:9": "16 / 9",
+  "1:1": "1 / 1",
+};
+
+/** Featured commercial, else the first published one (list is sort_order-ordered); null only when there are none. */
+export function pickHeroCommercial(commercials: Commercial[]): Commercial | null {
+  return commercials.find((c) => c.is_featured) ?? commercials[0] ?? null;
+}
+
 /** Window event used by the player modal to pre-fill the inquiry form's reference. */
 export const COMMERCIAL_REFERENCE_EVENT = "rw-commercial-reference";
 export const COMMERCIAL_FORM_ANCHOR = "quote";

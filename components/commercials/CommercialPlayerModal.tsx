@@ -2,9 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { ASPECT_CSS } from "@/components/commercials/CommercialCard";
 import { ArrowRightIcon, CloseIcon } from "@/components/commercials/CommercialIcons";
-import { commercialClientLabel, type Commercial } from "@/lib/commercials/constants";
+import { ASPECT_CSS, commercialClientLabel, type Commercial } from "@/lib/commercials/constants";
 
 const VIDEO_SIZE: Record<Commercial["aspect_ratio"], string> = {
   "9:16": "h-[min(60dvh,calc(92vw*16/9))] lg:h-[86dvh]",
@@ -22,7 +21,19 @@ export function CommercialPlayerModal({
   onWantOne: (c: Commercial) => void;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const wide = commercial.aspect_ratio === "16:9";
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = false;
+    video.play().catch((err: unknown) => {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      video.muted = true;
+      void video.play().catch(() => undefined);
+    });
+  }, [commercial.id]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -71,11 +82,11 @@ export function CommercialPlayerModal({
           style={{ aspectRatio: ASPECT_CSS[commercial.aspect_ratio] }}
         >
           <video
+            ref={videoRef}
             key={commercial.id}
             src={commercial.video_url}
             poster={commercial.thumbnail_url ?? undefined}
             controls
-            autoPlay
             playsInline
             preload="auto"
             className="absolute inset-0 h-full w-full bg-black object-contain"

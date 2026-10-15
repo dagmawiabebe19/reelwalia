@@ -5,7 +5,7 @@ import {
   PhoneVerticalIcon,
   TargetIcon,
 } from "@/components/commercials/CommercialIcons";
-import { COMMERCIAL_CONTACT_EMAIL, COMMERCIAL_FORM_ANCHOR } from "@/lib/commercials/constants";
+import { COMMERCIAL_FORM_ANCHOR } from "@/lib/commercials/constants";
 
 const VALUE_PROPS: { title: string; body: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   {
@@ -99,15 +99,6 @@ export function CommercialFooterCta() {
         <h2 className="font-display text-3xl uppercase leading-tight tracking-wide text-white sm:text-5xl">
           Your story, told in seconds
         </h2>
-        <p className="mt-4 text-sm text-zinc-400 sm:text-base">
-          Prefer email? Reach us at{" "}
-          <a
-            href={`mailto:${COMMERCIAL_CONTACT_EMAIL}?subject=${encodeURIComponent("Commercial inquiry")}`}
-            className="font-semibold text-white underline decoration-commercial-red decoration-2 underline-offset-4 hover:text-commercial-red"
-          >
-            {COMMERCIAL_CONTACT_EMAIL}
-          </a>
-        </p>
         <a
           href={`#${COMMERCIAL_FORM_ANCHOR}`}
           className="mt-8 inline-flex items-center justify-center rounded-full bg-gradient-to-r from-commercial-red to-commercial-deep px-8 py-3.5 text-sm font-bold uppercase tracking-[0.14em] text-white transition hover:from-commercial-deep hover:to-commercial-deep"
