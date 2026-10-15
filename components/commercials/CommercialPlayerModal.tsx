@@ -65,7 +65,7 @@ export function CommercialPlayerModal({
         ref={closeRef}
         type="button"
         onClick={onClose}
-        className="fixed right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20 transition hover:bg-white/20"
+        className="fixed right-3 top-[calc(env(safe-area-inset-top)+0.5rem)] z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20 transition hover:bg-white/20"
         aria-label="Close"
       >
         <CloseIcon className="h-5 w-5" />

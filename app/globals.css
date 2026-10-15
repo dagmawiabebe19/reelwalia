@@ -500,3 +500,44 @@ html:has(.commercial-page) {
 .commercial-chip-row::-webkit-scrollbar {
   display: none;
 }
+
+/* Mobile-only /ads chrome — desktop header and layout stay unchanged. */
+@media (max-width: 767px) {
+  html:has(.commercial-page) header[data-site-header] > div.mx-auto {
+    height: 3.5rem;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+  html:has(.commercial-page) .rw-brand-lockup .rw-brand-lockup-text .rw-brand-nav-tagline {
+    display: none;
+  }
+  html:has(.commercial-page) .rw-brand-lockup > svg,
+  html:has(.commercial-page) .rw-brand-lockup > .shrink-0 {
+    height: 2.25rem;
+    width: 2.25rem;
+  }
+  html:has(.commercial-page) .rw-brand-lockup svg {
+    height: 2.25rem !important;
+    width: 2.25rem !important;
+  }
+  html:has(.commercial-page) .rw-brand-lockup .rw-brand-wordmark {
+    font-size: 1.5rem;
+  }
+  html:has(.commercial-page) [data-social-proof-banner] > div.mx-auto {
+    height: 2rem;
+  }
+  html:has(.commercial-page) [data-social-proof-banner] p {
+    font-size: 13px;
+  }
+  html:has(.commercial-page) .commercial-page {
+    padding-bottom: calc(3.75rem + env(safe-area-inset-bottom));
+  }
+  html:has(.commercial-page) .commercial-sound-toggle {
+    height: 2.75rem;
+    width: 2.75rem;
+  }
+  html:has(.commercial-page) .commercial-sound-toggle svg {
+    height: 1.125rem;
+    width: 1.125rem;
+  }
+}

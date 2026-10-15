@@ -38,28 +38,36 @@ const STEPS: { title: string; body: string }[] = [
 ];
 
 function Eyebrow({ children }: { children: string }) {
-  return <p className="text-xs font-semibold uppercase tracking-[0.28em] text-commercial-red">{children}</p>;
+  return (
+    <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-commercial-red sm:text-xs sm:tracking-[0.28em]">
+      {children}
+    </p>
+  );
 }
 
 export function CommercialValueProps() {
   return (
-    <section className="commercial-why border-t border-white/[0.06] py-16 sm:py-24">
+    <section className="commercial-why border-t border-white/[0.06] py-8 sm:py-24">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <Eyebrow>Why ReelWalia</Eyebrow>
-        <h2 className="mt-3 max-w-2xl font-display text-4xl uppercase leading-none tracking-wide text-white sm:text-5xl">
+        <h2 className="mt-3 max-w-2xl font-display text-[1.9rem] uppercase leading-none tracking-wide text-white sm:text-5xl">
           Storytellers first. Advertisers second.
         </h2>
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid gap-3 sm:mt-12 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {VALUE_PROPS.map(({ title, body, Icon }) => (
             <div
               key={title}
-              className="commercial-value rounded-2xl border border-white/[0.07] bg-gradient-to-b from-white/[0.04] to-transparent p-6"
+              className="commercial-value rounded-2xl border border-white/[0.07] bg-gradient-to-b from-white/[0.04] to-transparent p-5 sm:p-6"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-commercial-red/15 text-commercial-red ring-1 ring-commercial-red/30">
-                <Icon className="h-5 w-5" />
-              </span>
-              <h3 className="mt-5 font-display text-xl uppercase tracking-wide text-white">{title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">{body}</p>
+              <div className="flex items-center gap-3 sm:block">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-commercial-red/15 text-commercial-red ring-1 ring-commercial-red/30 sm:h-11 sm:w-11">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <h3 className="font-display text-base uppercase tracking-wide text-white sm:mt-5 sm:text-xl">
+                  {title}
+                </h3>
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-400 sm:mt-2">{body}</p>
             </div>
           ))}
         </div>
@@ -70,13 +78,34 @@ export function CommercialValueProps() {
 
 export function CommercialProcess() {
   return (
-    <section className="commercial-process border-t border-white/[0.06] py-16 sm:py-24">
+    <section className="commercial-process border-t border-white/[0.06] py-8 sm:py-24">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <Eyebrow>How it works</Eyebrow>
-        <h2 className="mt-3 font-display text-4xl uppercase leading-none tracking-wide text-white sm:text-5xl">
+        <h2 className="mt-3 font-display text-[1.9rem] uppercase leading-none tracking-wide text-white sm:text-5xl">
           From brief to final cut
         </h2>
-        <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+        {/* Mobile timeline */}
+        <ol className="relative mt-8 space-y-6 sm:hidden">
+          <span
+            className="absolute bottom-2 left-[0.9rem] top-2 w-px bg-white/10"
+            aria-hidden
+          />
+          {STEPS.map((step, i) => (
+            <li key={step.title} className="relative grid grid-cols-[2.25rem_1fr] gap-3">
+              <span className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full bg-commercial-bg font-display text-sm leading-none text-commercial-red ring-1 ring-commercial-red/40">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <div>
+                <h3 className="font-display text-base uppercase tracking-wide text-white">{step.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-zinc-400">{step.body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        {/* Desktop / tablet cards */}
+        <ol className="mt-12 hidden gap-4 sm:grid sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step, i) => (
             <li key={step.title} className="commercial-step relative rounded-2xl border border-white/[0.07] p-6">
               <span className="font-display text-5xl leading-none text-commercial-red/90">
@@ -96,12 +125,12 @@ export function CommercialFooterCta() {
   return (
     <section className="commercial-footer-cta border-t border-white/[0.06] bg-gradient-to-b from-commercial-deep/25 to-transparent py-16 text-center sm:py-20">
       <div className="mx-auto max-w-3xl px-5">
-        <h2 className="font-display text-3xl uppercase leading-tight tracking-wide text-white sm:text-5xl">
+        <h2 className="font-display text-[1.9rem] uppercase leading-tight tracking-wide text-white sm:text-5xl">
           Your story, told in seconds
         </h2>
         <a
           href={`#${COMMERCIAL_FORM_ANCHOR}`}
-          className="mt-8 inline-flex items-center justify-center rounded-full bg-gradient-to-r from-commercial-red to-commercial-deep px-8 py-3.5 text-sm font-bold uppercase tracking-[0.14em] text-white transition hover:from-commercial-deep hover:to-commercial-deep"
+          className="mt-8 inline-flex h-12 w-full max-w-sm items-center justify-center rounded-full bg-gradient-to-r from-commercial-red to-commercial-deep px-8 text-sm font-bold uppercase tracking-[0.08em] text-white transition hover:from-commercial-deep hover:to-commercial-deep sm:h-auto sm:w-auto sm:py-3.5 sm:tracking-[0.14em]"
         >
           Get a Quote
         </a>

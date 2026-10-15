@@ -45,7 +45,7 @@ const EMPTY: FormState = {
 };
 
 const inputClass =
-  "commercial-input mt-2 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-base text-white placeholder:text-zinc-600 transition focus:border-commercial-red focus:bg-white/[0.06] focus:outline-none sm:text-sm";
+  "commercial-input mt-2 h-12 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-base text-white placeholder:text-zinc-600 transition focus:border-commercial-red focus:bg-white/[0.06] focus:outline-none sm:h-auto sm:py-3 sm:text-sm";
 
 function Field({
   label,
@@ -155,11 +155,13 @@ export function CommercialInquiryForm({ references }: { references: ReferenceOpt
   };
 
   return (
-    <section id={COMMERCIAL_FORM_ANCHOR} className="commercial-inquiry scroll-mt-6 border-t border-white/[0.06] py-16 sm:py-24">
-      <div className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+    <section id={COMMERCIAL_FORM_ANCHOR} className="commercial-inquiry scroll-mt-6 border-t border-white/[0.06] py-8 sm:py-24">
+      <div className="mx-auto grid max-w-7xl gap-10 px-5 sm:gap-12 sm:px-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-commercial-red">Get a Quote</p>
-          <h2 className="mt-3 font-display text-4xl uppercase leading-none tracking-wide text-white sm:text-5xl">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-commercial-red sm:text-xs sm:tracking-[0.28em]">
+            Get a Quote
+          </p>
+          <h2 className="mt-3 font-display text-[1.9rem] uppercase leading-none tracking-wide text-white sm:text-5xl">
             Hire us to make your advertisement
           </h2>
           <p className="mt-5 max-w-md text-sm leading-relaxed text-zinc-400 sm:text-base">
@@ -222,7 +224,7 @@ export function CommercialInquiryForm({ references }: { references: ReferenceOpt
               </div>
             )}
 
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid gap-5 md:grid-cols-2">
               <Field label="Name" htmlFor="inquiry-name" error={errors.name}>
                 <input
                   id="inquiry-name"
@@ -327,7 +329,7 @@ export function CommercialInquiryForm({ references }: { references: ReferenceOpt
               <textarea
                 id="inquiry-message"
                 rows={5}
-                className={`${inputClass} resize-y`}
+                className={`${inputClass} h-auto min-h-[8rem] resize-y py-3`}
                 value={form.message}
                 maxLength={INQUIRY_LIMITS.message}
                 placeholder="Your product, audience, the feeling you want to leave people with…"
@@ -344,7 +346,7 @@ export function CommercialInquiryForm({ references }: { references: ReferenceOpt
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-full bg-gradient-to-r from-commercial-red to-commercial-deep px-8 py-4 text-sm font-bold uppercase tracking-[0.16em] text-white shadow-[0_10px_40px_rgba(229,57,53,0.3)] transition hover:from-commercial-deep hover:to-commercial-deep disabled:cursor-wait disabled:opacity-60"
+              className="flex h-12 w-full items-center justify-center rounded-full bg-gradient-to-r from-commercial-red to-commercial-deep px-8 text-sm font-bold uppercase tracking-[0.08em] text-white shadow-none transition hover:from-commercial-deep hover:to-commercial-deep disabled:cursor-wait disabled:opacity-60 sm:h-auto sm:py-4 sm:tracking-[0.16em] sm:shadow-[0_10px_40px_rgba(229,57,53,0.3)]"
             >
               {submitting ? "Sending…" : "Send Inquiry"}
             </button>

@@ -11,6 +11,7 @@ import {
   CommercialValueProps,
 } from "@/components/commercials/CommercialSections";
 import { CommercialPlaybackProvider } from "@/components/commercials/CommercialPlayback";
+import { CommercialStickyCta } from "@/components/commercials/CommercialStickyCta";
 import { pickHeroCommercials } from "@/lib/commercials/constants";
 import { getPublishedCommercials } from "@/lib/commercials/server";
 import { isAdminUserId } from "@/lib/admin-id";
@@ -46,7 +47,7 @@ export default async function CommercialsShowcasePage() {
       {isAdmin && (
         <Link
           href="/admin/commercials"
-          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-40 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/80 px-3.5 py-2 text-xs font-semibold text-zinc-200 shadow-xl backdrop-blur transition hover:border-commercial-red hover:text-white"
+          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-40 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/80 px-3.5 py-2 text-xs font-semibold text-zinc-200 shadow-xl backdrop-blur transition hover:border-commercial-red hover:text-white max-md:bottom-[calc(4.25rem+env(safe-area-inset-bottom))]"
         >
           Manage advertisements
         </Link>
@@ -55,6 +56,7 @@ export default async function CommercialsShowcasePage() {
         <CommercialPlaybackProvider>
           <CommercialHero heroes={heroes} />
           <CommercialGallery commercials={commercials} />
+          <CommercialStickyCta />
         </CommercialPlaybackProvider>
         <CommercialValueProps />
         <CommercialProcess />

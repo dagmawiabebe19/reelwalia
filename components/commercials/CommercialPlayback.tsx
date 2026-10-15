@@ -29,6 +29,8 @@ interface CommercialPlaybackApi {
   /** False for reduced motion / Save-Data (and before hydration): show posters, never autoplay. */
   autoplay: boolean;
   soundId: string | null;
+  /** True while the fullscreen player modal is open. */
+  playerOpen: boolean;
   register: (id: string, entry: PlaybackEntry) => () => void;
   reportVisibility: (id: string, ratio: number) => void;
   /** Must run inside the tap handler so iOS treats the unmute as a user gesture. Returns true if `id` now has sound. */
@@ -41,6 +43,7 @@ const noop = () => {};
 const STATIC_API: CommercialPlaybackApi = {
   autoplay: false,
   soundId: null,
+  playerOpen: false,
   register: () => noop,
   reportVisibility: noop,
   toggleSound: () => false,
@@ -182,8 +185,17 @@ export function CommercialPlaybackProvider({ children }: { children: ReactNode }
   }, []);
 
   const api = useMemo<CommercialPlaybackApi>(
-    () => ({ autoplay, soundId, register, reportVisibility, toggleSound, releaseSound, openPlayer }),
-    [autoplay, soundId, register, reportVisibility, toggleSound, releaseSound, openPlayer]
+    () => ({
+      autoplay,
+      soundId,
+      playerOpen: open !== null,
+      register,
+      reportVisibility,
+      toggleSound,
+      releaseSound,
+      openPlayer,
+    }),
+    [autoplay, soundId, open, register, reportVisibility, toggleSound, releaseSound, openPlayer]
   );
 
   return (

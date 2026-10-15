@@ -81,8 +81,10 @@ describe("CommercialHero", () => {
     expect(video).toContain("loop");
     expect(video).toContain('preload="none"');
     expect(video).not.toContain("autoplay");
-    expect(html).toContain("aspect-ratio:9 / 16");
+    expect(html).toContain("Advertisements");
+    expect(html).toContain("ReelWalia Studio · Advertisements");
     expect(html).toContain("lg:col-start-2");
+    expect(html).toContain("hero-ctas");
   });
 
   it("wide hero sits behind the copy on desktop; no hero video when there are no commercials", () => {
@@ -94,12 +96,13 @@ describe("CommercialHero", () => {
     expect(empty).toContain("stop the scroll");
   });
 
-  it("shows prev/next arrows when there is more than one featured slide", () => {
+  it("shows prev/next arrows (desktop) and dots when there is more than one featured slide", () => {
     const a = { ...base, id: "a", is_featured: true, title: "First Spot" };
     const b = { ...base, id: "b", is_featured: true, title: "Second Spot", aspect_ratio: "16:9" as const };
     const html = renderToStaticMarkup(<CommercialHero heroes={[a, b]} />);
     expect(html).toContain("Previous featured advertisement");
     expect(html).toContain("Next featured advertisement");
+    expect(html).toMatch(/hidden[^"]*md:flex/);
     expect(html).toContain('aria-label="Show First Spot"');
     expect(html).toContain('aria-label="Show Second Spot"');
     const single = renderToStaticMarkup(<CommercialHero heroes={[a]} />);

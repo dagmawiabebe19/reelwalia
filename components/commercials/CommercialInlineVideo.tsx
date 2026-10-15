@@ -182,7 +182,7 @@ export function CommercialInlineVideo({
         <>
           {hint && (
             <span
-              className={`pointer-events-none absolute z-20 rounded-full bg-black/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white ring-1 ring-white/20 backdrop-blur-sm transition-opacity duration-700 ${toggleClassName} mr-14 mb-2 ${
+              className={`pointer-events-none absolute bottom-3 left-3 z-20 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white ring-1 ring-white/20 backdrop-blur-sm transition-opacity duration-700 sm:bottom-4 sm:left-4 sm:px-3 sm:py-1.5 sm:text-[11px] sm:tracking-[0.14em] ${
                 hintVisible ? "opacity-100" : "opacity-0"
               }`}
               aria-hidden

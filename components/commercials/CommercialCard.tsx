@@ -25,7 +25,7 @@ export function CommercialCard({
   return (
     <CommercialInlineVideo
       commercial={commercial}
-      className="commercial-card group mb-4 block w-full break-inside-avoid rounded-2xl border border-white/[0.07] bg-zinc-900 shadow-[0_12px_40px_rgba(0,0,0,0.5)] transition duration-300 hover:-translate-y-0.5 hover:border-commercial-red/50"
+      className="commercial-card group mb-3 block w-full break-inside-avoid rounded-2xl border border-white/[0.07] bg-zinc-900 shadow-[0_12px_40px_rgba(0,0,0,0.5)] transition duration-300 hover:-translate-y-0.5 hover:border-commercial-red/50 sm:mb-4"
       style={{ aspectRatio: ASPECT_CSS[commercial.aspect_ratio] }}
       overlay={({ playing }) => (
         <>
@@ -64,12 +64,12 @@ export function CommercialCard({
             )}
             <p
               className={`mt-1 font-display uppercase leading-tight tracking-wide text-white ${
-                vertical ? "line-clamp-2 text-base sm:text-lg" : "line-clamp-1 text-sm sm:text-base"
+                vertical ? "line-clamp-2 text-sm sm:text-lg" : "line-clamp-1 text-sm sm:text-base"
               }`}
             >
               {commercial.title}
             </p>
-            <p className="mt-0.5 truncate text-xs text-zinc-400">{commercialClientLabel(commercial)}</p>
+            <p className="mt-0.5 truncate text-[12px] text-zinc-400 sm:text-xs">{commercialClientLabel(commercial)}</p>
           </div>
         </>
       )}

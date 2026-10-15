@@ -24,12 +24,14 @@ export function CommercialGallery({ commercials }: { commercials: Commercial[] }
     category === ALL ? commercials : commercials.filter((c) => c.category?.trim() === category);
 
   return (
-    <section id={COMMERCIAL_GALLERY_ANCHOR} className="commercial-gallery scroll-mt-6 pb-16 pt-8 sm:pb-24 sm:pt-12">
+    <section id={COMMERCIAL_GALLERY_ANCHOR} className="commercial-gallery scroll-mt-6 pb-8 pt-8 sm:pb-24 sm:pt-12">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-commercial-red">Our Work</p>
-            <h2 className="mt-3 font-display text-4xl uppercase leading-none tracking-wide text-white sm:text-5xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-commercial-red sm:text-xs sm:tracking-[0.28em]">
+              Our Work
+            </p>
+            <h2 className="mt-3 font-display text-[1.9rem] uppercase leading-none tracking-wide text-white sm:text-5xl">
               Made to be watched
             </h2>
           </div>
@@ -78,7 +80,7 @@ export function CommercialGallery({ commercials }: { commercials: Commercial[] }
             </p>
           </div>
         ) : (
-          <div className="mt-10 columns-2 gap-4 lg:columns-4">
+          <div className="mt-8 columns-2 gap-3 sm:mt-10 sm:gap-4 lg:columns-4">
             {visible.map((c) => (
               <CommercialCard key={c.id} commercial={c} onOpen={openPlayer} />
             ))}
