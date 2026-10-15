@@ -12,7 +12,7 @@ import {
 } from "@/lib/commercials/constants";
 
 export const MIGRATION_MISSING_MESSAGE =
-  "The advertisements database tables or the commercials storage bucket in Supabase are missing. Apply migration 035_commercials.sql (then 036_fix_admin_user_id.sql) in the Supabase SQL editor.";
+  "The commercials / commercial_inquiries tables or the commercials storage bucket in Supabase are missing. Apply migration 035_commercials.sql (then 036_fix_admin_user_id.sql) in the Supabase SQL editor.";
 
 export type AdminApiError = { error: string; code: string };
 
