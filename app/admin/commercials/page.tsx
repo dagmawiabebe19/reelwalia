@@ -32,12 +32,12 @@ export default async function AdminCommercialsPage({
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        title="Commercials"
-        subtitle="Manage the public /ads showcase and incoming commercial inquiries."
+        title="Advertisements"
+        subtitle="Manage the public /ads showcase and incoming advertisement inquiries."
       />
       {setupError ? (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
-          Could not load commercials data ({setupError.message}). Apply migration{" "}
+          Could not load advertisements data ({setupError.message}). Apply migration{" "}
           <code className="font-mono">035_commercials.sql</code> in the Supabase SQL editor.
         </div>
       ) : (

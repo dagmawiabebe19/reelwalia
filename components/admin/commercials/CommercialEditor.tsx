@@ -173,13 +173,13 @@ export function CommercialEditor({
         ? "Saving…"
         : commercial
           ? "Save changes"
-          : "Upload & save";
+          : "Save advertisement";
 
   return (
     <div className="rw-admin-panel space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg uppercase tracking-wide text-white">
-          {commercial ? "Edit commercial" : "Upload commercial"}
+          {commercial ? "Edit advertisement" : "New advertisement"}
         </h2>
         <button type="button" className="text-sm text-zinc-400 hover:text-white" onClick={cancel} disabled={busy}>
           Cancel

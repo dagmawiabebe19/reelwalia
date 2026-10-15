@@ -65,7 +65,7 @@ function storageError(status: number, responseText: string): CommercialAdminErro
   }
   if (/bucket not found/i.test(message)) {
     return new CommercialAdminError(
-      "The commercials storage bucket is missing. Apply migration 035_commercials.sql in the Supabase SQL editor.",
+      "The advertisements storage bucket is missing. Apply migration 035_commercials.sql in the Supabase SQL editor.",
       "migration_missing"
     );
   }

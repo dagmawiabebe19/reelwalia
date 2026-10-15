@@ -36,7 +36,7 @@ export function CommercialsAdmin({
     <div className="space-y-6">
       <div className="flex gap-6 border-b border-white/[0.08]" role="tablist">
         <button type="button" role="tab" aria-selected={tab === "commercials"} className={tabClass(tab === "commercials")} onClick={() => selectTab("commercials")}>
-          Commercials
+          Advertisements
           <span className="text-xs font-normal text-zinc-500">{commercials.length}</span>
         </button>
         <button type="button" role="tab" aria-selected={tab === "inquiries"} className={tabClass(tab === "inquiries")} onClick={() => selectTab("inquiries")}>

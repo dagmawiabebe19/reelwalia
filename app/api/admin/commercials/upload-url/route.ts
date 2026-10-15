@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       return adminError(
         413,
         "too_large",
-        `This file is ${formatMb(size)}; the commercials bucket allows up to ${formatMb(limit)}.`
+        `This file is ${formatMb(size)}; the advertisements storage bucket allows up to ${formatMb(limit)}.`
       );
     }
   }

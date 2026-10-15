@@ -22,7 +22,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: "/admin/series", label: "Series" },
       { href: "/admin/featured", label: "Featured order" },
       { href: "/admin/submissions", label: "Submissions" },
-      { href: "/admin/commercials", label: "Commercials" },
+      { href: "/admin/commercials", label: "Advertisements" },
     ],
   },
   {

@@ -26,13 +26,13 @@ export async function sendCommercialInquiryNotification(
   }
 
   const from = process.env.RESEND_FROM_EMAIL ?? "ReelWalia <onboarding@resend.dev>";
-  const subject = `New commercial inquiry: ${inquiry.company || inquiry.name}`;
+  const subject = `New advertisement inquiry: ${inquiry.company || inquiry.name}`;
   const adminUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://reelwalia.com"}/admin/commercials?tab=inquiries`;
 
   const html = `
     <div style="font-family:Inter,Helvetica,Arial,sans-serif;background:#0A0A0A;color:#fff;padding:24px;">
-      <h1 style="font-size:20px;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.04em;">New Commercial Inquiry</h1>
-      <p style="color:#a1a1aa;margin:0 0 24px;">Someone wants ReelWalia to make their commercial.</p>
+      <h1 style="font-size:20px;margin:0 0 8px;text-transform:uppercase;letter-spacing:0.04em;">New Advertisement Inquiry</h1>
+      <p style="color:#a1a1aa;margin:0 0 24px;">Someone wants ReelWalia to make their advertisement.</p>
       <table style="border-collapse:collapse;font-size:14px;line-height:1.5;">
         ${row("Name", inquiry.name)}
         ${row("Email", inquiry.email)}

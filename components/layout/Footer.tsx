@@ -21,7 +21,7 @@ export function Footer() {
             href="/ads"
             className="transition duration-200 hover:text-white"
           >
-            Commercials
+            Advertisements
           </Link>
           <span className="text-zinc-600" aria-hidden>
             •

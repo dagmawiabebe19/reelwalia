@@ -21,9 +21,9 @@ import { createClient } from "@/lib/supabase/server";
 // cached 60s and invalidated by every admin write (revalidateTag + revalidatePath).
 export const revalidate = 60;
 
-const title = "Commercials by ReelWalia | Hire Us";
+const title = "Advertisements by ReelWalia | Hire Us";
 const description =
-  "Story-driven commercials for TikTok, Reels, and Shorts from the team behind ReelWalia's dramas. See our work and get a quote.";
+  "Story-driven advertisements for TikTok, Reels, and Shorts from the team behind ReelWalia's dramas. See our work and get a quote.";
 const ogImage = { url: "/opengraph-image", width: 1200, height: 630, alt: "ReelWalia — Stories That Move You" };
 
 export const metadata: Metadata = {
@@ -48,7 +48,7 @@ export default async function CommercialsShowcasePage() {
           href="/admin/commercials"
           className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 z-40 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/80 px-3.5 py-2 text-xs font-semibold text-zinc-200 shadow-xl backdrop-blur transition hover:border-commercial-red hover:text-white"
         >
-          Manage commercials
+          Manage advertisements
         </Link>
       )}
       <main className="flex-1">

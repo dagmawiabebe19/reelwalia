@@ -16,7 +16,8 @@ describe("CommercialEditor dropzones", () => {
     expect(html.match(/commercial-dropzone/g)).toHaveLength(2);
     expect(html).toContain('accept="video/mp4,video/quicktime,video/webm');
     expect(html).toContain('accept="image/jpeg,image/png,image/webp');
-    expect(html).toContain("Upload &amp; save");
+    expect(html).toContain("Save advertisement");
+    expect(html).toContain("New advertisement");
   });
 
   it("editing shows the current file names", () => {

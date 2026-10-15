@@ -55,7 +55,7 @@ export function CommercialsManager({ commercials }: { commercials: Commercial[] 
       setToast(
         res.filesRemoved
           ? `Deleted “${c.title}” and its files.`
-          : `Deleted “${c.title}”, but its storage files couldn't be removed. Delete them in Supabase → Storage → commercials.`
+          : `Deleted “${c.title}”, but its storage files couldn't be removed. Delete them manually in Supabase → Storage.`
       );
       router.refresh();
     } catch (e) {
@@ -90,10 +90,10 @@ export function CommercialsManager({ commercials }: { commercials: Commercial[] 
     <div className="space-y-4">
       <div className="flex flex-col gap-3 rounded-xl border border-obsidian-red/25 bg-obsidian-red/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-zinc-400">
-          Lower sort order shows first. The first featured, published commercial plays in the /ads hero.
+          Lower sort order shows first. The first featured, published advertisement plays in the /ads hero (or the first published one if none is featured).
         </p>
         <button type="button" className="rw-btn-primary min-h-11 shrink-0 px-5 text-sm" onClick={() => setEditing("new")}>
-          + Upload commercial
+          + Upload advertisement
         </button>
       </div>
 
@@ -105,7 +105,7 @@ export function CommercialsManager({ commercials }: { commercials: Commercial[] 
 
       {commercials.length === 0 ? (
         <div className="rw-admin-panel text-center text-sm text-zinc-500">
-          No commercials yet. The public page shows a &ldquo;New work dropping soon&rdquo; state until you publish one.
+          No advertisements yet. The public page shows a &ldquo;New work dropping soon&rdquo; state until you publish one.
         </div>
       ) : (
         <div className="rw-admin-table-wrap overflow-x-auto">

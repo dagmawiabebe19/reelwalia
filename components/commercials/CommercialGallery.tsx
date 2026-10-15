@@ -73,7 +73,7 @@ export function CommercialGallery({ commercials }: { commercials: Commercial[] }
               New work dropping soon
             </p>
             <p className="mt-3 max-w-md text-sm leading-relaxed text-zinc-400">
-              We&apos;re putting the finishing touches on our latest commercials. Tell us about your
+              We&apos;re putting the finishing touches on our latest advertisements. Tell us about your
               brand below. Yours could be the first one here.
             </p>
           </div>

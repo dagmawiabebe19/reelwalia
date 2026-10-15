@@ -25,7 +25,7 @@ async function loadMedia(id: string) {
 export async function PATCH(request: Request, { params }: Ctx) {
   const denied = await gateCommercialsAdmin();
   if (denied) return denied;
-  if (!UUID_RE.test(params.id)) return adminError(400, "bad_request", "Invalid commercial id.");
+  if (!UUID_RE.test(params.id)) return adminError(400, "bad_request", "Invalid advertisement id.");
 
   let raw: unknown;
   try {
@@ -38,7 +38,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
 
   const { data: existing, error: loadErr } = await loadMedia(params.id);
   if (loadErr) return dbError(loadErr);
-  if (!existing) return adminError(404, "not_found", "That commercial no longer exists.");
+  if (!existing) return adminError(404, "not_found", "That advertisement no longer exists.");
 
   const { error } = await createAdminClient().from("commercials").update(parsed.value).eq("id", params.id);
   if (error) return dbError(error);
@@ -57,11 +57,11 @@ export async function PATCH(request: Request, { params }: Ctx) {
 export async function DELETE(_request: Request, { params }: Ctx) {
   const denied = await gateCommercialsAdmin();
   if (denied) return denied;
-  if (!UUID_RE.test(params.id)) return adminError(400, "bad_request", "Invalid commercial id.");
+  if (!UUID_RE.test(params.id)) return adminError(400, "bad_request", "Invalid advertisement id.");
 
   const { data: existing, error: loadErr } = await loadMedia(params.id);
   if (loadErr) return dbError(loadErr);
-  if (!existing) return adminError(404, "not_found", "That commercial no longer exists.");
+  if (!existing) return adminError(404, "not_found", "That advertisement no longer exists.");
 
   const { error } = await createAdminClient().from("commercials").delete().eq("id", params.id);
   if (error) return dbError(error);

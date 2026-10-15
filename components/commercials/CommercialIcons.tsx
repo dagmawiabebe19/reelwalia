@@ -17,11 +17,12 @@ function Icon({ children, ...props }: SVGProps<SVGSVGElement> & { children: Reac
   );
 }
 
-export function PhoneVerticalIcon(props: SVGProps<SVGSVGElement>) {
+export function TrophyIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <rect x="6" y="2" width="12" height="20" rx="2.5" />
-      <path d="M11 18h2" />
+      <path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" />
+      <path d="M8 6H5a2 2 0 0 0 0 4h3M16 6h3a2 2 0 0 1 0 4h-3" />
+      <path d="M12 13v4M9 21h6M10 17h4l.5 4h-5l.5-4Z" />
     </Icon>
   );
 }

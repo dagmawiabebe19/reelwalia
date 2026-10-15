@@ -79,7 +79,7 @@ export function SiteNavMenu({
           commercialsActive ? "text-obsidian-red" : "text-zinc-300 hover:text-white"
         }`}
       >
-        Commercials
+        Advertisements
       </Link>
 
       {signedIn ? (
@@ -103,7 +103,7 @@ export function SiteNavMenu({
                 Account
               </Link>
               <Link role="menuitem" href={COMMERCIALS_NAV_HREF} className={menuItemClass}>
-                Commercials
+                Advertisements
               </Link>
               {isAdmin && (
                 <Link role="menuitem" href="/admin" className={`${menuItemClass} text-obsidian-red hover:text-obsidian-red`}>
@@ -152,7 +152,7 @@ export function SiteNavMenu({
             aria-current={commercialsActive ? "page" : undefined}
             className={`${menuItemClass} ${commercialsActive ? "text-obsidian-red" : ""}`}
           >
-            Commercials
+            Advertisements
           </Link>
           {signedIn ? (
             <Link href="/account" className={menuItemClass}>

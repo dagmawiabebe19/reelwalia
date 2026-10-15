@@ -12,7 +12,7 @@ import {
 } from "@/lib/commercials/constants";
 
 export const MIGRATION_MISSING_MESSAGE =
-  "The commercials database tables or storage bucket are missing. Apply migration 035_commercials.sql (then 036_fix_admin_user_id.sql) in the Supabase SQL editor.";
+  "The advertisements database tables or storage bucket are missing. Apply migration 035_commercials.sql (then 036_fix_admin_user_id.sql) in the Supabase SQL editor.";
 
 export type AdminApiError = { error: string; code: string };
 
@@ -125,7 +125,7 @@ export function parseCommercialPayload(
   }
   if (has("thumbnail_url")) {
     if (input.thumbnail_url && !ownUrl(input.thumbnail_url))
-      return { ok: false, error: "Thumbnail must be uploaded to the commercials bucket." };
+      return { ok: false, error: "Thumbnail must be uploaded to the advertisements storage bucket." };
     out.thumbnail_url = ownUrl(input.thumbnail_url);
   }
   if (has("client_name")) out.client_name = text(input.client_name, FIELD_MAX.client_name);

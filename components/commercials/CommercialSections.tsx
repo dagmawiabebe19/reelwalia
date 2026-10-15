@@ -2,16 +2,16 @@ import type { ComponentType, SVGProps } from "react";
 import {
   BoltIcon,
   ClapperIcon,
-  PhoneVerticalIcon,
   TargetIcon,
+  TrophyIcon,
 } from "@/components/commercials/CommercialIcons";
 import { COMMERCIAL_FORM_ANCHOR } from "@/lib/commercials/constants";
 
 const VALUE_PROPS: { title: string; body: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   {
-    title: "Vertical-native",
-    body: "Shot and framed for 9:16 from the first storyboard, not cropped from a landscape cut.",
-    Icon: PhoneVerticalIcon,
+    title: "Hollywood-trained team",
+    body: "Directed and edited by filmmakers with credits on Netflix, Hulu, and Tribeca productions.",
+    Icon: TrophyIcon,
   },
   {
     title: "Cinematic storytelling",
@@ -34,7 +34,7 @@ const STEPS: { title: string; body: string }[] = [
   { title: "Tell us about your brand", body: "Share your product, audience, and goals. A short form or a quick call is enough." },
   { title: "Concept & script", body: "We pitch story-driven concepts, then lock the script and shot list with you." },
   { title: "Production", body: "Casting, locations, and a cinematic shoot, run by the team behind our dramas." },
-  { title: "Delivery in every format", body: "Final cuts in 9:16, 1:1, and 16:9 with captions, ready for every platform you run on." },
+  { title: "Delivery in every format", body: "Final cuts with captions, sized for every platform you run on." },
 ];
 
 function Eyebrow({ children }: { children: string }) {

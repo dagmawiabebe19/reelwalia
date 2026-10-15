@@ -108,11 +108,11 @@ export function CommercialHero({ hero }: { hero: Commercial | null }) {
           <div className="flex items-center gap-3">
             <ReelWaliaLogo variant="mark" markClassName="h-10 w-10 sm:h-12 sm:w-12" />
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-commercial-red">
-              ReelWalia Studio · Commercials
+              ReelWalia Studio · Advertisements
             </p>
           </div>
-          <h1 className="commercial-headline mt-4 font-display text-[2.6rem] uppercase leading-[0.95] tracking-[0.01em] text-white sm:text-6xl lg:text-7xl">
-            We make commercials that <span className="text-commercial-red">stop the scroll</span>
+          <h1 className="commercial-headline mt-4 font-display text-[2.4rem] uppercase leading-[0.95] tracking-[0.01em] text-white [text-wrap:balance] sm:text-6xl lg:text-[4rem] xl:text-7xl">
+            We make advertisements that <span className="text-commercial-red">stop the scroll</span>
           </h1>
         </div>
 
@@ -120,7 +120,7 @@ export function CommercialHero({ hero }: { hero: Commercial | null }) {
 
         <div className={`relative z-10 ${framed ? "lg:self-start lg:pt-6" : "lg:max-w-4xl lg:pt-6"}`}>
           <p className="max-w-xl text-base leading-relaxed text-zinc-300 sm:text-lg">
-            Story-driven commercials from the team behind ReelWalia&apos;s dramas.
+            Story-driven advertisements from the team behind ReelWalia&apos;s dramas.
             We hook viewers in the first second and keep them watching to the end.
           </p>
 

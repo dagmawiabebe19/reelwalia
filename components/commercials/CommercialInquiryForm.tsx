@@ -160,7 +160,7 @@ export function CommercialInquiryForm({ references }: { references: ReferenceOpt
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-commercial-red">Get a Quote</p>
           <h2 className="mt-3 font-display text-4xl uppercase leading-none tracking-wide text-white sm:text-5xl">
-            Hire us to make your commercial
+            Hire us to make your advertisement
           </h2>
           <p className="mt-5 max-w-md text-sm leading-relaxed text-zinc-400 sm:text-base">
             Tell us about your brand and what you want people to feel. We&apos;ll come back with ideas,
